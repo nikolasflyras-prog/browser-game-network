@@ -4,7 +4,6 @@ import path from "node:path";
 const debugBase = process.env.CDP_URL ?? "http://127.0.0.1:9222";
 const screenshotPath = process.argv[2] ?? "artifacts/browser/orbit-relay-interaction.png";
 const targetUrl = process.env.ORBIT_RELAY_URL ?? "http://127.0.0.1:3000/games/orbit-relay";
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitForValue(fn, { timeout = 7000, interval = 80, label = "condition" } = {}) {
@@ -32,14 +31,8 @@ const page = await waitForValue(async () => {
 const socket = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => {
   const timer = setTimeout(() => reject(new Error("Timed out opening CDP websocket")), 5000);
-  socket.addEventListener("open", () => {
-    clearTimeout(timer);
-    resolve();
-  }, { once: true });
-  socket.addEventListener("error", () => {
-    clearTimeout(timer);
-    reject(new Error("Failed to open CDP websocket"));
-  }, { once: true });
+  socket.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
+  socket.addEventListener("error", () => { clearTimeout(timer); reject(new Error("Failed to open CDP websocket")); }, { once: true });
 });
 
 let sequence = 0;
@@ -55,8 +48,6 @@ socket.addEventListener("message", (event) => {
     else resolve(message.result ?? {});
     return;
   }
-  // Runtime exceptions are actionable. Headless Chrome's software-WebGL warnings and
-  // generic missing-resource logs are runner noise and are covered separately by route/UI checks.
   if (message.method === "Runtime.exceptionThrown") {
     runtimeErrors.push(message.params?.exceptionDetails?.text ?? "Runtime exception");
   }
@@ -91,20 +82,10 @@ async function waitForExpression(expression, label, timeout = 7000) {
 
 async function pressSpace() {
   await send("Input.dispatchKeyEvent", {
-    type: "keyDown",
-    key: " ",
-    code: "Space",
-    text: " ",
-    unmodifiedText: " ",
-    windowsVirtualKeyCode: 32,
-    nativeVirtualKeyCode: 32,
+    type: "keyDown", key: " ", code: "Space", text: " ", unmodifiedText: " ", windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32,
   });
   await send("Input.dispatchKeyEvent", {
-    type: "keyUp",
-    key: " ",
-    code: "Space",
-    windowsVirtualKeyCode: 32,
-    nativeVirtualKeyCode: 32,
+    type: "keyUp", key: " ", code: "Space", windowsVirtualKeyCode: 32, nativeVirtualKeyCode: 32,
   });
 }
 
@@ -118,28 +99,47 @@ async function clickButton(text) {
   if (!clicked) throw new Error(`Could not find button: ${text}`);
 }
 
-async function canvasCenter() {
-  return evaluate(`(() => {
+async function canvasInputPoint() {
+  await evaluate(`document.querySelector('canvas')?.scrollIntoView({ block: 'center', inline: 'nearest' })`);
+  await sleep(140);
+
+  const point = await evaluate(`(() => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    const inset = 32;
+    const x = Math.max(rect.left + inset, Math.min(rect.left + rect.width / 2, window.innerWidth - inset));
+    const y = Math.max(rect.top + inset, Math.min(rect.top + Math.min(rect.height / 2, 180), window.innerHeight - inset));
+    const hit = document.elementFromPoint(x, y);
+    return {
+      x,
+      y,
+      isCanvas: hit === canvas,
+      hitTag: hit?.tagName ?? null,
+      rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    };
   })()`);
+
+  if (!point) throw new Error("Canvas missing for input launch");
+  if (!point.isCanvas) throw new Error(`Visible input point does not hit canvas: ${JSON.stringify(point)}`);
+  return point;
 }
 
 async function launchWithPointer() {
-  const point = await canvasCenter();
-  if (!point) throw new Error("Canvas missing for pointer launch");
+  const point = await canvasInputPoint();
+  await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y, button: "none" });
   await send("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
   await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
+  return point;
 }
 
 async function launchWithTouch() {
-  const point = await canvasCenter();
-  if (!point) throw new Error("Canvas missing for touch launch");
+  const point = await canvasInputPoint();
   const touchPoint = { x: point.x, y: point.y, radiusX: 2, radiusY: 2, force: 1, id: 1 };
   await send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [touchPoint] });
   await send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  return point;
 }
 
 await send("Runtime.enable");
@@ -156,19 +156,18 @@ const initial = await evaluate(`({
   buttons: [...document.querySelectorAll('.control-button')].map((button) => button.textContent.trim()),
   hasCanvas: Boolean(document.querySelector('canvas')),
 })`);
-
 if (!initial.hasCanvas || !initial.buttons.includes("Pause") || !initial.buttons.includes("Restart") || !initial.buttons.includes("Sound on")) {
   throw new Error(`Initial controls are incomplete: ${JSON.stringify(initial)}`);
 }
 
-// Keyboard: launch into a deterministic miss, then retry from game over.
+// Keyboard: launch into a miss, then retry from game over.
 await pressSpace();
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('in flight')`, "keyboard launch state", 2500);
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Run over')`, "keyboard miss/game-over", 5000);
 await pressSpace();
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Orbiting')`, "keyboard restart");
 
-// Shared UI controls must remain synchronized with the Phaser runtime.
+// Shared DOM controls must stay synchronized with the Phaser runtime.
 await clickButton("Pause");
 await waitForExpression(`document.querySelector('.game-status')?.textContent === 'Paused' && [...document.querySelectorAll('button')].some((button) => button.textContent.trim() === 'Resume')`, "pause state");
 await clickButton("Resume");
@@ -179,20 +178,16 @@ await clickButton("Sound off");
 await waitForExpression(`[...document.querySelectorAll('button')].some((button) => button.textContent.trim() === 'Sound on')`, "sound-on state");
 await clickButton("Restart");
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Orbiting')`, "toolbar restart");
-// Phaser reports the new scene status from create(); give the headless input bridge one
-// short turn to settle before dispatching synthetic pointer/touch events.
-await sleep(180);
 
-// Pointer input: launch, observe flight, miss, then reset.
-await launchWithPointer();
+// Pointer: scroll the playfield into view, click a verified visible canvas point, miss, restart.
+const pointerPoint = await launchWithPointer();
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('in flight')`, "pointer launch state", 2500);
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Run over')`, "pointer miss/game-over", 5000);
 await pressSpace();
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Orbiting')`, "post-pointer restart");
-await sleep(120);
 
-// Touch input: dispatch a real CDP touch gesture at the canvas.
-await launchWithTouch();
+// Touch: use the same visible-point validation before dispatching a real touch gesture.
+const touchPoint = await launchWithTouch();
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('in flight')`, "touch launch state", 2500);
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Run over')`, "touch miss/game-over", 5000);
 await pressSpace();
@@ -208,9 +203,7 @@ const screenshot = await send("Page.captureScreenshot", { format: "png", capture
 fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
 fs.writeFileSync(screenshotPath, Buffer.from(screenshot.data, "base64"));
 
-if (runtimeErrors.length) {
-  throw new Error(`Browser runtime errors detected: ${runtimeErrors.join(" | ")}`);
-}
+if (runtimeErrors.length) throw new Error(`Browser runtime errors detected: ${runtimeErrors.join(" | ")}`);
 
 const finalState = await evaluate(`({
   status: document.querySelector('.game-status')?.textContent,
@@ -225,11 +218,13 @@ console.log(JSON.stringify({
     "pause → resume",
     "sound off → on",
     "toolbar restart",
-    "pointer launch → miss → restart",
-    "touch launch → miss → restart",
+    "pointer launch at visible canvas point → miss → restart",
+    "touch launch at visible canvas point → miss → restart",
     "versioned local high-score persistence",
     "no JS/runtime or framework errors",
   ],
+  pointerPoint,
+  touchPoint,
   initial,
   finalState,
 }, null, 2));
