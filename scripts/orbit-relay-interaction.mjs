@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 
 const debugBase = process.env.CDP_URL ?? "http://127.0.0.1:9222";
 const screenshotPath = process.argv[2] ?? "artifacts/browser/orbit-relay-interaction.png";
@@ -194,7 +195,7 @@ const persisted = await evaluate(`localStorage.getItem('bgn:orbit-relay:high-sco
 if (!persisted) throw new Error("Orbit Relay did not write its versioned local high-score record after game over");
 
 const screenshot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
-fs.mkdirSync(new URL(".", `file://${screenshotPath}`).pathname, { recursive: true });
+fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
 fs.writeFileSync(screenshotPath, Buffer.from(screenshot.data, "base64"));
 
 if (runtimeErrors.length) {
