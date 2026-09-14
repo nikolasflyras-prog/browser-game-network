@@ -32,7 +32,7 @@ export function GameHost({ game }: Props) {
       try {
         const runtime = await loadGameRuntime(game.slug);
         if (cancelled) return;
-        const controller = await runtime.mountGame(mountElement, {
+        controllerRef.current = await runtime.mountGame(mountElement, {
           gameSlug: game.slug,
           gameVersion: game.version,
           setStatus,
@@ -43,8 +43,6 @@ export function GameHost({ game }: Props) {
               ...properties,
             }),
         });
-        controller.setMuted?.(muted);
-        controllerRef.current = controller;
       } catch (cause) {
         console.error(cause);
         setError(cause instanceof Error ? cause.message : "The game runtime failed to load.");
@@ -58,7 +56,7 @@ export function GameHost({ game }: Props) {
       controllerRef.current?.destroy();
       controllerRef.current = null;
     };
-  }, [game.slug, game.version, muted]);
+  }, [game.slug, game.version]);
 
   const togglePause = useCallback(() => {
     if (!controllerRef.current) return;
