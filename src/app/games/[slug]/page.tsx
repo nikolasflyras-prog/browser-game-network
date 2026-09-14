@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GameDiscovery } from "@/components/catalog/GameDiscovery";
 import { GameHost } from "@/components/game/GameHost";
+import { RunTheFed } from "@/components/game/RunTheFed";
 import { getGameMetadata, gameRegistry } from "@/games/registry";
 
 type PageProps = { params: Promise<{ slug: string }> };
@@ -35,6 +36,11 @@ export default async function GamePage({ params }: PageProps) {
     copy = "Start at S and draw one continuous route through neighboring cells. Pick up K before crossing G, avoid the red blocked cells, and reach E before you use all of the daily ink. Drag across cells or tap them one at a time. Move back one cell along your route to undo without restarting.";
   }
 
+  if (game.slug === "run-the-fed") {
+    heading = "What you are learning";
+    copy = "Monetary policy works through tradeoffs and lags. A higher policy rate tends to cool demand, inflation, investment, and asset prices while increasing unemployment risk. A lower rate supports activity but can add inflation pressure. Your job is not to maximize one number; it is to keep the whole system reasonably balanced as conditions change.";
+  }
+
   return (
     <article className="game-page">
       <header className="game-heading">
@@ -45,7 +51,7 @@ export default async function GamePage({ params }: PageProps) {
         <h1>{game.title}</h1>
         <p>{game.description}</p>
       </header>
-      <GameHost game={game} />
+      {game.slug === "run-the-fed" ? <RunTheFed /> : <GameHost game={game} />}
       <section className="content-section">
         <h2>{heading}</h2>
         <p>{copy}</p>
