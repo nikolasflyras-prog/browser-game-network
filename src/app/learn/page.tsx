@@ -11,23 +11,23 @@ export default function LearnPage() {
         The learning side of the network is built around simulations: make a decision, watch the system respond, and understand why the outcome changed.
       </p>
 
-      <section className="roadmap-panel" aria-labelledby="learn-next-heading">
+      <section className="roadmap-panel" aria-labelledby="learn-live-heading">
         <div>
-          <span className="status-chip">Planned</span>
-          <h2 id="learn-next-heading">Run the Fed</h2>
+          <span className="status-chip">Playable prototype</span>
+          <h2 id="learn-live-heading">Run the Fed</h2>
           <p>
-            Set interest rates across changing economic conditions and see how inflation, unemployment, growth, investment, and financial stability react over time.
+            Set interest rates across eight quarters and balance inflation, unemployment, growth, investment, asset prices, and financial stability as economic shocks arrive.
           </p>
         </div>
-        <p className="roadmap-note">No quiz loop. The lesson is the cause-and-effect model itself.</p>
+        <p className="roadmap-note">No quiz loop. The lesson is the cause-and-effect model itself, with an explanation after every policy decision.</p>
       </section>
 
       <div className="page-actions">
-        <Link className="button primary" href="/games/orbit-relay">
-          Play what is live now
+        <Link className="button primary" href="/games/run-the-fed">
+          Run the simulation
         </Link>
         <Link className="button" href="/games">
-          Browse games
+          Browse all games
         </Link>
       </div>
     </div>
