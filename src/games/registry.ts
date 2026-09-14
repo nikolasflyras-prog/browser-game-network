@@ -13,6 +13,15 @@ export type GameMetadata = {
 
 export const gameRegistry: readonly GameMetadata[] = [
   {
+    slug: "run-the-fed",
+    title: "Run the Fed",
+    description: "Set interest rates across eight quarters and balance inflation, employment, growth, and financial stability as shocks hit the economy.",
+    lane: "Learn",
+    category: "Economics Simulation",
+    status: "prototype",
+    version: "0.1.0",
+  },
+  {
     slug: "linebreak-daily",
     title: "Linebreak Daily",
     description: "Draw one continuous route through the daily grid. Find the key, cross the gate, avoid hazards, and reach the exit before your ink runs out.",
