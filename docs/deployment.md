@@ -17,6 +17,19 @@
 
 Do not commit `.vercel/` project metadata or environment secrets.
 
+## Ignored Vercel builds
+
+`vercel.json` skips a Vercel build when the only changes since the previous successful deployment are in:
+
+- `docs/**`;
+- `README.md`;
+- `.env.example`;
+- `.github/**`.
+
+Vercel documents `ignoreCommand` so exit code `0` ignores the build and exit code `1` continues it. The configured command uses `VERCEL_GIT_PREVIOUS_SHA` and performs a Git diff that excludes only the documentation/CI paths above. If the previous SHA is unavailable, it deliberately exits `1` so the build proceeds rather than being skipped accidentally.
+
+Any game, application, UI, configuration, package, public asset, or runtime-script change therefore still requests a normal preview/production build.
+
 ## Production environment variables
 
 Analytics is optional. Gameplay must remain functional if these are absent.
@@ -66,6 +79,7 @@ When throttled:
 - do not repeatedly create no-op commits or redeploy attempts;
 - continue code/QA work behind GitHub CI;
 - batch changes so the next allowed Vercel build carries a meaningful revision;
+- rely on the ignored-build guard for documentation-only changes;
 - once the quota resets, verify the first successful production build against `docs/launch.md`;
 - move to an appropriate commercial Vercel plan before monetized/public-commercial operation if required by the platform terms and expected deployment volume.
 
