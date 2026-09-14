@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gameRegistry, getGameMetadata } from "./registry";
+import { gameRegistry, getGameMetadata, publicGameRegistry } from "./registry";
 
 describe("game registry", () => {
   it("uses unique slugs", () => {
@@ -9,5 +9,13 @@ describe("game registry", () => {
 
   it("resolves registered games", () => {
     expect(getGameMetadata("system-check")?.status).toBe("diagnostic");
+  });
+
+  it("marks the three public MVP games live", () => {
+    expect(publicGameRegistry.map((game) => [game.slug, game.status])).toEqual([
+      ["run-the-fed", "live"],
+      ["linebreak-daily", "live"],
+      ["orbit-relay", "live"],
+    ]);
   });
 });
