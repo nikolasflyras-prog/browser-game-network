@@ -64,7 +64,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 h1 { margin: 0; font-size: clamp(44px, 8vw, 88px); letter-spacing: -.055em; line-height: .94; }
 .hero-copy, .lede, .game-heading > p:last-child { max-width: 720px; font-size: clamp(18px, 2.5vw, 24px); color: var(--muted); }
 
-.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
+.hero-actions,
+.discovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+  align-items: center;
+}
 .button {
   min-height: 46px;
   display: inline-flex;
@@ -77,6 +84,7 @@ h1 { margin: 0; font-size: clamp(44px, 8vw, 88px); letter-spacing: -.055em; line
 }
 .button.primary { background: var(--ink); color: white; }
 .button:hover { transform: translateY(-1px); }
+.text-link { font-weight: 800; text-decoration: underline; text-underline-offset: 4px; }
 
 .lane-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
 .lane-card { min-height: 230px; padding: 28px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel); }
@@ -85,9 +93,13 @@ h1 { margin: 0; font-size: clamp(44px, 8vw, 88px); letter-spacing: -.055em; line
 
 .game-list { border-top: 1px solid var(--line); margin-top: 40px; }
 .game-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+.game-row:hover strong { text-decoration: underline; text-underline-offset: 4px; }
 .game-row strong, .game-row small { display: block; }
-.game-row small { margin-top: 5px; color: var(--muted); }
+.game-row small { margin-top: 5px; color: var(--muted); max-width: 58ch; }
+.game-row-meta { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .status-chip { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; border: 1px solid var(--line); padding: 5px 8px; white-space: nowrap; }
+.directory-footer { padding-top: 24px; color: var(--muted); }
+.directory-footer p { margin: 0 0 8px; }
 
 .game-heading { max-width: 820px; margin-bottom: 30px; }
 .game-heading h1 { font-size: clamp(42px, 7vw, 76px); }
@@ -101,8 +113,21 @@ h1 { margin: 0; font-size: clamp(44px, 8vw, 88px); letter-spacing: -.055em; line
 .game-canvas-mount canvas { display: block; width: 100% !important; height: 100% !important; }
 .game-error { padding: 28px; color: #8f1712; }
 .content-section { max-width: 760px; padding: 42px 0; }
-.content-section h2 { font-size: 26px; letter-spacing: -.02em; }
-.content-section p { color: var(--muted); font-size: 17px; }
+.content-section h2,
+.discovery-section h2,
+.roadmap-section h2 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 12px; }
+.content-section p,
+.discovery-section > p:last-of-type,
+.roadmap-section p:last-child { color: var(--muted); font-size: 17px; max-width: 760px; }
+
+.discovery-section { border-top: 1px solid var(--line); padding: 38px 0 8px; }
+.related-list { border-top: 1px solid var(--line); margin-top: 24px; }
+.related-row { display: flex; justify-content: space-between; gap: 24px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.related-row strong, .related-row small { display: block; }
+.related-row small { color: var(--muted); margin-top: 4px; max-width: 58ch; }
+.related-row > span:last-child { color: var(--muted); font-size: 13px; font-weight: 800; white-space: nowrap; }
+
+.roadmap-section { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 30px 0; margin-top: 44px; }
 
 @media (max-width: 720px) {
   .site-header, .site-footer { padding-left: 20px; padding-right: 20px; }
@@ -110,8 +135,11 @@ h1 { margin: 0; font-size: clamp(44px, 8vw, 88px); letter-spacing: -.055em; line
   .site-nav { gap: 14px; font-size: 14px; }
   .page-shell, .game-page { width: min(100% - 28px, 1120px); padding-top: 46px; }
   .lane-grid { grid-template-columns: 1fr; }
+  .game-row, .related-row { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .game-row-meta { width: 100%; justify-content: space-between; }
   .game-toolbar { align-items: flex-start; flex-direction: column; }
   .game-controls { width: 100%; }
   .control-button { flex: 1; }
   .game-canvas-mount { height: min(70svh, 520px); }
+  .discovery-actions .button { width: 100%; }
 }
