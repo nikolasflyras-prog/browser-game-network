@@ -21,11 +21,11 @@ export default function DailyPage() {
 
       <section className="roadmap-panel" aria-labelledby="daily-live-heading">
         <div>
-          <span className="status-chip">Playable prototype</span>
+          <span className="status-chip">Live daily puzzle</span>
           <h2 id="daily-live-heading">Linebreak Daily</h2>
           <p>Draw one continuous route from start to exit, collect the key before crossing the gate, avoid blocked cells, and finish before your ink runs out.</p>
         </div>
-        <p className="roadmap-note">This experiment tests daily return behavior and compact puzzle sharing before accounts, global streaks, or leaderboards.</p>
+        <p className="roadmap-note">Complete today&apos;s board to extend your local streak, then share your result. A new puzzle arrives each UTC day.</p>
       </section>
 
       <div className="page-actions">

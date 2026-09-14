@@ -23,7 +23,7 @@ export default function LearnPage() {
 
       <section className="roadmap-panel" aria-labelledby="learn-live-heading">
         <div>
-          <span className="status-chip">Playable prototype</span>
+          <span className="status-chip">Live simulation</span>
           <h2 id="learn-live-heading">Run the Fed</h2>
           <p>
             Set interest rates across eight quarters and balance inflation, unemployment, growth, investment, asset prices, and financial stability as economic shocks arrive.
