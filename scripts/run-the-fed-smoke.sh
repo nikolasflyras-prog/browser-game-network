@@ -32,7 +32,8 @@ done
 
 curl -fsS "$BASE_URL/games/run-the-fed" >"$ARTIFACT_DIR/run-the-fed.initial.html"
 grep -q "Run the Fed" "$ARTIFACT_DIR/run-the-fed.initial.html"
-grep -q "How Run the Fed works" "$ARTIFACT_DIR/run-the-fed.initial.html"
+grep -q "Concepts in the simulation" "$ARTIFACT_DIR/run-the-fed.initial.html"
+grep -q "Frequently asked questions" "$ARTIFACT_DIR/run-the-fed.initial.html"
 
 CHROME=""
 for candidate in google-chrome google-chrome-stable chromium chromium-browser; do
@@ -95,4 +96,4 @@ RUN_THE_FED_URL="$BASE_URL/games/run-the-fed" \
   node scripts/run-the-fed-interaction.mjs \
   | tee "$ARTIFACT_DIR/run-the-fed-interaction.json"
 
-echo "Run the Fed smoke test passed: responsive render, DOM-first architecture, rate control, eight-quarter progression, final scoring, and local persistence verified."
+echo "Run the Fed smoke test passed: responsive render, DOM-first architecture, rate control, eight-quarter progression, final scoring, local persistence, and public guide content verified."
