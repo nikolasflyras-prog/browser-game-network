@@ -13,6 +13,7 @@ type Props = {
 export function GameHost({ game }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<GameRuntimeController | null>(null);
+  const mutedRef = useRef(false);
   const [status, setStatus] = useState("Loading game runtime…");
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
@@ -32,7 +33,7 @@ export function GameHost({ game }: Props) {
       try {
         const runtime = await loadGameRuntime(game.slug);
         if (cancelled) return;
-        controllerRef.current = await runtime.mountGame(mountElement, {
+        const controller = await runtime.mountGame(mountElement, {
           gameSlug: game.slug,
           gameVersion: game.version,
           setStatus,
@@ -43,6 +44,8 @@ export function GameHost({ game }: Props) {
               ...properties,
             }),
         });
+        controller.setMuted?.(mutedRef.current);
+        controllerRef.current = controller;
       } catch (cause) {
         console.error(cause);
         setError(cause instanceof Error ? cause.message : "The game runtime failed to load.");
@@ -80,6 +83,7 @@ export function GameHost({ game }: Props) {
   const toggleSound = useCallback(() => {
     setMuted((current) => {
       const next = !current;
+      mutedRef.current = next;
       controllerRef.current?.setMuted?.(next);
       return next;
     });
