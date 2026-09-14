@@ -10,11 +10,11 @@ export default function HomePage() {
           One platform for fast entertainment games and interactive simulations that teach through decisions, not quizzes.
         </p>
         <div className="hero-actions">
-          <Link className="button primary" href="/games/system-check">
-            Open system check
+          <Link className="button primary" href="/games/orbit-relay">
+            Play Orbit Relay
           </Link>
           <Link className="button" href="/games">
-            View game shell
+            Browse games
           </Link>
         </div>
       </section>
