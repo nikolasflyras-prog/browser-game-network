@@ -13,10 +13,12 @@ SERVER_PID=$!
 cleanup() {
   if [[ -n "$CDP_PID" ]]; then
     kill "$CDP_PID" 2>/dev/null || true
+    wait "$CDP_PID" 2>/dev/null || true
   fi
   kill "$SERVER_PID" 2>/dev/null || true
+  wait "$SERVER_PID" 2>/dev/null || true
   if [[ -n "$CDP_PROFILE" ]]; then
-    rm -rf "$CDP_PROFILE"
+    rm -rf "$CDP_PROFILE" 2>/dev/null || true
   fi
 }
 trap cleanup EXIT
@@ -123,6 +125,7 @@ ORBIT_RELAY_URL="$BASE_URL/games/orbit-relay" \
   | tee "$ARTIFACT_DIR/orbit-relay-interaction.json"
 
 kill "$CDP_PID" 2>/dev/null || true
+wait "$CDP_PID" 2>/dev/null || true
 CDP_PID=""
 
 echo "Browser smoke test passed: routes render, 404 works, Orbit Relay and System Check mount Phaser canvases, desktop/mobile screenshots are clean, and Orbit Relay passes keyboard/pointer/touch + pause/sound/restart interaction checks."
