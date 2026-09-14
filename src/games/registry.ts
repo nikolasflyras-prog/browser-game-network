@@ -12,6 +12,14 @@ export type GameMetadata = {
 
 export const gameRegistry: readonly GameMetadata[] = [
   {
+    slug: "orbit-relay",
+    title: "Orbit Relay",
+    description: "Time each launch, catch the next relay, and keep the orbital chain alive as the window tightens.",
+    lane: "Play",
+    status: "prototype",
+    version: "0.1.0",
+  },
+  {
     slug: "system-check",
     title: "System Check",
     description: "A Phase 0 diagnostic scene for the shared browser-game runtime.",
