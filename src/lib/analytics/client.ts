@@ -16,6 +16,7 @@ async function getPostHogClient(): Promise<PostHogClient | null> {
         capture_pageview: false,
         capture_pageleave: true,
         autocapture: false,
+        disable_session_recording: true,
       });
       return posthog;
     });
@@ -31,5 +32,29 @@ export function captureGameEvent(event: GameEventName, properties: GameEventProp
 
   void getPostHogClient().then((client) => {
     client?.capture(event, properties);
+  });
+}
+
+export function capturePageView(): void {
+  if (typeof window === "undefined") return;
+
+  const query = new URLSearchParams(window.location.search);
+  const properties: Record<string, string | null> = {
+    $current_url: window.location.href,
+    $pathname: window.location.pathname,
+    $referrer: document.referrer || null,
+    utm_source: query.get("utm_source"),
+    utm_medium: query.get("utm_medium"),
+    utm_campaign: query.get("utm_campaign"),
+    utm_content: query.get("utm_content"),
+    utm_term: query.get("utm_term"),
+  };
+
+  if (process.env.NODE_ENV === "development") {
+    console.debug("[analytics] $pageview", properties);
+  }
+
+  void getPostHogClient().then((client) => {
+    client?.capture("$pageview", properties);
   });
 }
