@@ -36,6 +36,9 @@ curl -fsS "$BASE_URL/learn" >"$ARTIFACT_DIR/learn.html"
 curl -fsS "$BASE_URL/daily" >"$ARTIFACT_DIR/daily.html"
 curl -fsS "$BASE_URL/games/system-check" >"$ARTIFACT_DIR/system-check.initial.html"
 curl -fsS "$BASE_URL/games/orbit-relay" >"$ARTIFACT_DIR/orbit-relay.initial.html"
+curl -fsS "$BASE_URL/games/linebreak-daily" >"$ARTIFACT_DIR/linebreak-daily.initial.html"
+
+LINEBREAK_URL="$BASE_URL/games/linebreak-daily" node scripts/linebreak-daily-smoke.mjs | tee "$ARTIFACT_DIR/linebreak-daily-smoke.json"
 
 NOT_FOUND_STATUS=$(curl -sS -o "$ARTIFACT_DIR/not-found.html" -w '%{http_code}' "$BASE_URL/definitely-not-a-route")
 if [[ "$NOT_FOUND_STATUS" != "404" ]]; then
@@ -45,12 +48,16 @@ fi
 
 grep -q "Small games worth another run." "$ARTIFACT_DIR/home.html"
 grep -q "Orbit Relay" "$ARTIFACT_DIR/games.html"
+grep -q "Linebreak Daily" "$ARTIFACT_DIR/games.html"
 grep -q "Run the Fed" "$ARTIFACT_DIR/learn.html"
-grep -q "Linebreak Daily" "$ARTIFACT_DIR/daily.html"
+grep -q "Playable prototype" "$ARTIFACT_DIR/daily.html"
+grep -q "linebreak-daily" "$ARTIFACT_DIR/daily.html"
 grep -q "Back to games" "$ARTIFACT_DIR/not-found.html"
 grep -q "System Check" "$ARTIFACT_DIR/system-check.initial.html"
 grep -q "Orbit Relay" "$ARTIFACT_DIR/orbit-relay.initial.html"
 grep -q "More from the network" "$ARTIFACT_DIR/orbit-relay.initial.html"
+grep -q "Linebreak Daily" "$ARTIFACT_DIR/linebreak-daily.initial.html"
+grep -q "How to play" "$ARTIFACT_DIR/linebreak-daily.initial.html"
 
 if grep -q "System Check" "$ARTIFACT_DIR/games.html"; then
   echo "Public /games directory exposed the diagnostic System Check runtime."
@@ -96,6 +103,13 @@ COMMON_FLAGS=(
   --screenshot="$ARTIFACT_DIR/orbit-relay-mobile.png" "$BASE_URL/games/orbit-relay" >/dev/null 2>&1
 
 "$CHROME" "${COMMON_FLAGS[@]}" --window-size=1440,1000 \
+  --screenshot="$ARTIFACT_DIR/linebreak-daily-desktop.png" \
+  --dump-dom "$BASE_URL/games/linebreak-daily" >"$ARTIFACT_DIR/linebreak-daily.dom.html" 2>"$ARTIFACT_DIR/chrome-linebreak-daily.log"
+
+"$CHROME" "${COMMON_FLAGS[@]}" --window-size=390,844 \
+  --screenshot="$ARTIFACT_DIR/linebreak-daily-mobile.png" "$BASE_URL/games/linebreak-daily" >/dev/null 2>&1
+
+"$CHROME" "${COMMON_FLAGS[@]}" --window-size=1440,1000 \
   --screenshot="$ARTIFACT_DIR/system-check-desktop.png" \
   --dump-dom "$BASE_URL/games/system-check" >"$ARTIFACT_DIR/system-check.dom.html" 2>"$ARTIFACT_DIR/chrome-system-check.log"
 
@@ -103,10 +117,17 @@ grep -q '<canvas' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '<button class="control-button" type="button">Sound' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '>Pause<' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '>Restart<' "$ARTIFACT_DIR/orbit-relay.dom.html"
+grep -q '<canvas' "$ARTIFACT_DIR/linebreak-daily.dom.html"
+grep -q 'Ink' "$ARTIFACT_DIR/linebreak-daily.dom.html"
 grep -q '<canvas' "$ARTIFACT_DIR/system-check.dom.html"
 
 if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/orbit-relay.dom.html"; then
   echo "Detected a framework/application error in the rendered Orbit Relay page."
+  exit 1
+fi
+
+if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/linebreak-daily.dom.html"; then
+  echo "Detected a framework/application error in the rendered Linebreak Daily page."
   exit 1
 fi
 
@@ -115,8 +136,6 @@ if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIF
   exit 1
 fi
 
-# Run actual player-flow interaction passes through Chrome DevTools Protocol without
-# adding a browser-automation dependency to the app bundle.
 CDP_PROFILE=$(mktemp -d)
 "$CHROME" \
   --headless \
@@ -149,4 +168,4 @@ kill "$CDP_PID" 2>/dev/null || true
 wait "$CDP_PID" 2>/dev/null || true
 CDP_PID=""
 
-echo "Browser smoke test passed: public discovery hides diagnostics, Play/Learn/Daily and 404 recovery render, desktop/mobile catalog screenshots are captured, Orbit Relay and System Check mount Phaser canvases, and Orbit Relay passes full input + successful-capture checks."
+echo "Browser smoke test passed: public discovery exposes Orbit Relay and Linebreak Daily while hiding diagnostics, Play/Learn/Daily and 404 recovery render, desktop/mobile screenshots are captured, all three Phaser runtimes mount, and Orbit Relay passes full input + successful-capture checks."
