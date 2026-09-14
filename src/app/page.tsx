@@ -1,6 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { GameCard } from "@/components/catalog/GameCard";
 import { publicGameRegistry } from "@/games/registry";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: "/",
+  },
+};
 
 export default function HomePage() {
   const featuredGame = publicGameRegistry[0];
@@ -49,7 +62,7 @@ export default function HomePage() {
           <p className="eyebrow">Learn</p>
           <h2>Interactive education</h2>
           <p>Finance, economics, business, accounting, markets, supply chains, history, geography, math, and data through cause-and-effect systems.</p>
-          <span className="text-link">See the learning roadmap →</span>
+          <span className="text-link">Try interactive learning →</span>
         </Link>
       </section>
     </div>
