@@ -27,11 +27,11 @@ export function GameHost({ game }: Props) {
       game_version: game.version,
     });
 
-    async function start() {
+    async function start(mountElement: HTMLElement) {
       try {
         const runtime = await loadGameRuntime(game.slug);
         if (cancelled) return;
-        controllerRef.current = await runtime.mountGame(mount, {
+        controllerRef.current = await runtime.mountGame(mountElement, {
           gameSlug: game.slug,
           gameVersion: game.version,
           setStatus,
@@ -48,7 +48,7 @@ export function GameHost({ game }: Props) {
       }
     }
 
-    void start();
+    void start(mount);
 
     return () => {
       cancelled = true;
