@@ -1,0 +1,11 @@
+import type { GameRuntimeModule } from "@/games/_shared/types/runtime";
+
+const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
+  "system-check": () => import("@/games/system-check/runtime"),
+};
+
+export async function loadGameRuntime(slug: string): Promise<GameRuntimeModule> {
+  const loader = runtimeLoaders[slug];
+  if (!loader) throw new Error(`No runtime registered for game: ${slug}`);
+  return loader();
+}
