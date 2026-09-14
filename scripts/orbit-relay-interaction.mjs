@@ -55,11 +55,14 @@ socket.addEventListener("message", (event) => {
     else resolve(message.result ?? {});
     return;
   }
+  // Runtime exceptions are actionable. Headless Chrome's software-WebGL warnings and
+  // generic missing-resource logs are runner noise and are covered separately by route/UI checks.
   if (message.method === "Runtime.exceptionThrown") {
     runtimeErrors.push(message.params?.exceptionDetails?.text ?? "Runtime exception");
   }
-  if (message.method === "Log.entryAdded" && ["error", "warning"].includes(message.params?.entry?.level)) {
-    runtimeErrors.push(`${message.params.entry.level}: ${message.params.entry.text}`);
+  if (message.method === "Log.entryAdded" && message.params?.entry?.level === "error") {
+    const text = message.params.entry.text ?? "";
+    if (!text.includes("Failed to load resource")) runtimeErrors.push(`error: ${text}`);
   }
 });
 
@@ -194,6 +197,9 @@ await waitForExpression(`document.querySelector('.game-status')?.textContent.inc
 const persisted = await evaluate(`localStorage.getItem('bgn:orbit-relay:high-score')`);
 if (!persisted) throw new Error("Orbit Relay did not write its versioned local high-score record after game over");
 
+const hasFrameworkError = await evaluate(`Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error')`);
+if (hasFrameworkError) throw new Error("Framework error UI detected after interaction playtest");
+
 const screenshot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
 fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
 fs.writeFileSync(screenshotPath, Buffer.from(screenshot.data, "base64"));
@@ -218,7 +224,7 @@ console.log(JSON.stringify({
     "pointer launch → miss → restart",
     "touch launch → miss → restart",
     "versioned local high-score persistence",
-    "no browser runtime errors",
+    "no JS/runtime or framework errors",
   ],
   initial,
   finalState,
