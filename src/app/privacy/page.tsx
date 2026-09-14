@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy",
-  description: "Privacy information for Browser Game Network, including local game progress and optional anonymous product analytics.",
+  description: "Privacy information for Browser Game Network, including local game progress and optional product analytics.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -25,10 +25,10 @@ export default function PrivacyPage() {
       <section className="content-section">
         <h2>Product analytics</h2>
         <p>
-          The site can use PostHog for anonymous product analytics. When analytics is enabled, events may include page visits, game starts and completions, scores, restarts, daily completions, share-button use, related-game clicks, referral information, and campaign parameters. The current integration does not intentionally send names, email addresses, account profiles, or the contents of anything you type into a game.
+          The site can use PostHog for product analytics. When analytics is enabled, events may include page visits, game starts and completions, scores, restarts, daily completions, share-button use, related-game clicks, referral information, and campaign parameters. The current integration does not intentionally send names, email addresses, account profiles, or the contents of anything you type into a game.
         </p>
         <p>
-          Automatic click tracking and session replay are disabled in the current analytics configuration. Analytics may use browser storage or similar identifiers to distinguish visits and understand return behavior.
+          Automatic click tracking and session replay are disabled in the current analytics configuration. Analytics may use browser storage or similar pseudonymous identifiers to distinguish visits and understand return behavior.
         </p>
       </section>
 
