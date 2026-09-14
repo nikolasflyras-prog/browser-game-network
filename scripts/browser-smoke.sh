@@ -50,7 +50,9 @@ grep -q "Small games worth another run." "$ARTIFACT_DIR/home.html"
 grep -q "Orbit Relay" "$ARTIFACT_DIR/games.html"
 grep -q "Linebreak Daily" "$ARTIFACT_DIR/games.html"
 grep -q "Run the Fed" "$ARTIFACT_DIR/learn.html"
-grep -q "Playable prototype" "$ARTIFACT_DIR/daily.html"
+grep -q "Live simulation" "$ARTIFACT_DIR/learn.html"
+grep -q "Live daily puzzle" "$ARTIFACT_DIR/daily.html"
+grep -q "extend your local streak" "$ARTIFACT_DIR/daily.html"
 grep -q "linebreak-daily" "$ARTIFACT_DIR/daily.html"
 grep -q "Back to games" "$ARTIFACT_DIR/not-found.html"
 grep -q "System Check" "$ARTIFACT_DIR/system-check.initial.html"
@@ -168,4 +170,4 @@ kill "$CDP_PID" 2>/dev/null || true
 wait "$CDP_PID" 2>/dev/null || true
 CDP_PID=""
 
-echo "Browser smoke test passed: public discovery exposes Orbit Relay and Linebreak Daily while hiding diagnostics, Play/Learn/Daily and 404 recovery render, desktop/mobile screenshots are captured, all three Phaser runtimes mount, and Orbit Relay passes full input + successful-capture checks."
+echo "Browser smoke test passed: public discovery exposes launch-ready Play/Learn/Daily copy while hiding diagnostics, desktop/mobile screenshots are captured, all three Phaser runtimes mount, and Orbit Relay passes full input + successful-capture checks."
