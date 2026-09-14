@@ -36,7 +36,7 @@ fi
 grep -q "Sitemap: https://browser-game-network.vercel.app/sitemap.xml" "$ARTIFACT_DIR/robots.txt"
 grep -q "Disallow: /games/system-check" "$ARTIFACT_DIR/robots.txt"
 
-grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/"' "$ARTIFACT_DIR/home.html"
+grep -q 'rel="canonical" href="https://browser-game-network.vercel.app"' "$ARTIFACT_DIR/home.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/orbit-relay"' "$ARTIFACT_DIR/orbit-relay.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/linebreak-daily"' "$ARTIFACT_DIR/linebreak-daily.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/run-the-fed"' "$ARTIFACT_DIR/run-the-fed.html"
