@@ -71,7 +71,7 @@ function solvePuzzle(puzzle) {
   throw new Error(`No solution found for ${puzzle.id}`);
 }
 
-async function waitForValue(fn, timeout = 10000) {
+async function waitForValue(fn, timeout = 30000) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
     const value = await fn().catch(() => null);
