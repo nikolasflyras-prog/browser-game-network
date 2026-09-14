@@ -27,7 +27,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         </header>
         <main>{children}</main>
         <footer className="site-footer">
-          <span>Phase 0 foundation</span>
+          <span>Browser Game Network</span>
           <span>Fast games. Clear systems. No account required.</span>
         </footer>
       </body>
