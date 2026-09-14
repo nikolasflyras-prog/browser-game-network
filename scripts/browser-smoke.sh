@@ -3,11 +3,23 @@ set -euo pipefail
 
 ARTIFACT_DIR="artifacts/browser"
 BASE_URL="http://127.0.0.1:3000"
+CDP_PID=""
+CDP_PROFILE=""
 mkdir -p "$ARTIFACT_DIR"
 
 npm run start -- --hostname 127.0.0.1 --port 3000 >"$ARTIFACT_DIR/server.log" 2>&1 &
 SERVER_PID=$!
-trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+cleanup() {
+  if [[ -n "$CDP_PID" ]]; then
+    kill "$CDP_PID" 2>/dev/null || true
+  fi
+  kill "$SERVER_PID" 2>/dev/null || true
+  if [[ -n "$CDP_PROFILE" ]]; then
+    rm -rf "$CDP_PROFILE"
+  fi
+}
+trap cleanup EXIT
 
 for _ in $(seq 1 40); do
   if curl -fsS "$BASE_URL/" >"$ARTIFACT_DIR/home.html"; then
@@ -84,4 +96,33 @@ if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIF
   exit 1
 fi
 
-echo "Browser smoke test passed: core routes render, 404 works, Orbit Relay and System Check mount Phaser canvases, shared controls render, and desktop/mobile screenshots were captured."
+# Run an actual player-flow interaction pass through Chrome DevTools Protocol without
+# adding a browser-automation dependency to the app bundle.
+CDP_PROFILE=$(mktemp -d)
+"$CHROME" \
+  --headless \
+  --no-sandbox \
+  --disable-gpu \
+  --disable-dev-shm-usage \
+  --hide-scrollbars \
+  --window-size=1280,900 \
+  --remote-debugging-port=9222 \
+  --user-data-dir="$CDP_PROFILE" \
+  "$BASE_URL/games/orbit-relay" >"$ARTIFACT_DIR/chrome-interaction.log" 2>&1 &
+CDP_PID=$!
+
+for _ in $(seq 1 50); do
+  if curl -fsS "http://127.0.0.1:9222/json/version" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 0.2
+done
+
+ORBIT_RELAY_URL="$BASE_URL/games/orbit-relay" \
+  node scripts/orbit-relay-interaction.mjs "$ARTIFACT_DIR/orbit-relay-interaction.png" \
+  | tee "$ARTIFACT_DIR/orbit-relay-interaction.json"
+
+kill "$CDP_PID" 2>/dev/null || true
+CDP_PID=""
+
+echo "Browser smoke test passed: routes render, 404 works, Orbit Relay and System Check mount Phaser canvases, desktop/mobile screenshots are clean, and Orbit Relay passes keyboard/pointer/touch + pause/sound/restart interaction checks."
