@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata = { title: "Learn" };
+export const metadata: Metadata = {
+  title: "Interactive Learning Games",
+  description: "Learn economics, finance, business, and other systems through interactive browser simulations rather than quizzes.",
+  alternates: { canonical: "/learn" },
+  openGraph: {
+    title: "Interactive Learning Games",
+    description: "Learn economics, finance, business, and other systems through interactive browser simulations rather than quizzes.",
+    url: "/learn",
+  },
+};
 
 export default function LearnPage() {
   return (
