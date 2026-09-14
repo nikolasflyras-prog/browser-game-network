@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GameDiscovery } from "@/components/catalog/GameDiscovery";
 import { GameHost } from "@/components/game/GameHost";
+import { LinebreakDailyProgress } from "@/components/game/LinebreakDailyProgress";
 import { RunTheFed } from "@/components/game/RunTheFed";
 import { getGameSeoContent } from "@/content/gameSeo";
 import { getGameMetadata, gameRegistry } from "@/games/registry";
@@ -87,7 +88,14 @@ export default async function GamePage({ params }: PageProps) {
         <p>{game.description}</p>
       </header>
 
-      {game.slug === "run-the-fed" ? <RunTheFed /> : <GameHost game={game} />}
+      {game.slug === "run-the-fed" ? (
+        <RunTheFed />
+      ) : (
+        <>
+          <GameHost game={game} />
+          {game.slug === "linebreak-daily" ? <LinebreakDailyProgress /> : null}
+        </>
+      )}
 
       {seo ? (
         <div className="game-guide">
