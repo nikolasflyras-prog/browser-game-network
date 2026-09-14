@@ -18,7 +18,7 @@ export const gameRegistry: readonly GameMetadata[] = [
     description: "Set interest rates across eight quarters and balance inflation, employment, growth, and financial stability as shocks hit the economy.",
     lane: "Learn",
     category: "Economics Simulation",
-    status: "prototype",
+    status: "live",
     version: "0.1.0",
   },
   {
@@ -27,7 +27,7 @@ export const gameRegistry: readonly GameMetadata[] = [
     description: "Draw one continuous route through the daily grid. Find the key, cross the gate, avoid hazards, and reach the exit before your ink runs out.",
     lane: "Play",
     category: "Daily Puzzle",
-    status: "prototype",
+    status: "live",
     version: "0.1.0",
   },
   {
@@ -36,7 +36,7 @@ export const gameRegistry: readonly GameMetadata[] = [
     description: "Time each launch, catch the next relay, and keep the orbital chain alive as the window tightens.",
     lane: "Play",
     category: "Timing",
-    status: "prototype",
+    status: "live",
     version: "0.1.0",
   },
   {
