@@ -98,7 +98,7 @@ if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIF
   exit 1
 fi
 
-# Run an actual player-flow interaction pass through Chrome DevTools Protocol without
+# Run actual player-flow interaction passes through Chrome DevTools Protocol without
 # adding a browser-automation dependency to the app bundle.
 CDP_PROFILE=$(mktemp -d)
 "$CHROME" \
@@ -124,8 +124,12 @@ ORBIT_RELAY_URL="$BASE_URL/games/orbit-relay" \
   node scripts/orbit-relay-interaction.mjs "$ARTIFACT_DIR/orbit-relay-interaction.png" \
   | tee "$ARTIFACT_DIR/orbit-relay-interaction.json"
 
+ORBIT_RELAY_URL="$BASE_URL/games/orbit-relay" \
+  node scripts/orbit-relay-capture.mjs \
+  | tee "$ARTIFACT_DIR/orbit-relay-capture.json"
+
 kill "$CDP_PID" 2>/dev/null || true
 wait "$CDP_PID" 2>/dev/null || true
 CDP_PID=""
 
-echo "Browser smoke test passed: routes render, 404 works, Orbit Relay and System Check mount Phaser canvases, desktop/mobile screenshots are clean, and Orbit Relay passes keyboard/pointer/touch + pause/sound/restart interaction checks."
+echo "Browser smoke test passed: routes render, 404 works, Orbit Relay and System Check mount Phaser canvases, desktop/mobile screenshots are clean, Orbit Relay passes keyboard/pointer/touch + pause/sound/restart interaction checks, and a real relay capture persists a positive score."
