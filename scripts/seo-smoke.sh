@@ -19,13 +19,16 @@ done
 curl -fsS "$BASE_URL/sitemap.xml" >"$ARTIFACT_DIR/sitemap.xml"
 curl -fsS "$BASE_URL/robots.txt" >"$ARTIFACT_DIR/robots.txt"
 curl -fsS "$BASE_URL/" >"$ARTIFACT_DIR/home.html"
+curl -fsS "$BASE_URL/about" >"$ARTIFACT_DIR/about.html"
+curl -fsS "$BASE_URL/privacy" >"$ARTIFACT_DIR/privacy.html"
+curl -fsS "$BASE_URL/terms" >"$ARTIFACT_DIR/terms.html"
 curl -fsS "$BASE_URL/games/orbit-relay" >"$ARTIFACT_DIR/orbit-relay.html"
 curl -fsS "$BASE_URL/games/linebreak-daily" >"$ARTIFACT_DIR/linebreak-daily.html"
 curl -fsS "$BASE_URL/games/run-the-fed" >"$ARTIFACT_DIR/run-the-fed.html"
 curl -fsS "$BASE_URL/games/system-check" >"$ARTIFACT_DIR/system-check.html"
 
-for slug in orbit-relay linebreak-daily run-the-fed; do
-  grep -q "https://browser-game-network.vercel.app/games/$slug" "$ARTIFACT_DIR/sitemap.xml"
+for path in games/orbit-relay games/linebreak-daily games/run-the-fed about privacy terms; do
+  grep -q "https://browser-game-network.vercel.app/$path" "$ARTIFACT_DIR/sitemap.xml"
 done
 
 if grep -q "system-check" "$ARTIFACT_DIR/sitemap.xml"; then
@@ -37,6 +40,9 @@ grep -q "Sitemap: https://browser-game-network.vercel.app/sitemap.xml" "$ARTIFAC
 grep -q "Disallow: /games/system-check" "$ARTIFACT_DIR/robots.txt"
 
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app"' "$ARTIFACT_DIR/home.html"
+grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/about"' "$ARTIFACT_DIR/about.html"
+grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/privacy"' "$ARTIFACT_DIR/privacy.html"
+grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/terms"' "$ARTIFACT_DIR/terms.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/orbit-relay"' "$ARTIFACT_DIR/orbit-relay.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/linebreak-daily"' "$ARTIFACT_DIR/linebreak-daily.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/run-the-fed"' "$ARTIFACT_DIR/run-the-fed.html"
@@ -47,6 +53,15 @@ for page in orbit-relay linebreak-daily run-the-fed; do
   grep -q 'Strategy' "$ARTIFACT_DIR/$page.html"
 done
 
+grep -q 'Games first. Learning through systems.' "$ARTIFACT_DIR/about.html"
+grep -q 'Small games. Minimal data.' "$ARTIFACT_DIR/privacy.html"
+grep -q 'Automatic click tracking and session replay are disabled' "$ARTIFACT_DIR/privacy.html"
+grep -q 'Educational simulations are simplified' "$ARTIFACT_DIR/terms.html"
+
+for href in /games /learn /daily /about /privacy /terms; do
+  grep -q "href=\"$href\"" "$ARTIFACT_DIR/home.html"
+done
+
 grep -q 'content="noindex, nofollow"' "$ARTIFACT_DIR/system-check.html"
 
 if grep -q 'application/ld+json' "$ARTIFACT_DIR/system-check.html"; then
@@ -54,4 +69,4 @@ if grep -q 'application/ld+json' "$ARTIFACT_DIR/system-check.html"; then
   exit 1
 fi
 
-echo "SEO smoke test passed: public sitemap, production robots rules, route canonicals, game JSON-LD, substantive guide content, and diagnostic noindex are all present."
+echo "SEO smoke test passed: public sitemap, robots rules, canonicals, game structured data, trust/legal pages, footer launch navigation, and diagnostic noindex are all present."
