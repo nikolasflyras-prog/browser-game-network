@@ -14,7 +14,7 @@ export function GameDiscovery({ game }: Props) {
       <div className="section-heading-row">
         <div>
           <p className="eyebrow">Keep going</p>
-          <h2 id="keep-playing-heading">{related.length ? "Related games" : "More from the network"}</h2>
+          <h2 id="keep-playing-heading">More from the network</h2>
         </div>
         <Link className="text-link" href="/games">
           Browse all games <span aria-hidden="true">→</span>
@@ -41,8 +41,8 @@ export function GameDiscovery({ game }: Props) {
           </Link>
           <Link className="discovery-link" href="/daily">
             <span className="eyebrow">Daily</span>
-            <strong>Return challenges</strong>
-            <span>Follow the daily-game experiment before it launches.</span>
+            <strong>Daily challenges</strong>
+            <span>Play the current daily experiment and come back for the next board.</span>
           </Link>
         </div>
       )}
