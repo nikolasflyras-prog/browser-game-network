@@ -179,6 +179,9 @@ await clickButton("Sound off");
 await waitForExpression(`[...document.querySelectorAll('button')].some((button) => button.textContent.trim() === 'Sound on')`, "sound-on state");
 await clickButton("Restart");
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Orbiting')`, "toolbar restart");
+// Phaser reports the new scene status from create(); give the headless input bridge one
+// short turn to settle before dispatching synthetic pointer/touch events.
+await sleep(180);
 
 // Pointer input: launch, observe flight, miss, then reset.
 await launchWithPointer();
@@ -186,6 +189,7 @@ await waitForExpression(`document.querySelector('.game-status')?.textContent.inc
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Run over')`, "pointer miss/game-over", 5000);
 await pressSpace();
 await waitForExpression(`document.querySelector('.game-status')?.textContent.includes('Orbiting')`, "post-pointer restart");
+await sleep(120);
 
 // Touch input: dispatch a real CDP touch gesture at the canvas.
 await launchWithTouch();
