@@ -69,7 +69,7 @@ COMMON_FLAGS=(
   --dump-dom "$BASE_URL/games/system-check" >"$ARTIFACT_DIR/system-check.dom.html" 2>"$ARTIFACT_DIR/chrome-system-check.log"
 
 grep -q '<canvas' "$ARTIFACT_DIR/orbit-relay.dom.html"
-grep -q '>Sound on<' "$ARTIFACT_DIR/orbit-relay.dom.html"
+grep -q '<button class="control-button" type="button">Sound' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '>Pause<' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '>Restart<' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '<canvas' "$ARTIFACT_DIR/system-check.dom.html"
