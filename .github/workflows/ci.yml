@@ -39,10 +39,15 @@ jobs:
       - name: Run the Fed smoke test
         run: bash scripts/run-the-fed-smoke.sh
 
-      - name: Upload browser QA artifacts
+      - name: SEO smoke test
+        run: bash scripts/seo-smoke.sh
+
+      - name: Upload QA artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-smoke-artifacts
-          path: artifacts/browser
+          name: qa-artifacts
+          path: |
+            artifacts/browser
+            artifacts/seo
           retention-days: 7

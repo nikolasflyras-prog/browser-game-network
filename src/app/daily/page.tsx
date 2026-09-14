@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata = { title: "Daily" };
+export const metadata: Metadata = {
+  title: "Daily Browser Puzzle",
+  description: "Play Linebreak Daily: one shared route-planning browser puzzle each day, with no account required.",
+  alternates: { canonical: "/daily" },
+  openGraph: {
+    title: "Daily Browser Puzzle",
+    description: "Play Linebreak Daily: one shared route-planning browser puzzle each day, with no account required.",
+    url: "/daily",
+  },
+};
 
 export default function DailyPage() {
   return (

@@ -57,6 +57,7 @@ export function RunTheFed() {
       game_slug: GAME_SLUG,
       game_version: GAME_VERSION,
       mode: nextId,
+      trigger: "scenario_selected",
     });
   }
 
@@ -67,6 +68,16 @@ export function RunTheFed() {
 
   function advance() {
     if (complete) return;
+
+    if (history.length === 0) {
+      captureGameEvent("game_started", {
+        game_slug: GAME_SLUG,
+        game_version: GAME_VERSION,
+        mode: scenario.id,
+        trigger: "first_decision",
+      });
+    }
+
     const result = advanceQuarter(current, selectedRate, scenario);
     const nextHistory = [...history, result.next];
     setCurrent(result.next);
@@ -142,7 +153,7 @@ export function RunTheFed() {
         </div>
         <div className="fed-best">
           <span>Best</span>
-          <strong>{bestScore ?? "—"}</strong>
+          <strong suppressHydrationWarning>{bestScore ?? "—"}</strong>
         </div>
       </div>
 
