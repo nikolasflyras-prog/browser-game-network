@@ -1,0 +1,64 @@
+.game-guide {
+  border-top: 1px solid var(--line);
+  margin-top: 42px;
+}
+
+.game-guide .content-section {
+  max-width: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.game-guide .content-section > p,
+.game-guide .content-section > ol,
+.game-guide .content-section > ul,
+.game-guide .content-section > div {
+  max-width: 760px;
+}
+
+.game-guide ol,
+.game-guide ul {
+  margin: 18px 0 0;
+  padding-left: 22px;
+}
+
+.game-guide li {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.guide-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+}
+
+.guide-columns > div {
+  max-width: none !important;
+}
+
+.faq-list {
+  border-top: 1px solid var(--line);
+}
+
+.faq-list details {
+  border-bottom: 1px solid var(--line);
+  padding: 16px 0;
+}
+
+.faq-list summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.faq-list details p {
+  margin-bottom: 0;
+  max-width: 68ch;
+}
+
+@media (max-width: 720px) {
+  .guide-columns {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
