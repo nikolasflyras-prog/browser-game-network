@@ -1,6 +1,7 @@
 import type { GameRuntimeModule } from "@/games/_shared/types/runtime";
 
 const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
+  "orbit-relay": () => import("@/games/orbit-relay/runtime"),
   "system-check": () => import("@/games/system-check/runtime"),
 };
 

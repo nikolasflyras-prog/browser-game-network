@@ -25,6 +25,7 @@ export default async function GamePage({ params }: PageProps) {
   const { slug } = await params;
   const game = getGameMetadata(slug);
   if (!game) notFound();
+  const isOrbitRelay = game.slug === "orbit-relay";
 
   return (
     <article className="game-page">
@@ -37,9 +38,11 @@ export default async function GamePage({ params }: PageProps) {
       <GameHost game={game} />
 
       <section className="content-section">
-        <h2>What this page proves</h2>
+        <h2>{isOrbitRelay ? "How to play" : "What this page proves"}</h2>
         <p>
-          The diagnostic scene is a Phase 0 engineering surface. It validates lazy Phaser loading, responsive canvas behavior, input mapping, lifecycle cleanup, local persistence, and gameplay analytics without spending time on production art.
+          {isOrbitRelay
+            ? "Your yellow marker circles the white source body. Tap, click, or press Space to launch along the faint tangent line. Hit the red relay before you leave the playfield. Every capture creates a new relay, raises your multiplier, speeds up the orbit, and tightens the capture window."
+            : "The diagnostic scene is a Phase 0 engineering surface. It validates lazy Phaser loading, responsive canvas behavior, input mapping, lifecycle cleanup, local persistence, and gameplay analytics without spending time on production art."}
         </p>
       </section>
     </article>

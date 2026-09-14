@@ -13,9 +13,11 @@ type Props = {
 export function GameHost({ game }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<GameRuntimeController | null>(null);
+  const mutedRef = useRef(false);
   const [status, setStatus] = useState("Loading game runtime…");
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
+  const [muted, setMuted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,7 +33,7 @@ export function GameHost({ game }: Props) {
       try {
         const runtime = await loadGameRuntime(game.slug);
         if (cancelled) return;
-        controllerRef.current = await runtime.mountGame(mountElement, {
+        const controller = await runtime.mountGame(mountElement, {
           gameSlug: game.slug,
           gameVersion: game.version,
           setStatus,
@@ -42,6 +44,8 @@ export function GameHost({ game }: Props) {
               ...properties,
             }),
         });
+        controller.setMuted?.(mutedRef.current);
+        controllerRef.current = controller;
       } catch (cause) {
         console.error(cause);
         setError(cause instanceof Error ? cause.message : "The game runtime failed to load.");
@@ -76,11 +80,23 @@ export function GameHost({ game }: Props) {
     captureGameEvent("game_restarted", { game_slug: game.slug, game_version: game.version });
   }, [game.slug, game.version]);
 
+  const toggleSound = useCallback(() => {
+    setMuted((current) => {
+      const next = !current;
+      mutedRef.current = next;
+      controllerRef.current?.setMuted?.(next);
+      return next;
+    });
+  }, []);
+
   return (
     <section className="game-shell" aria-label={`${game.title} game`}>
       <div className="game-toolbar">
         <span className="game-status" aria-live="polite">{error ? "Runtime error" : status}</span>
         <div className="game-controls">
+          <button className="control-button" type="button" onClick={toggleSound} disabled={Boolean(error)}>
+            Sound {muted ? "off" : "on"}
+          </button>
           <button className="control-button" type="button" onClick={togglePause} disabled={Boolean(error)}>
             {paused ? "Resume" : "Pause"}
           </button>

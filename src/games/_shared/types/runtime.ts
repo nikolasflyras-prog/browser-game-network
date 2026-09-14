@@ -26,6 +26,7 @@ export type GameRuntimeController = {
   pause: () => void;
   resume: () => void;
   restart: () => void;
+  setMuted?: (muted: boolean) => void;
   destroy: () => void;
 };
 
