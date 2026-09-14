@@ -32,6 +32,8 @@ done
 
 curl -fsS "$BASE_URL/" >"$ARTIFACT_DIR/home.html"
 curl -fsS "$BASE_URL/games" >"$ARTIFACT_DIR/games.html"
+curl -fsS "$BASE_URL/learn" >"$ARTIFACT_DIR/learn.html"
+curl -fsS "$BASE_URL/daily" >"$ARTIFACT_DIR/daily.html"
 curl -fsS "$BASE_URL/games/system-check" >"$ARTIFACT_DIR/system-check.initial.html"
 curl -fsS "$BASE_URL/games/orbit-relay" >"$ARTIFACT_DIR/orbit-relay.initial.html"
 
@@ -43,8 +45,15 @@ fi
 
 grep -q "Small games worth another run." "$ARTIFACT_DIR/home.html"
 grep -q "Orbit Relay" "$ARTIFACT_DIR/games.html"
+if grep -q "System Check" "$ARTIFACT_DIR/games.html"; then
+  echo "Engineering diagnostic leaked into the public games directory."
+  exit 1
+fi
+grep -q "Run the Fed" "$ARTIFACT_DIR/learn.html"
+grep -q "Linebreak Daily" "$ARTIFACT_DIR/daily.html"
+grep -q "That route missed." "$ARTIFACT_DIR/not-found.html"
 grep -q "System Check" "$ARTIFACT_DIR/system-check.initial.html"
-grep -q "Orbit Relay" "$ARTIFACT_DIR/orbit-relay.initial.html"
+grep -q "More games are on the way." "$ARTIFACT_DIR/orbit-relay.initial.html"
 
 CHROME=""
 for candidate in google-chrome google-chrome-stable chromium chromium-browser; do
@@ -72,6 +81,15 @@ COMMON_FLAGS=(
   --screenshot="$ARTIFACT_DIR/home-desktop.png" "$BASE_URL/" >/dev/null 2>&1
 
 "$CHROME" "${COMMON_FLAGS[@]}" --window-size=1440,1000 \
+  --screenshot="$ARTIFACT_DIR/games-desktop.png" "$BASE_URL/games" >/dev/null 2>&1
+
+"$CHROME" "${COMMON_FLAGS[@]}" --window-size=390,844 \
+  --screenshot="$ARTIFACT_DIR/games-mobile.png" "$BASE_URL/games" >/dev/null 2>&1
+
+"$CHROME" "${COMMON_FLAGS[@]}" --window-size=1440,1000 \
+  --screenshot="$ARTIFACT_DIR/learn-desktop.png" "$BASE_URL/learn" >/dev/null 2>&1
+
+"$CHROME" "${COMMON_FLAGS[@]}" --window-size=1440,1000 \
   --screenshot="$ARTIFACT_DIR/orbit-relay-desktop.png" \
   --dump-dom "$BASE_URL/games/orbit-relay" >"$ARTIFACT_DIR/orbit-relay.dom.html" 2>"$ARTIFACT_DIR/chrome-orbit-relay.log"
 
@@ -86,6 +104,7 @@ grep -q '<canvas' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '<button class="control-button" type="button">Sound' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '>Pause<' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '>Restart<' "$ARTIFACT_DIR/orbit-relay.dom.html"
+grep -q 'Browse games' "$ARTIFACT_DIR/orbit-relay.dom.html"
 grep -q '<canvas' "$ARTIFACT_DIR/system-check.dom.html"
 
 if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/orbit-relay.dom.html"; then
@@ -128,4 +147,4 @@ kill "$CDP_PID" 2>/dev/null || true
 wait "$CDP_PID" 2>/dev/null || true
 CDP_PID=""
 
-echo "Browser smoke test passed: routes render, 404 works, Orbit Relay and System Check mount Phaser canvases, desktop/mobile screenshots are clean, and Orbit Relay passes keyboard/pointer/touch + pause/sound/restart interaction checks."
+echo "Browser QA passed: public discovery hides diagnostics, Learn/Daily/404 recover cleanly, Orbit Relay remains responsive, and keyboard/pointer/touch + pause/sound/restart interaction checks all pass."
