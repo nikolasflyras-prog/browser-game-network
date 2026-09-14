@@ -32,7 +32,7 @@ done
 
 curl -fsS "$BASE_URL/games/run-the-fed" >"$ARTIFACT_DIR/run-the-fed.initial.html"
 grep -q "Run the Fed" "$ARTIFACT_DIR/run-the-fed.initial.html"
-grep -q "What you are learning" "$ARTIFACT_DIR/run-the-fed.initial.html"
+grep -q "How Run the Fed works" "$ARTIFACT_DIR/run-the-fed.initial.html"
 
 CHROME=""
 for candidate in google-chrome google-chrome-stable chromium chromium-browser; do
