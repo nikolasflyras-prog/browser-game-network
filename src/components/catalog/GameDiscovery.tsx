@@ -24,7 +24,12 @@ export function GameDiscovery({ game }: Props) {
       {related.length ? (
         <div className="game-grid">
           {related.map((relatedGame) => (
-            <GameCard game={relatedGame} headingLevel="h3" key={relatedGame.slug} />
+            <GameCard
+              game={relatedGame}
+              headingLevel="h3"
+              key={relatedGame.slug}
+              sourceGameSlug={game.slug}
+            />
           ))}
         </div>
       ) : (
