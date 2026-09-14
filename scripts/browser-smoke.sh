@@ -32,6 +32,8 @@ done
 
 curl -fsS "$BASE_URL/" >"$ARTIFACT_DIR/home.html"
 curl -fsS "$BASE_URL/games" >"$ARTIFACT_DIR/games.html"
+curl -fsS "$BASE_URL/learn" >"$ARTIFACT_DIR/learn.html"
+curl -fsS "$BASE_URL/daily" >"$ARTIFACT_DIR/daily.html"
 curl -fsS "$BASE_URL/games/system-check" >"$ARTIFACT_DIR/system-check.initial.html"
 curl -fsS "$BASE_URL/games/orbit-relay" >"$ARTIFACT_DIR/orbit-relay.initial.html"
 
@@ -43,8 +45,17 @@ fi
 
 grep -q "Small games worth another run." "$ARTIFACT_DIR/home.html"
 grep -q "Orbit Relay" "$ARTIFACT_DIR/games.html"
+grep -q "Run the Fed" "$ARTIFACT_DIR/learn.html"
+grep -q "Linebreak Daily" "$ARTIFACT_DIR/daily.html"
+grep -q "Back to games" "$ARTIFACT_DIR/not-found.html"
 grep -q "System Check" "$ARTIFACT_DIR/system-check.initial.html"
 grep -q "Orbit Relay" "$ARTIFACT_DIR/orbit-relay.initial.html"
+grep -q "More from the network" "$ARTIFACT_DIR/orbit-relay.initial.html"
+
+if grep -q "System Check" "$ARTIFACT_DIR/games.html"; then
+  echo "Public /games directory exposed the diagnostic System Check runtime."
+  exit 1
+fi
 
 CHROME=""
 for candidate in google-chrome google-chrome-stable chromium chromium-browser; do
@@ -70,6 +81,12 @@ COMMON_FLAGS=(
 
 "$CHROME" "${COMMON_FLAGS[@]}" --window-size=1440,1000 \
   --screenshot="$ARTIFACT_DIR/home-desktop.png" "$BASE_URL/" >/dev/null 2>&1
+
+"$CHROME" "${COMMON_FLAGS[@]}" --window-size=1440,1000 \
+  --screenshot="$ARTIFACT_DIR/games-desktop.png" "$BASE_URL/games" >/dev/null 2>&1
+
+"$CHROME" "${COMMON_FLAGS[@]}" --window-size=390,844 \
+  --screenshot="$ARTIFACT_DIR/games-mobile.png" "$BASE_URL/games" >/dev/null 2>&1
 
 "$CHROME" "${COMMON_FLAGS[@]}" --window-size=1440,1000 \
   --screenshot="$ARTIFACT_DIR/orbit-relay-desktop.png" \
@@ -132,4 +149,4 @@ kill "$CDP_PID" 2>/dev/null || true
 wait "$CDP_PID" 2>/dev/null || true
 CDP_PID=""
 
-echo "Browser smoke test passed: routes render, 404 works, Orbit Relay and System Check mount Phaser canvases, desktop/mobile screenshots are clean, Orbit Relay passes keyboard/pointer/touch + pause/sound/restart interaction checks, and a real relay capture persists a positive score."
+echo "Browser smoke test passed: public discovery hides diagnostics, Play/Learn/Daily and 404 recovery render, desktop/mobile catalog screenshots are captured, Orbit Relay and System Check mount Phaser canvases, and Orbit Relay passes full input + successful-capture checks."

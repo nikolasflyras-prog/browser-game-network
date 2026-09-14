@@ -108,6 +108,9 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         fontStyle: "bold",
       }).setOrigin(0.5);
 
+      // Space is a gameplay control, so capture it before registering handlers. Without this,
+      // browsers can also perform their default page-scroll action while the player launches.
+      this.input.keyboard?.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
       this.input.on("pointerdown", () => this.handleAction("pointer"));
       this.input.keyboard?.on("keydown-SPACE", () => this.handleAction("keyboard"));
       this.input.keyboard?.on("keydown-R", () => this.resetRun());

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { GameDiscovery } from "@/components/catalog/GameDiscovery";
 import { GameHost } from "@/components/game/GameHost";
 import { getGameMetadata, gameRegistry } from "@/games/registry";
 
@@ -30,7 +31,10 @@ export default async function GamePage({ params }: PageProps) {
   return (
     <article className="game-page">
       <header className="game-heading">
-        <p className="eyebrow">{game.lane}</p>
+        <div className="game-heading-meta">
+          <p className="eyebrow">{game.lane}</p>
+          <span className="category-label">{game.category}</span>
+        </div>
         <h1>{game.title}</h1>
         <p>{game.description}</p>
       </header>
@@ -45,6 +49,8 @@ export default async function GamePage({ params }: PageProps) {
             : "The diagnostic scene is a Phase 0 engineering surface. It validates lazy Phaser loading, responsive canvas behavior, input mapping, lifecycle cleanup, local persistence, and gameplay analytics without spending time on production art."}
         </p>
       </section>
+
+      <GameDiscovery game={game} />
     </article>
   );
 }

@@ -28,6 +28,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <main>{children}</main>
         <footer className="site-footer">
           <span>Browser Game Network</span>
+          <nav className="site-nav footer-nav" aria-label="Footer navigation">
+            <Link href="/games">Play</Link>
+            <Link href="/learn">Learn</Link>
+            <Link href="/daily">Daily</Link>
+          </nav>
           <span>Fast games. Clear systems. No account required.</span>
         </footer>
       </body>
