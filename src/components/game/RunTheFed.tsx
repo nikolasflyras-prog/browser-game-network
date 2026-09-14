@@ -22,6 +22,10 @@ function formatPercent(value: number) {
   return `${value.toFixed(1)}%`;
 }
 
+function readBestScore(scenarioId: ScenarioId) {
+  return readLocalGameValue<number>(GAME_SLUG, `best-${scenarioId}`, SAVE_VERSION);
+}
+
 export function RunTheFed() {
   const [scenarioId, setScenarioId] = useState<ScenarioId>("soft-landing");
   const scenario = useMemo(() => getFedScenario(scenarioId), [scenarioId]);
@@ -30,7 +34,7 @@ export function RunTheFed() {
   const [history, setHistory] = useState<MacroSnapshot[]>([]);
   const [explanation, setExplanation] = useState("Review the dashboard, set the policy rate, then advance one quarter.");
   const [shockTitle, setShockTitle] = useState<string | null>(null);
-  const [bestScore, setBestScore] = useState<number | null>(null);
+  const [bestScore, setBestScore] = useState<number | null>(() => readBestScore("soft-landing"));
 
   const complete = current.quarter >= 8;
   const score = history.length ? scoreFedRun(history) : null;
@@ -38,11 +42,6 @@ export function RunTheFed() {
   useEffect(() => {
     captureGameEvent("game_viewed", { game_slug: GAME_SLUG, game_version: GAME_VERSION });
   }, []);
-
-  useEffect(() => {
-    const stored = readLocalGameValue<number>(GAME_SLUG, `best-${scenarioId}`, SAVE_VERSION);
-    setBestScore(stored);
-  }, [scenarioId]);
 
   function startScenario(nextId: ScenarioId) {
     const nextScenario = getFedScenario(nextId);
@@ -52,6 +51,7 @@ export function RunTheFed() {
     setSelectedRate(start.policyRate);
     setHistory([]);
     setShockTitle(null);
+    setBestScore(readBestScore(nextId));
     setExplanation(nextScenario.brief);
     captureGameEvent("game_started", {
       game_slug: GAME_SLUG,
