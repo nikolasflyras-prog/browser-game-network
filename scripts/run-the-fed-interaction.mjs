@@ -97,7 +97,7 @@ for (let quarter = 2; quarter <= 8; quarter += 1) {
   await waitForExpression(`document.querySelector('.fed-quarter strong')?.textContent === '${quarter}/8'`);
 }
 
-await waitForExpression(`document.querySelector('.fed-result') && document.querySelector('.fed-grade strong')`);
+await waitForExpression(`Boolean(document.querySelector('.fed-result') && document.querySelector('.fed-grade strong'))`);
 const finalState = await evaluate(`({
   quarter: document.querySelector('.fed-quarter strong')?.textContent,
   grade: document.querySelector('.fed-grade strong')?.textContent,
