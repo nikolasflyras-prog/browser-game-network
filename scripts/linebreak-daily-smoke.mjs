@@ -182,11 +182,10 @@ try {
 
   const puzzle = puzzleForDateKey(todayKey);
   const solution = solvePuzzle(puzzle);
-  const rect = await evaluate(`(() => {
+  await evaluate(`(() => {
     const canvas = document.querySelector('.game-canvas-mount canvas');
     canvas.scrollIntoView({ block: 'center' });
-    const r = canvas.getBoundingClientRect();
-    return { left: r.left, top: r.top, width: r.width, height: r.height };
+    return true;
   })()`);
   await sleep(150);
 
@@ -238,6 +237,12 @@ try {
   console.log(JSON.stringify({ targetUrl, puzzle: puzzle.id, solutionLength: solution.length - 1, finalState }));
 } finally {
   socket?.close();
-  chrome.kill("SIGTERM");
-  await rm(profileDir, { recursive: true, force: true });
+  if (chrome.exitCode === null) {
+    chrome.kill("SIGTERM");
+    await Promise.race([
+      new Promise((resolve) => chrome.once("exit", resolve)),
+      sleep(1500),
+    ]);
+  }
+  await rm(profileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
