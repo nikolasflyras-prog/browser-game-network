@@ -7,8 +7,8 @@ export default function GamesPage() {
   return (
     <div className="page-shell compact">
       <p className="eyebrow">Play</p>
-      <h1>Game framework</h1>
-      <p className="lede">Phase 0 contains only a diagnostic runtime. Production games are added after the shared foundation passes QA.</p>
+      <h1>Games</h1>
+      <p className="lede">Fast browser games built on one shared runtime. Orbit Relay is the first playable prototype; System Check remains available as an engineering diagnostic.</p>
       <div className="game-list">
         {gameRegistry.map((game) => (
           <Link className="game-row" href={`/games/${game.slug}`} key={game.slug}>
