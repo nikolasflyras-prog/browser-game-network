@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { ScenarioSessionView } from "../scenario-session";
 import { fabOperatingSignals, type FabMetric } from "../chip-fab/scenarios";
-import type { GridMetric } from "../power-grid-dispatcher/scenarios";
+import { gridOperatingSignals, type GridMetric } from "../power-grid-dispatcher/scenarios";
 import { supplyChainCapabilities, type SupplyMetric } from "../supply-chain-shock/scenarios";
 import styles from "./PrototypeLab.module.css";
 import supplyStyles from "./SupplyChainScene.module.css";
@@ -105,6 +105,20 @@ export function PowerGridScene({ view }: { view: ScenarioSessionView<GridMetric>
   const reserve = Math.max(0, Math.min(100, view.metrics.reserve));
   const active = view.step?.id ?? "";
   const balanceStyle = { "--balance-width": `${reserve}%` } as CSSProperties;
+  const signals = gridOperatingSignals(view.metrics);
+  const reliabilityVisual = signals.reliabilityState === "secure" ? "controlled" : signals.reliabilityState === "watch" ? "watch" : "high";
+  const reserveVisual = signals.reserveState === "adequate" ? "controlled" : signals.reserveState === "tight" ? "watch" : "high";
+  const storageVisual = signals.storageState === "flexible" ? "controlled" : signals.storageState === "limited" ? "watch" : "high";
+  const context = active === "heatwave"
+    ? signals.heatwaveStorageReady
+      ? "Stored flexibility remains available for a mixed storag + demand-response heatwave response."
+      : "Earlier battery dispatch depleted the flexibility needed for the mixed heatwave response."
+    : active === "wind-drop"
+      ? signals.windStorageReady
+        ? "Storage can still cover the wind shortfall, but using it now may remove the later heatwave option."
+        : "Earlier dispatch already left too little storage to cover the wind forecast miss."
+      : "Reserve protects the next contingency; storage is finite optionality that can be spent only once.";
+
   return (
     <div className={styles.gridScene}>
       <div className={styles.balanceBar} aria-label={`Reserve margin ${Math.round(reserve)}`}>
@@ -117,7 +131,26 @@ export function PowerGridScene({ view }: { view: ScenarioSessionView<GridMetric>
         <span className={styles.connector} />
         <div className={styles.gridNode} data-active={active === "morning-ramp" || active === "heatwave"}>Load</div>
       </div>
-      <p className={styles.sceneLabel}>Reserve is flexibility above current demand; spending storage now can remove options later.</p>
+
+      <div className={signalStyles.row} aria-label="Grid operating signals">
+        <div className={signalStyles.signal} data-grid-signal="reliability" data-state={reliabilityVisual}>
+          <span>Reliability</span>
+          <strong>{signals.reliabilityState.toUpperCase()}</strong>
+          <small>{Math.round(view.metrics.reliability)} / 100</small>
+        </div>
+        <div className={signalStyles.signal} data-grid-signal="reserve" data-state={reserveVisual}>
+          <span>Reserve margin</span>
+          <strong>{signals.reserveState.toUpperCase()}</strong>
+          <small>{Math.round(view.metrics.reserve)} / 100</small>
+        </div>
+        <div className={signalStyles.signal} data-grid-signal="storage" data-state={storageVisual}>
+          <span>Stored flexibility</span>
+          <strong>{signals.storageState.toUpperCase()}</strong>
+          <small>Wind {signals.windStorageReady ? "✓" : "×"} · Heatwave {signals.heatwaveStorageReady ? "✓" : "×"}</small>
+        </div>
+      </div>
+
+      <p className={styles.sceneLabel} data-grid-context>{context}</p>
     </div>
   );
 }

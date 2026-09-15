@@ -67,6 +67,9 @@ FUTURE_GAMES_LAB_URL="$TARGET_URL" FUTURE_GAMES_ARTIFACT_DIR="$ARTIFACT_DIR" \
   node scripts/chip-fab-learning-smoke.mjs | tee "$ARTIFACT_DIR/chip-fab-learning-smoke.json"
 
 FUTURE_GAMES_LAB_URL="$TARGET_URL" FUTURE_GAMES_ARTIFACT_DIR="$ARTIFACT_DIR" \
+  node scripts/power-grid-learning-smoke.mjs | tee "$ARTIFACT_DIR/power-grid-learning-smoke.json"
+
+FUTURE_GAMES_LAB_URL="$TARGET_URL" FUTURE_GAMES_ARTIFACT_DIR="$ARTIFACT_DIR" \
   node scripts/future-games-results-smoke.mjs | tee "$ARTIFACT_DIR/future-games-results-smoke.json"
 
-echo "Future Games Lab smoke passed: six staged prototypes execute, Switchyard passes daily QA, Supply Chain verifies preparedness paths, Chip Fab verifies utilization versus good-output tradeoffs, Learn result explanations complete, desktop/mobile captures are recorded, and the lab remains noindex/unlinked from public game routes."
+echo "Future Games Lab smoke passed: six staged prototypes execute, Switchyard passes daily QA, Supply Chain verifies preparedness paths, Chip Fab verifies utilization tradeoffs, Power Grid verifies finite storage optionality, Learn result explanations complete, desktop/mobile captures are recorded, and the lab remains noindex/unlinked from public game routes."

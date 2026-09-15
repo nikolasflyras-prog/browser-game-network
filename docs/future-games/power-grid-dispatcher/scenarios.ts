@@ -141,6 +141,19 @@ export const gridScenarios: readonly ScenarioStep<GridMetric>[] = [
   },
 ] as const;
 
+export function gridOperatingSignals(metrics: Record<GridMetric, number>) {
+  const reliabilityState = metrics.reliability >= 92 ? "secure" : metrics.reliability >= 80 ? "watch" : "critical";
+  const reserveState = metrics.reserve >= 40 ? "adequate" : metrics.reserve >= 25 ? "tight" : "critical";
+  const storageState = metrics.storage >= 24 ? "flexible" : metrics.storage >= 15 ? "limited" : "depleted";
+  return {
+    reliabilityState,
+    reserveState,
+    storageState,
+    windStorageReady: metrics.storage >= 24,
+    heatwaveStorageReady: metrics.storage >= 15,
+  } as const;
+}
+
 export function gridFinalScore(metrics: Record<GridMetric, number>, operatingScore = 0) {
   const costControl = 100 - metrics.cost;
   const emissionsControl = 100 - metrics.emissions;
