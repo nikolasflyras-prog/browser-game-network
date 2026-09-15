@@ -8,137 +8,138 @@ Every promoted prototype must pass:
 
 - First meaningful action is possible within 5 seconds of entering gameplay.
 - Core rule can be explained in one short screen or less.
-- Touch and keyboard/pointer inputs map to explicit game actions.
+- Touch and keyboard/pointer inputs map to explicit actions.
 - Restart/reset requires no page reload.
 - Simulation state is serializable and renderer-independent.
 - Deterministic seeds reproduce the same challenge where determinism is part of the design.
-- Result state clearly explains why the run ended.
+- Result state clearly explains why the run ended or what the player learned.
 - No persistent HUD obscures the central playfield.
 - Small mobile viewport remains playable without browser zoom.
 - Reduced-motion mode preserves all gameplay information.
 - No ad placement interrupts active input.
-- A headless balance check exists when the game is simple enough to support one; it should test for obvious dominant, cosmetic, or no-skill strategies before browser polish.
+- Detailed actions map to the shared analytics lifecycle through `game_action` or `level_completed` rather than ad-hoc event-name sprawl.
+- A headless balance gate exists before browser polish.
 
 ## Traffic Control
 
-### Mechanic test
-A new player should understand that switching the signal changes which queue can clear without needing lane-by-lane tutorial text.
+### Headless gate
+- queue-aware play survives at least 3× longer than never switching;
+- queue-aware play outscores the best tested fixed cadence by at least 20%;
+- the fixed-cadence comparison searches several plausible intervals;
+- seeded asymmetric waves force reactive play.
 
-### Headless balance gate
-- queue-aware play survives at least 3× longer than never switching across a deterministic seed batch;
-- queue-aware play outscores the best tested fixed-period switching policy by at least 20%;
-- the fixed-period comparison searches several plausible cadences instead of using one hand-picked weak baseline;
-- seeded traffic waves must create asymmetric pressure so reacting to the intersection matters.
-
-### Must verify later in browser
-- switch input feedback is immediate;
-- all-red transition is visually obvious;
-- queue pressure can be read without staring at a number;
-- cars do not overlap or visually imply collisions when the simulation says none occurred;
+### Browser gate later
+- signal change feedback is immediate;
+- the all-red transition is obvious;
+- queue pressure is readable from the intersection, not only a meter;
+- mobile traffic remains legible;
 - restart is one action.
 
 ### Kill/rework if
-- the optimal strategy becomes a fixed periodic tapping rhythm;
-- players watch meters instead of the intersection;
-- average first run is too long to encourage retry;
-- mobile traffic becomes unreadable.
+- optimal play becomes a metronomic tap rhythm;
+- players watch HUD meters instead of traffic;
+- first runs are too long to encourage retry.
 
 ## Switchyard Daily
 
-### Mechanic test
-A player can predict the destination of a train from visible switch states after one demonstration.
+### Headless gate
+- an oracle using only visible state solves every deterministic seed;
+- no blind HOLD/A/B/C policy wins more than 10% of ten-train puzzles;
+- targets are sampled from distinct reachable depots rather than duplicated action outcomes.
 
-### Must verify later in browser
-- active/inactive track branches are distinguishable without color alone;
-- train animation reinforces routing logic;
-- A/B/C/HOLD controls remain reachable in portrait mode;
-- daily result/share surface does not expose solutions.
+### Browser gate later
+- active/inactive branches are distinguishable without color alone;
+- train motion reinforces routing logic;
+- A/B/C/HOLD remains comfortable in portrait mode;
+- sharing never leaks the solution.
 
 ### Kill/rework if
-- turns reduce to guessing rather than reasoning;
-- inactive-branch switches make the puzzle feel arbitrary;
-- ten trains feels repetitive before completion.
+- turns reduce to guessing;
+- inactive branch state feels arbitrary instead of learnable;
+- ten trains becomes repetitive before completion.
 
 ## Market Maker
 
-### Mechanic test
-After three rounds, a novice can state the basic tradeoff: tighter quotes get more flow but create more inventory/adverse-selection risk.
+### Headless gate
+- tight quotes materially increase fills versus wide quotes;
+- displayed bid/ask distance is the mechanism that changes fill probability;
+- inventory-aware quote skew materially reduces ending inventory risk;
+- defensive play remains economically competitive rather than earning nothing.
 
-### Headless balance gate
-- tight quotes generate materially more fills than wide quotes across deterministic seeds;
-- quote skew changes flow through the actual displayed bid/ask distance from fair value, not a disconnected hidden bonus;
-- inventory-aware quoting reduces average absolute ending inventory versus staying balanced;
-- inventory-aware play remains economically competitive so risk control is a real strategy rather than a punishment mode.
-
-### Must verify later in browser
-- bid/fair/ask relationship is visually dominant;
+### Browser gate later
+- bid/fair/ask relationship is the visual focus;
 - inventory direction is unambiguous;
-- explanations use causal language instead of jargon;
-- P&L changes can be connected to the player's choice;
-- five quote postures fit comfortably on mobile.
+- feedback is causal and jargon-light;
+- five quote postures fit without horizontal scrolling on mobile.
 
 ### Kill/rework if
-- players maximize one posture every round;
-- P&L feels random rather than caused by decisions;
-- finance terminology takes longer to explain than the game itself;
-- the displayed quote and the fill model can drift apart.
+- one posture is optimal every round;
+- P&L feels random rather than caused by choices;
+- terminology takes longer to explain than the game itself.
 
 ## Supply Chain Shock
 
-### Mechanic test
-Choices must create visible tradeoffs between service, cash, inventory, backlog, and resilience; no option should be universally correct.
+### Headless gate
+- alternate capacity is unavailable unless earlier preparation created it;
+- safety stock is actually consumed to cushion a later delay;
+- dual sourcing and safety stock remain competitive preparation strategies;
+- legal paths have meaningful final-score separation.
 
-### Must verify later in browser
+### Browser gate later
+- unavailable choices teach consequences rather than feeling like arbitrary disabled buttons;
 - network map supports the decision instead of becoming decorative clutter;
-- metric deltas are readable and do not animate all at once;
-- response cards fit without long scrolling on mobile;
-- final operating-style label matches the underlying decisions.
+- metric deltas do not all animate at once;
+- response cards remain short enough for mobile.
 
 ### Kill/rework if
-- best strategy is simply “spend to fix everything”;
+- the best strategy is simply “spend to fix everything”;
 - scenario text dominates screen time;
-- players cannot connect resilience investments to later shocks.
+- early resilience/inventory choices do not visibly matter later.
 
 ## Chip Fab
 
-### Mechanic test
-Players should learn that more wafer starts/utilization can worsen good output when yield and cycle time deteriorate.
+### Headless gate
+- all 81 four-event paths remain enumerable;
+- maximizing bottleneck utilization scores materially worse on average than sensible capacity/scheduling responses;
+- score spread remains large enough to distinguish strong and weak ramp paths.
 
-### Must verify later in browser
+### Browser gate later
 - affected process station is obvious;
 - yield and throughput are never visually conflated;
-- cycle-time direction is labeled so lower-is-better is clear;
-- technical terms have optional, not mandatory, definitions.
+- lower-is-better cycle time is labeled clearly;
+- technical terms use optional definitions.
 
 ### Kill/rework if
 - specialist terminology blocks first-run understanding;
-- fab-flow animation becomes decoration without explaining bottlenecks;
-- capacity-first choices dominate scoring.
+- fab-flow motion becomes decoration;
+- raw capacity/utilization becomes the dominant score strategy.
 
 ## Power Grid Dispatcher
 
-### Mechanic test
-Players should understand that reliability is a hard constraint while cost, emissions, storage, and reserves create tradeoffs underneath it.
+### Headless gate
+- storage-heavy responses require enough remaining storage;
+- the player cannot spend the same stored energy three times;
+- unsafe reliability/reserve intervals incur immediate penalties that cannot be erased by later recovery;
+- legal paths retain meaningful score separation.
 
-### Must verify later in browser
-- supply/demand balance can be read at a glance;
-- reserve margin is distinct from current balance;
-- storage depletion creates visible future consequences;
-- grid-flow animation remains subtle and directional.
+### Browser gate later
+- supply/demand balance is readable at a glance;
+- reserve margin is visually distinct from current balance;
+- storage depletion creates an obvious future consequence;
+- grid-flow motion is subtle and directional.
 
 ### Kill/rework if
 - every event is solved by the same response type;
-- cost/emissions/reliability changes feel like arbitrary point adjustments;
+- cheap/low-emissions play can ignore reliability;
 - users need energy-market knowledge before the first decision.
 
 ## Promotion sequence
 
 When MVP data identifies the candidate to pursue:
 
-1. Copy its staged logic into `src/games/<slug>/`.
-2. Convert staged tests into actual Vitest coverage and make them green.
-3. Keep the staged headless balance gate green after any tuning changes.
-4. Build the thinnest playable runtime possible.
-5. Run structured browser QA at desktop and mobile sizes.
-6. Fix mechanic/readability failures before visual polish.
-7. Only then add full landing copy, analytics, search metadata, and public discovery.
+1. Copy the staged simulation/session into `src/games/<slug>/`.
+2. Keep deterministic logic, balance audits, and integration-adapter tests green.
+3. Bind it to the thinnest usable presentation.
+4. Run structured browser QA at desktop and mobile sizes with screenshot review.
+5. Fix mechanic/readability failures before visual polish.
+6. Add full landing copy, analytics, search metadata, and public discovery only after the prototype passes.
