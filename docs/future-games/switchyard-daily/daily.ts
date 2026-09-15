@@ -22,6 +22,12 @@ export function switchyardDailyId(dateKey: string) {
   return `SWY-${dateKey.replaceAll("-", "")}`;
 }
 
+export function switchyardDateKeyFromDailyId(dailyId: string) {
+  const match = /^SWY-(\d{4})(\d{2})(\d{2})$/.exec(dailyId);
+  if (!match) throw new Error(`Invalid daily ID: ${dailyId}`);
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
 export function switchyardSeedFromDateKey(value: string) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {

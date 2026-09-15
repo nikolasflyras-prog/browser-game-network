@@ -88,6 +88,7 @@ export function SwitchyardDailyProgress({ onEvent }: Props) {
     );
     onEvent?.("share_clicked", {
       daily_id: dailyId,
+      date_key: todayKey,
       score: stored.score,
       streak: snapshot.streak,
       won: stored.won,
@@ -110,6 +111,9 @@ export function SwitchyardDailyProgress({ onEvent }: Props) {
     : snapshot.streak > 0
       ? `Clear today's yard to extend your ${snapshot.streak}-day streak.`
       : "Clear today's yard to start a streak.";
+  const routeRecord = result
+    ? [...result.sequence].map((value) => value === "1" ? "✓" : "×").join(" ")
+    : null;
 
   return (
     <section
@@ -117,6 +121,7 @@ export function SwitchyardDailyProgress({ onEvent }: Props) {
       aria-label="Switchyard Daily staged progress"
       data-switchyard-complete={result ? "true" : "false"}
       data-switchyard-daily-id={dailyId}
+      data-switchyard-date-key={todayKey}
     >
       <div className={styles.stat}>
         <span>Clear streak</span>
@@ -125,6 +130,7 @@ export function SwitchyardDailyProgress({ onEvent }: Props) {
       </div>
       <div className={styles.copy} aria-live="polite">
         <strong data-switchyard-today>{dailyId} · {status}</strong>
+        {routeRecord ? <span className={styles.routeRecord} data-switchyard-route-record>Route record · {routeRecord}</span> : null}
         <span>Best result for each UTC puzzle stays in this browser. Failed shifts do not advance the clear streak.</span>
       </div>
       {result ? (

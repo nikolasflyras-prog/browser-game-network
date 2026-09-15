@@ -4,6 +4,7 @@ import {
   isBetterSwitchyardDailyResult,
   switchyardDailyRecord,
   switchyardDailyStorageName,
+  switchyardDateKeyFromDailyId,
   switchyardUtcDateKey,
   type StoredSwitchyardDailyResult,
 } from "./daily";
@@ -29,6 +30,22 @@ function resultFromEvent(properties: GameEventProperties) {
   } as const;
 }
 
+function dateKeyFromEvent(properties: GameEventProperties) {
+  const dateKey = properties["date_key"];
+  if (typeof dateKey === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return dateKey;
+
+  const dailyId = properties["daily_id"];
+  if (typeof dailyId === "string") {
+    try {
+      return switchyardDateKeyFromDailyId(dailyId);
+    } catch {
+      return switchyardUtcDateKey();
+    }
+  }
+
+  return switchyardUtcDateKey();
+}
+
 export function mountPersistedSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   let startedAt = Date.now();
 
@@ -49,6 +66,8 @@ export function mountPersistedSwitchyardPrototype(mount: HTMLElement, bridge: Ga
 
       if (event === "game_action" && properties.action === "switchyard_route") {
         bridge.emit("level_completed", {
+          daily_id: properties.daily_id,
+          date_key: properties.date_key,
           turn: properties.turn,
           action: properties.switch_action,
           target: properties.target,
@@ -75,15 +94,14 @@ export function mountPersistedSwitchyardPrototype(mount: HTMLElement, bridge: Ga
         return;
       }
 
-      const dailyId = enriched["daily_id"];
-      const dateKey = typeof dailyId === "string" ? dailyId : switchyardUtcDateKey();
+      const dateKey = dateKeyFromEvent(enriched);
       const storageName = switchyardDailyStorageName(dateKey);
       const next = switchyardDailyRecord(result);
       const current = readLocalGameValue<StoredSwitchyardDailyResult>(GAME_SLUG, storageName, SAVE_VERSION);
       const savedBest = isBetterSwitchyardDailyResult(current, next);
       if (savedBest) writeLocalGameValue(GAME_SLUG, storageName, SAVE_VERSION, next);
 
-      bridge.emit(event, { ...enriched, saved_best: savedBest });
+      bridge.emit(event, { ...enriched, date_key: dateKey, saved_best: savedBest });
     },
   };
 

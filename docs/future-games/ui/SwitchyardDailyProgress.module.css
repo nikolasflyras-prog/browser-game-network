@@ -47,6 +47,13 @@
   line-height: 1.4;
 }
 
+.copy .routeRecord {
+  color: #dfe4e6;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+}
+
 .share {
   min-width: 104px;
   padding: 9px 12px;

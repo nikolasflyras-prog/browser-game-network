@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/runtime";
-import { switchyardSeedFromDateKey, switchyardUtcDateKey } from "./daily";
+import { switchyardDailyId, switchyardSeedFromDateKey, switchyardUtcDateKey } from "./daily";
 import {
   chooseSwitchyardAction,
   createSwitchyardPrototype,
@@ -9,7 +9,7 @@ import {
   type SwitchyardPrototypeSession,
 } from "./prototype";
 import { switchyardLayout } from "./layout";
-import type { Depot, SwitchId, SwitchyardAction } from "./simulation";
+import { describeSwitchyardRoute, type Depot, type SwitchId, type SwitchyardAction } from "./simulation";
 
 const BACKGROUND = 0x0d1213;
 const TRACK = 0x67757d;
@@ -27,9 +27,11 @@ type ActionButton = {
 
 type SwitchLabel = { id: SwitchId; text: Phaser.GameObjects.Text };
 type DepotLabel = { depot: Depot; text: Phaser.GameObjects.Text };
+type YardPoint = { x: number; y: number };
 
 export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   const dateKey = switchyardUtcDateKey();
+  const dailyId = switchyardDailyId(dateKey);
   const dailySeed = switchyardSeedFromDateKey(dateKey);
 
   class SwitchyardScene extends Phaser.Scene {
@@ -40,6 +42,8 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     private progressLabel?: Phaser.GameObjects.Text;
     private scoreLabel?: Phaser.GameObjects.Text;
     private targetLabel?: Phaser.GameObjects.Text;
+    private routeLabel?: Phaser.GameObjects.Text;
+    private outcomeLabel?: Phaser.GameObjects.Text;
     private instruction?: Phaser.GameObjects.Text;
     private buttons: ActionButton[] = [];
     private switchLabels: SwitchLabel[] = [];
@@ -60,7 +64,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       this.cameras.main.setBackgroundColor(BACKGROUND);
       this.graphics = this.add.graphics();
       this.train = this.add.circle(0, 0, 9, PAPER).setVisible(false).setDepth(4);
-      this.dateLabel = this.add.text(18, 16, `DAILY · ${dateKey}`, {
+      this.dateLabel = this.add.text(18, 16, `DAILY · ${dailyId}`, {
         color: "#97a4a8",
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "12px",
@@ -84,6 +88,18 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
         fontSize: "18px",
         fontStyle: "bold",
       }).setOrigin(0.5, 0);
+      this.outcomeLabel = this.add.text(this.scale.width / 2, 0, "No train routed yet", {
+        color: "#97a4a8",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: "12px",
+        fontStyle: "bold",
+      }).setOrigin(0.5, 0.5);
+      this.routeLabel = this.add.text(this.scale.width / 2, 0, "", {
+        color: "#f5f5ef",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: "12px",
+        fontStyle: "bold",
+      }).setOrigin(0.5, 0.5);
       this.instruction = this.add.text(this.scale.width / 2, this.scale.height - 8, "A / B / C OR SPACE TO HOLD", {
         color: "#97a4a8",
         fontFamily: "Arial, Helvetica, sans-serif",
@@ -93,6 +109,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
 
       this.createBoardLabels();
       this.createButtons();
+      this.positionStatusLabels();
 
       this.input.keyboard?.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
       this.input.keyboard?.on("keydown-A", () => this.handleAction("A", "keyboard"));
@@ -106,7 +123,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       });
 
       this.resetPuzzle();
-      bridge.emit("daily_started", { daily_id: dateKey, seed: dailySeed });
+      bridge.emit("daily_started", { daily_id: dailyId, date_key: dateKey, seed: dailySeed });
     }
 
     private createBoardLabels() {
@@ -162,8 +179,20 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       }
     }
 
+    private positionStatusLabels() {
+      const layout = switchyardLayout(this.scale.width, this.scale.height);
+      const routeY = layout.compact ? this.scale.height - 160 : this.scale.height - 106;
+      this.routeLabel?.setPosition(this.scale.width / 2, routeY);
+      this.outcomeLabel?.setPosition(this.scale.width / 2, routeY - 26);
+    }
+
     private restartPuzzle(inputType: "pointer" | "keyboard" | "controller") {
-      bridge.emit("game_restarted", { mode: "daily", daily_id: dateKey, input_type: inputType });
+      bridge.emit("game_restarted", {
+        mode: "daily",
+        daily_id: dailyId,
+        date_key: dateKey,
+        input_type: inputType,
+      });
       this.resetPuzzle();
     }
 
@@ -184,7 +213,12 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       }
 
       this.displayTarget = target;
+      this.outcomeLabel
+        ?.setText(outcome.correct ? `✓ ROUTED TO D${outcome.actual}` : `× REACHED D${outcome.actual} · TARGET D${outcome.target}`)
+        .setColor(outcome.correct ? "#78dfaa" : "#ed786f");
       bridge.emit("game_action", {
+        daily_id: dailyId,
+        date_key: dateKey,
         action: "switchyard_route",
         turn: outcome.turn,
         switch_action: action,
@@ -253,14 +287,24 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     private completePuzzle() {
       const result = switchyardPrototypeResult(this.session);
       if (!result) return;
+      const correctRoutes = result.sequence.filter(Boolean).length;
       bridge.emit("daily_completed", {
-        daily_id: dateKey,
+        daily_id: dailyId,
+        date_key: dateKey,
         score: result.score,
         strikes: result.strikes,
         won: result.won,
+        correct_routes: correctRoutes,
+        total_routes: result.sequence.length,
         sequence: result.sequence.map((value) => (value ? "1" : "0")).join(""),
       });
-      bridge.emit("game_completed", { mode: "daily", score: result.score, won: result.won });
+      bridge.emit("game_completed", {
+        mode: "daily",
+        daily_id: dailyId,
+        date_key: dateKey,
+        score: result.score,
+        won: result.won,
+      });
       bridge.setStatus(result.won ? `Daily complete — ${result.score} points` : `Three strikes — ${result.score} points`);
 
       this.resultTitle?.destroy();
@@ -274,7 +318,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       this.resultDetail = this.add.text(
         this.scale.width / 2,
         this.scale.height / 2 + 20,
-        `${result.score} points · ${result.strikes} strikes\nTap a control or press R to replay`,
+        `${dailyId} · ${correctRoutes}/${result.sequence.length} routes\n${result.score} points · ${result.strikes} strikes\nTap a control or press R to replay`,
         {
           color: "#97a4a8",
           fontFamily: "Arial, Helvetica, sans-serif",
@@ -291,6 +335,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       this.displayTarget = this.session.state.target;
       this.busy = false;
       this.train?.setVisible(false);
+      this.outcomeLabel?.setText("No train routed yet").setColor("#97a4a8");
       this.resultTitle?.destroy();
       this.resultDetail?.destroy();
       this.resultTitle = undefined;
@@ -312,7 +357,23 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       this.resultTitle?.setPosition(this.scale.width / 2, this.scale.height / 2 - 20);
       this.resultDetail?.setPosition(this.scale.width / 2, this.scale.height / 2 + 20);
       this.positionButtons();
+      this.positionStatusLabels();
       this.renderBoard();
+    }
+
+    private drawDirectionMarker(graphics: Phaser.GameObjects.Graphics, from: YardPoint, to: YardPoint) {
+      const x = from.x + (to.x - from.x) * 0.58;
+      const y = from.y + (to.y - from.y) * 0.58;
+      const angle = Math.atan2(to.y - from.y, to.x - from.x);
+      const size = 7;
+      const tipX = x + Math.cos(angle) * size;
+      const tipY = y + Math.sin(angle) * size;
+      const leftX = x + Math.cos(angle + 2.45) * size;
+      const leftY = y + Math.sin(angle + 2.45) * size;
+      const rightX = x + Math.cos(angle - 2.45) * size;
+      const rightY = y + Math.sin(angle - 2.45) * size;
+      graphics.fillStyle(PAPER, 0.95);
+      graphics.fillTriangle(tipX, tipY, leftX, leftY, rightX, rightY);
     }
 
     private renderBoard() {
@@ -322,12 +383,13 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       const layout = switchyardLayout(this.scale.width, this.scale.height);
       graphics.clear();
 
-      const drawTrack = (from: { x: number; y: number }, to: { x: number; y: number }, active: boolean) => {
+      const drawTrack = (from: YardPoint, to: YardPoint, active: boolean) => {
         graphics.lineStyle(active ? 4 : 2, active ? TRACK_ACTIVE : TRACK, active ? 0.95 : 0.55);
         graphics.beginPath();
         graphics.moveTo(from.x, from.y);
         graphics.lineTo(to.x, to.y);
         graphics.strokePath();
+        if (active) this.drawDirectionMarker(graphics, from, to);
       };
 
       drawTrack(layout.start, layout.root, true);
@@ -338,7 +400,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       drawTrack(layout.right, layout.depots[2], !view.switches.C);
       drawTrack(layout.right, layout.depots[3], view.switches.C);
 
-      const switchPoints: Record<SwitchId, { x: number; y: number }> = {
+      const switchPoints: Record<SwitchId, YardPoint> = {
         A: layout.root,
         B: layout.left,
         C: layout.right,
@@ -346,8 +408,10 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       for (const label of this.switchLabels) {
         const point = switchPoints[label.id];
         const on = view.switches[label.id];
-        graphics.fillStyle(on ? TRACK_ACTIVE : PAPER, 1);
+        graphics.fillStyle(on ? TRACK_ACTIVE : PAPER, on ? 1 : 0.45);
         graphics.fillCircle(point.x, point.y, 12);
+        graphics.lineStyle(on ? 3 : 2, PAPER, 0.95);
+        graphics.strokeCircle(point.x, point.y, on ? 15 : 12);
         label.text.setPosition(point.x, point.y).setVisible(true);
       }
 
@@ -356,12 +420,19 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
         const isTarget = label.depot === this.displayTarget;
         graphics.fillStyle(isTarget ? TARGET : PAPER, isTarget ? 1 : 0.35);
         graphics.fillRoundedRect(point.x - 26, point.y - 15, 52, 30, 6);
+        graphics.lineStyle(isTarget ? 3 : 1, PAPER, isTarget ? 1 : 0.35);
+        graphics.strokeRoundedRect(point.x - 28, point.y - 17, 56, 34, 7);
+        if (isTarget) {
+          graphics.fillStyle(PAPER, 1);
+          graphics.fillTriangle(point.x, point.y - 29, point.x - 7, point.y - 20, point.x + 7, point.y - 20);
+        }
         label.text.setPosition(point.x, point.y).setVisible(true);
       }
 
       this.progressLabel?.setText(view.complete ? "Complete" : `Train ${view.turn + 1} / ${view.maxTurns}`);
       this.scoreLabel?.setText(`${view.score} pts · ${view.strikes} strikes`);
-      this.targetLabel?.setText(`Target depot ${this.displayTarget}`);
+      this.targetLabel?.setText(`TARGET D${this.displayTarget}`);
+      this.routeLabel?.setText(`SWITCHES · ${describeSwitchyardRoute(view.switches)}`);
       this.instruction?.setText(layout.compact ? "TAP A / B / C / HOLD" : "A / B / C OR SPACE TO HOLD");
 
       for (const button of this.buttons) {
@@ -392,7 +463,12 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       bridge.setStatus("Switchyard Daily resumed");
     },
     restart() {
-      bridge.emit("game_restarted", { mode: "daily", daily_id: dateKey, input_type: "controller" });
+      bridge.emit("game_restarted", {
+        mode: "daily",
+        daily_id: dailyId,
+        date_key: dateKey,
+        input_type: "controller",
+      });
       game.scene.stop("future-switchyard-daily");
       game.scene.start("future-switchyard-daily");
     },

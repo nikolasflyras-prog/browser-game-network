@@ -33,6 +33,10 @@ export function routeDepot(switches: Record<SwitchId, boolean>): Depot {
   return switches.C ? 3 : 2;
 }
 
+export function describeSwitchyardRoute(switches: Record<SwitchId, boolean>) {
+  return `A→${switches.A ? "RIGHT" : "LEFT"} · B→D${switches.B ? 1 : 0} · C→D${switches.C ? 3 : 2}`;
+}
+
 function applyAction(switches: Record<SwitchId, boolean>, action: SwitchyardAction) {
   if (action === "HOLD") return { ...switches };
   return { ...switches, [action]: !switches[action] };

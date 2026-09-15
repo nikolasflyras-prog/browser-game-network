@@ -6,6 +6,7 @@ import {
   switchyardDailyId,
   switchyardDailyRecord,
   switchyardDailyStorageName,
+  switchyardDateKeyFromDailyId,
   switchyardSeedFromDateKey,
   switchyardUtcDateKey,
 } from "./daily";
@@ -15,7 +16,9 @@ describe("Switchyard Daily metadata", () => {
     const date = new Date("2026-09-15T23:30:00-04:00");
     expect(switchyardUtcDateKey(date)).toBe("2026-09-16");
     expect(switchyardDailyId("2026-09-16")).toBe("SWY-20260916");
+    expect(switchyardDateKeyFromDailyId("SWY-20260916")).toBe("2026-09-16");
     expect(() => switchyardDailyId("09/16/2026")).toThrow(/Invalid date key/);
+    expect(() => switchyardDateKeyFromDailyId("2026-09-16")).toThrow(/Invalid daily ID/);
     expect(switchyardSeedFromDateKey("2026-09-16")).toBe(switchyardSeedFromDateKey("2026-09-16"));
     expect(switchyardSeedFromDateKey("2026-09-16")).not.toBe(switchyardSeedFromDateKey("2026-09-17"));
   });

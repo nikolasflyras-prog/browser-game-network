@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createSwitchyardState, playSwitchyardTurn, reachableDepots, routeDepot, type SwitchyardAction } from "./simulation";
+import {
+  createSwitchyardState,
+  describeSwitchyardRoute,
+  playSwitchyardTurn,
+  reachableDepots,
+  routeDepot,
+  type SwitchyardAction,
+} from "./simulation";
 
 const actions: SwitchyardAction[] = ["HOLD", "A", "B", "C"];
 
@@ -9,6 +16,11 @@ describe("Switchyard Daily simulation", () => {
     expect(routeDepot({ A: false, B: true, C: false })).toBe(1);
     expect(routeDepot({ A: true, B: false, C: false })).toBe(2);
     expect(routeDepot({ A: true, B: false, C: true })).toBe(3);
+  });
+
+  it("describes every switch position without relying on color", () => {
+    expect(describeSwitchyardRoute({ A: false, B: false, C: false })).toBe("A→LEFT · B→D0 · C→D2");
+    expect(describeSwitchyardRoute({ A: true, B: true, C: true })).toBe("A→RIGHT · B→D1 · C→D3");
   });
 
   it("always generates a target reachable in one action", () => {
