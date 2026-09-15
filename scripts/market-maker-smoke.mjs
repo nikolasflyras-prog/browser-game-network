@@ -123,6 +123,7 @@ try {
     const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Make market at'));
     return Boolean(button && Object.keys(button).some((key) => key.startsWith('__reactProps$') || key.startsWith('__reactFiber$')));
   })()`);
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0'`);
 
   await evaluate(`localStorage.removeItem('bgn:market-maker:best-score'); true`);
 
@@ -130,13 +131,11 @@ try {
     const expectedRound = round + 1;
     await clickVisibleButtonContaining("Make market at");
 
-    if (expectedRound < 16) {
-      await waitForExpression(`(() => {
-        const section = document.querySelector('section[aria-label="Market Maker simulation"]');
-        const label = Array.from(section?.querySelectorAll('span') ?? []).find((node) => node.textContent?.trim() === 'Last round');
-        return Boolean(label?.parentElement?.textContent?.includes(${JSON.stringify(`#${expectedRound}`)}));
-      })()`);
-    } else {
+    await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === ${JSON.stringify(String(expectedRound))}`);
+    await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketLastRound === ${JSON.stringify(String(expectedRound))}`);
+
+    if (expectedRound === 16) {
+      await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'true'`);
       await waitForExpression(`document.querySelector('section[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
     }
   }
@@ -148,6 +147,9 @@ try {
     const result = document.querySelector('section[aria-label="Market Maker result"]');
     return {
       text: result?.textContent ?? '',
+      round: section?.dataset.marketRound ?? null,
+      lastRound: section?.dataset.marketLastRound ?? null,
+      complete: section?.dataset.marketComplete ?? null,
       bestStorage: localStorage.getItem('bgn:market-maker:best-score'),
       makeMarketVisible: Array.from(section?.querySelectorAll('button') ?? []).some((node) => node.textContent?.includes('Make market at')),
       frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error'),
@@ -156,6 +158,9 @@ try {
 
   for (const label of ["customer fills", "peak inventory", "risk penalty"]) {
     if (!finalState.text.toLowerCase().includes(label)) throw new Error(`Market Maker result missing ${label}`);
+  }
+  if (finalState.round !== "16" || finalState.lastRound !== "16" || finalState.complete !== "true") {
+    throw new Error(`Market Maker completion state invalid: ${JSON.stringify(finalState)}`);
   }
   if (!finalState.bestStorage) throw new Error("Market Maker best score was not persisted");
   if (finalState.makeMarketVisible) throw new Error("Market Maker still showed the quote action after completion");
@@ -172,7 +177,8 @@ try {
   await writeFile(path.join(artifactDir, "market-maker-result-mobile.png"), Buffer.from(mobileShot.data, "base64"));
 
   await clickVisibleButtonContaining("Deal another market");
-  await waitForExpression(`Array.from(document.querySelectorAll('section[aria-label="Market Maker simulation"] button')).some((node) => node.textContent?.includes('Make market at'))`);
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'false'`);
   await waitForExpression(`!document.querySelector('section[aria-label="Market Maker result"]')`);
 
   console.log(JSON.stringify({ targetUrl, roundsCompleted: 16, bestPersisted: true, resultCaptures: 2, restartVerified: true }));

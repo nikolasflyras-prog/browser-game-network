@@ -125,7 +125,13 @@ export function MarketMaker() {
   const fairMove = lastRound ? lastRound.fairAfter - lastRound.fairBefore : 0;
 
   return (
-    <section className={styles.shell} aria-label="Market Maker simulation">
+    <section
+      className={styles.shell}
+      aria-label="Market Maker simulation"
+      data-market-round={state.round}
+      data-market-complete={state.complete ? "true" : "false"}
+      data-market-last-round={lastRound?.round ?? 0}
+    >
       <div className={styles.topline}>
         <div>
           <p className={styles.kicker}>Dealer desk</p>
