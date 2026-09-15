@@ -25,7 +25,7 @@ export function PrototypeRuntimeHost({ slug, title, loadRuntime }: Props) {
     const mount = mountRef.current;
     if (!mount) return;
 
-    async function start() {
+    async function start(mountElement: HTMLElement) {
       try {
         const mountGame = await loadRuntime();
         if (cancelled) return;
@@ -36,7 +36,7 @@ export function PrototypeRuntimeHost({ slug, title, loadRuntime }: Props) {
             .join(" · ");
           setLatestEvent(detail ? `${event} · ${detail}` : event);
         };
-        controllerRef.current = mountGame(mount, {
+        controllerRef.current = mountGame(mountElement, {
           gameSlug: slug,
           gameVersion: "lab",
           emit,
@@ -48,7 +48,7 @@ export function PrototypeRuntimeHost({ slug, title, loadRuntime }: Props) {
       }
     }
 
-    void start();
+    void start(mount);
     return () => {
       cancelled = true;
       controllerRef.current?.destroy();

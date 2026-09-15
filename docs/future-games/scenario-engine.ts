@@ -65,7 +65,7 @@ export function isScenarioChoiceAvailable<K extends string>(
   metrics: MetricMap<K>,
   choice: ScenarioChoice<K>,
 ) {
-  const requirements = choice.requirements ?? {};
+  const requirements: Partial<Record<K, ScenarioMetricRequirement>> = choice.requirements ?? {};
   return (Object.keys(requirements) as K[]).every((metric) => {
     const requirement = requirements[metric];
     if (!requirement) return true;
@@ -82,7 +82,7 @@ export function availableScenarioChoices<K extends string>(state: ScenarioState<
 
 function resolvedImpacts<K extends string>(choice: ScenarioChoice<K>, metrics: MetricMap<K>) {
   const impacts: Partial<Record<K, number>> = { ...choice.impacts };
-  const dynamic = choice.resolveImpacts?.(metrics) ?? {};
+  const dynamic: Partial<Record<K, number>> = choice.resolveImpacts?.(metrics) ?? {};
 
   for (const metric of Object.keys(dynamic) as K[]) {
     impacts[metric] = (impacts[metric] ?? 0) + (dynamic[metric] ?? 0);
