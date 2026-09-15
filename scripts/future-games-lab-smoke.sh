@@ -58,6 +58,9 @@ FUTURE_GAMES_LAB_URL="$TARGET_URL" FUTURE_GAMES_ARTIFACT_DIR="$ARTIFACT_DIR" \
   node scripts/future-games-lab-smoke.mjs | tee "$ARTIFACT_DIR/future-games-lab-smoke.json"
 
 FUTURE_GAMES_LAB_URL="$TARGET_URL" FUTURE_GAMES_ARTIFACT_DIR="$ARTIFACT_DIR" \
+  node scripts/switchyard-promotion-smoke.mjs | tee "$ARTIFACT_DIR/switchyard-promotion-smoke.json"
+
+FUTURE_GAMES_LAB_URL="$TARGET_URL" FUTURE_GAMES_ARTIFACT_DIR="$ARTIFACT_DIR" \
   node scripts/future-games-results-smoke.mjs | tee "$ARTIFACT_DIR/future-games-results-smoke.json"
 
-echo "Future Games Lab smoke passed: six staged prototypes execute, Switchyard completes/persists/shares, Learn result explanations complete, desktop/mobile captures are recorded, and the lab remains noindex/unlinked from public game routes."
+echo "Future Games Lab smoke passed: six staged prototypes execute, Switchyard completes/persists/shares with promotion-grade daily metadata and reduced-motion QA, Learn result explanations complete, desktop/mobile captures are recorded, and the lab remains noindex/unlinked from public game routes."
