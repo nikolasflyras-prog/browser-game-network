@@ -40,6 +40,15 @@ export const gameRegistry: readonly GameMetadata[] = [
     version: "0.1.0",
   },
   {
+    slug: "chip-fab",
+    title: "Chip Fab",
+    description: "Run a semiconductor fab through ramp pressure, process drift, bottlenecks, and maintenance while balancing yield, useful throughput, cycle time, defect risk, and cash.",
+    lane: "Learn",
+    category: "Semiconductor Simulation",
+    status: "live",
+    version: "0.1.0",
+  },
+  {
     slug: "linebreak-daily",
     title: "Linebreak Daily",
     description: "Draw one continuous route through the daily grid. Find the key, cross the gate, avoid hazards, and reach the exit before your ink runs out.",

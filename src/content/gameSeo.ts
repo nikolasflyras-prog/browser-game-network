@@ -106,6 +106,26 @@ export const gameSeoContent: Record<string, GameSeoContent> = {
       { question: "Does Supply Chain Shock model a specific company?", answer: "No. The scenarios are synthetic and simplified to make operating tradeoffs visible. They are not a forecast or a model of a particular company's network." },
     ],
   },
+  "chip-fab": {
+    summary: "Chip Fab is a semiconductor-manufacturing simulation about turning wafer starts into useful output. Across ramp pressure, metrology drift, a lithography bottleneck, and preventive maintenance, the game makes the difference between high tool utilization and high-quality production visible.",
+    howTo: [
+      "Review yield, throughput, cycle time, defect risk, cash, and the three operating signals before each decision.",
+      "Choose one fab response, then inspect the exact metric deltas and explanation before the next operating problem arrives.",
+      "Watch good output, which combines throughput and yield, rather than treating wafer starts or tool utilization as the only production target.",
+      "Finish the four-decision ramp with useful throughput, stable yield, controlled cycle time and defect risk, and enough cash to keep operating flexibility.",
+    ],
+    concepts: ["Semiconductor yield", "Fab throughput", "Cycle time", "Bottleneck utilization", "Queueing", "Metrology", "Defect risk", "Preventive maintenance"],
+    strategy: [
+      "Do not confuse a busy bottleneck with a productive fab. Near-saturated utilization can create queues that lengthen cycle time and reduce good output.",
+      "Treat inline metrology as an early-warning system. Waiting for final-test yield to confirm every problem can allow process drift to compound.",
+      "Planned downtime can protect future yield and uptime. Deferring maintenance improves the current shipment window only by accepting more process risk later.",
+    ],
+    faqs: [
+      { question: "What is good output in Chip Fab?", answer: "The game approximates good output as throughput multiplied by yield. It is a teaching signal that shows why more raw starts are not valuable if a larger share becomes defective or trapped in long cycle times." },
+      { question: "Why can higher utilization make cycle time worse?", answer: "As a bottleneck approaches saturation, variability and queues can grow quickly. Keeping a tool continuously busy can therefore increase waiting time across the fab rather than maximizing completed good die." },
+      { question: "Does Chip Fab model a specific semiconductor process?", answer: "No. The metrics and scenarios are synthetic and simplified to teach manufacturing tradeoffs, not reproduce a particular fab, node, or company's process flow." },
+    ],
+  },
 };
 
 export function getGameSeoContent(slug: string): GameSeoContent | undefined {

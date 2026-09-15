@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { GameDiscovery } from "@/components/catalog/GameDiscovery";
+import { ChipFab } from "@/components/game/ChipFab";
 import { GameHost } from "@/components/game/GameHost";
 import { LinebreakDailyProgress } from "@/components/game/LinebreakDailyProgress";
 import { MarketMaker } from "@/components/game/MarketMaker";
@@ -96,6 +97,8 @@ export default async function GamePage({ params }: PageProps) {
         <MarketMaker />
       ) : game.slug === "supply-chain-shock" ? (
         <SupplyChainShock />
+      ) : game.slug === "chip-fab" ? (
+        <ChipFab />
       ) : (
         <>
           <GameHost game={game} />
