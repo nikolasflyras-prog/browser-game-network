@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeSwitchyardDailyStreak,
   formatSwitchyardDailyShare,
   isBetterSwitchyardDailyResult,
   switchyardDailyRecord,
@@ -35,6 +36,12 @@ describe("Switchyard Daily metadata", () => {
     expect(isBetterSwitchyardDailyResult(null, best)).toBe(true);
     expect(isBetterSwitchyardDailyResult(best, worse)).toBe(false);
     expect(isBetterSwitchyardDailyResult(best, better)).toBe(true);
+  });
+
+  it("counts only consecutive successful daily clears", () => {
+    expect(activeSwitchyardDailyStreak(["2026-09-13", "2026-09-14", "2026-09-15"], "2026-09-15")).toBe(3);
+    expect(activeSwitchyardDailyStreak(["2026-09-13", "2026-09-14"], "2026-09-15")).toBe(2);
+    expect(activeSwitchyardDailyStreak(["2026-09-13", "2026-09-15"], "2026-09-15")).toBe(1);
   });
 
   it("formats a spoiler-safe share card", () => {

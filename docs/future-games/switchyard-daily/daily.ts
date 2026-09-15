@@ -30,6 +30,24 @@ export function switchyardDailyStorageName(dateKey: string) {
   return `daily-${dateKey}`;
 }
 
+export function switchyardOffsetDateKey(dateKey: string, days: number) {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) throw new Error(`Invalid date key: ${dateKey}`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+export function activeSwitchyardDailyStreak(wonDateKeys: readonly string[], todayKey: string) {
+  const wonDates = new Set(wonDateKeys);
+  let cursor = wonDates.has(todayKey) ? todayKey : switchyardOffsetDateKey(todayKey, -1);
+  let streak = 0;
+  while (wonDates.has(cursor)) {
+    streak += 1;
+    cursor = switchyardOffsetDateKey(cursor, -1);
+  }
+  return streak;
+}
+
 export function switchyardDailyRecord(result: SwitchyardDailyResult, completedAt = new Date().toISOString()): StoredSwitchyardDailyResult {
   return {
     score: result.score,

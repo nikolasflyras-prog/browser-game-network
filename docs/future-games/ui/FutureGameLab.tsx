@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { MarketMakerPrototypePanel } from "./MarketMakerPrototype";
 import { ChipFabPrototypePanel, PowerGridPrototypePanel, SupplyChainPrototypePanel } from "./ScenarioGamePrototypes";
 import { PrototypeRuntimeHost } from "./PrototypeRuntimeHost";
+import { SwitchyardDailyProgress } from "./SwitchyardDailyProgress";
 import styles from "./FutureGameLab.module.css";
 
 type LabGame = "traffic-control" | "switchyard-daily" | "market-maker" | "supply-chain-shock" | "chip-fab" | "power-grid-dispatcher";
@@ -56,7 +57,12 @@ export function FutureGameLab() {
 
       <section className={styles.stage} key={active}>
         {active === "traffic-control" ? <PrototypeRuntimeHost slug="traffic-control" title="Traffic Control" loadRuntime={loadTraffic} /> : null}
-        {active === "switchyard-daily" ? <PrototypeRuntimeHost slug="switchyard-daily" title="Switchyard Daily" loadRuntime={loadSwitchyard} /> : null}
+        {active === "switchyard-daily" ? (
+          <>
+            <PrototypeRuntimeHost slug="switchyard-daily" title="Switchyard Daily" loadRuntime={loadSwitchyard} />
+            <SwitchyardDailyProgress />
+          </>
+        ) : null}
         {active === "market-maker" ? <MarketMakerPrototypePanel /> : null}
         {active === "supply-chain-shock" ? <SupplyChainPrototypePanel /> : null}
         {active === "chip-fab" ? <ChipFabPrototypePanel /> : null}
