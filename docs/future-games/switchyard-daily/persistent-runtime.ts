@@ -65,7 +65,7 @@ export function mountPersistedSwitchyardPrototype(mount: HTMLElement, bridge: Ga
         return;
       }
 
-      const enriched = {
+      const enriched: GameEventProperties = {
         ...properties,
         duration_ms: Math.max(0, Date.now() - startedAt),
       };
@@ -75,7 +75,8 @@ export function mountPersistedSwitchyardPrototype(mount: HTMLElement, bridge: Ga
         return;
       }
 
-      const dateKey = typeof enriched.daily_id === "string" ? enriched.daily_id : switchyardUtcDateKey();
+      const dailyId = enriched["daily_id"];
+      const dateKey = typeof dailyId === "string" ? dailyId : switchyardUtcDateKey();
       const storageName = switchyardDailyStorageName(dateKey);
       const next = switchyardDailyRecord(result);
       const current = readLocalGameValue<StoredSwitchyardDailyResult>(GAME_SLUG, storageName, SAVE_VERSION);
