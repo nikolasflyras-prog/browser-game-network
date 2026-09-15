@@ -107,6 +107,7 @@ try {
   await evaluate(`localStorage.removeItem('bgn:market-maker:best-score'); true`);
 
   for (let round = 0; round < 16; round += 1) {
+    const expectedRound = round + 1;
     const acted = await evaluate(`(() => {
       const section = document.querySelector('section[aria-label="Market Maker simulation"]');
       const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Make market at'));
@@ -114,11 +115,15 @@ try {
       button.click();
       return true;
     })()`);
-    if (!acted) throw new Error(`Market Maker stopped before round ${round + 1}`);
-    await sleep(35);
+    if (!acted) throw new Error(`Market Maker stopped before round ${expectedRound}`);
+
+    if (expectedRound < 16) {
+      await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.textContent?.includes(${JSON.stringify(`Round${expectedRound}/16`)})`);
+    } else {
+      await waitForExpression(`document.querySelector('section[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
+    }
   }
 
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
   await waitForExpression(`Boolean(localStorage.getItem('bgn:market-maker:best-score'))`);
 
   const finalState = await evaluate(`(() => {
@@ -156,7 +161,8 @@ try {
     return true;
   })()`);
   if (!restarted) throw new Error("Market Maker restart control missing");
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.textContent?.includes('Round0/16')`);
+  await waitForExpression(`Array.from(document.querySelectorAll('section[aria-label="Market Maker simulation"] button')).some((node) => node.textContent?.includes('Make market at'))`);
+  await waitForExpression(`!document.querySelector('section[aria-label="Market Maker result"]')`);
 
   console.log(JSON.stringify({ targetUrl, roundsCompleted: 16, bestPersisted: true, resultCaptures: 2, restartVerified: true }));
 } finally {
