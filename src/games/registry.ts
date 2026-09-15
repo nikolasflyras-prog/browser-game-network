@@ -22,6 +22,15 @@ export const gameRegistry: readonly GameMetadata[] = [
     version: "0.1.0",
   },
   {
+    slug: "market-maker",
+    title: "Market Maker",
+    description: "Set bid and ask quotes across short trading rounds. Balance customer flow, spread capture, informed moves, and inventory risk instead of optimizing one number.",
+    lane: "Learn",
+    category: "Finance Simulation",
+    status: "live",
+    version: "0.1.0",
+  },
+  {
     slug: "linebreak-daily",
     title: "Linebreak Daily",
     description: "Draw one continuous route through the daily grid. Find the key, cross the gate, avoid hazards, and reach the exit before your ink runs out.",

@@ -5,28 +5,35 @@ import { loadGameRuntime } from "@/games/loaders";
 import { gameRegistry } from "@/games/registry";
 import { futureGameCandidates } from "./candidate-manifest";
 
-describe("future-game staging isolation", () => {
-  const slugs = futureGameCandidates.map((candidate) => candidate.slug);
+const promotedSlugs = new Set(["market-maker"]);
 
-  it("keeps every future candidate out of the public game registry", () => {
+describe("future-game staging isolation", () => {
+  const stagedSlugs = futureGameCandidates
+    .map((candidate) => candidate.slug)
+    .filter((slug) => !promotedSlugs.has(slug));
+
+  it("keeps unpromoted future candidates out of the public game registry", () => {
     const registered = new Set(gameRegistry.map((game) => game.slug));
-    for (const slug of slugs) expect(registered.has(slug)).toBe(false);
+    for (const slug of stagedSlugs) expect(registered.has(slug)).toBe(false);
+    expect(registered.has("market-maker")).toBe(true);
   });
 
-  it("keeps future runtimes out of the production loader map", async () => {
-    for (const slug of slugs) {
+  it("keeps unpromoted future runtimes out of the production loader map", async () => {
+    for (const slug of stagedSlugs) {
       await expect(loadGameRuntime(slug)).rejects.toThrow(`No runtime registered for game: ${slug}`);
     }
   });
 
-  it("keeps future candidates out of the public sitemap", () => {
+  it("keeps unpromoted candidates out of the public sitemap", () => {
     const urls = sitemap().map((entry) => entry.url);
-    for (const slug of slugs) {
+    for (const slug of stagedSlugs) {
       expect(urls.some((url) => url.includes(`/games/${slug}`))).toBe(false);
     }
+    expect(urls.some((url) => url.includes("/games/market-maker"))).toBe(true);
   });
 
-  it("keeps launch SEO copy staged until a promotion decision", () => {
-    for (const slug of slugs) expect(getGameSeoContent(slug)).toBeUndefined();
+  it("keeps launch SEO copy staged until promotion", () => {
+    for (const slug of stagedSlugs) expect(getGameSeoContent(slug)).toBeUndefined();
+    expect(getGameSeoContent("market-maker")).toBeDefined();
   });
 });
