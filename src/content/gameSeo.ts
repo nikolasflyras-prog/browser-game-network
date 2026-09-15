@@ -66,6 +66,26 @@ export const gameSeoContent: Record<string, GameSeoContent> = {
       { question: "Why can a rate change take time to work?", answer: "Interest rates influence borrowing, spending, investment, asset prices, and hiring through several channels. The simulation models that idea with delayed and partial responses rather than instant one-for-one changes." },
     ],
   },
+  "market-maker": {
+    summary: "Market Maker is a short finance simulation about quoting two-sided markets. The chosen spread and quote skew directly change fill probability, while inventory and fair-value moves determine whether apparent spread capture survives mark-to-market and risk penalties.",
+    howTo: [
+      "Inspect fair value, current inventory, dealer score, and the exact bid and ask attached to each quote posture.",
+      "Choose tight, balanced, wide, lean-long, or lean-short, then make the market for that round.",
+      "Read the customer-flow and fair-value result before choosing the next quote. Use skew to encourage flow that reduces an inventory imbalance.",
+      "After 16 rounds, compare spread capture, customer fills, peak inventory, and risk penalties in the final dealer result.",
+    ],
+    concepts: ["Bid-ask spread", "Inventory risk", "Order flow", "Market making", "Quote skew", "Mark-to-market P&L"],
+    strategy: [
+      "Tight quotes win more flow but expose you to informed trading and faster inventory accumulation.",
+      "Wide quotes protect against bad fills but can create too many no-flow rounds to earn enough spread.",
+      "When inventory is long, lowering the quote can make the ask more attractive and help customers take inventory from you; when short, the opposite skew can help rebuild the position.",
+    ],
+    faqs: [
+      { question: "Why can a profitable trade still hurt the final score?", answer: "The dealer is marked to the new fair value and can also pay an inventory risk penalty. Spread capture is only one part of the result." },
+      { question: "What does quote skew do?", answer: "Skew shifts the quote center so one side becomes more attractive, which can help a dealer reduce a long or short inventory position." },
+      { question: "Does Market Maker use real market data?", answer: "No. Prices and customer flow are synthetic. The model is designed to teach the mechanics and tradeoffs of two-sided quoting, not simulate a specific security or exchange." },
+    ],
+  },
 };
 
 export function getGameSeoContent(slug: string): GameSeoContent | undefined {

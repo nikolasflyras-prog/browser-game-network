@@ -36,6 +36,9 @@ jobs:
       - name: Browser smoke test
         run: bash scripts/browser-smoke.sh
 
+      - name: Market Maker smoke test
+        run: bash scripts/market-maker-smoke.sh
+
       - name: Run the Fed smoke test
         run: bash scripts/run-the-fed-smoke.sh
 
