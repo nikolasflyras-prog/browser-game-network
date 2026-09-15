@@ -18,3 +18,7 @@ export function compactPrototypeEvent(event: GameEventName, properties: GameEven
     .join(" · ");
   return detail ? `${event} · ${detail}` : event;
 }
+
+export function prototypeNowMs() {
+  return Date.now();
+}

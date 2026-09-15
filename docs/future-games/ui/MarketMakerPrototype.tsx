@@ -8,7 +8,7 @@ import {
   marketMakerPrototypeView,
 } from "../market-maker/prototype";
 import type { QuotePosture } from "../market-maker/simulation";
-import type { PrototypeEventSink } from "./prototype-events";
+import { prototypeNowMs, type PrototypeEventSink } from "./prototype-events";
 import marketStyles from "./MarketMakerPolish.module.css";
 import styles from "./PrototypeLab.module.css";
 
@@ -21,7 +21,7 @@ type Props = { onEvent?: PrototypeEventSink };
 export function MarketMakerPrototypePanel({ onEvent }: Props) {
   const [session, setSession] = useState(() => createMarketMakerPrototype());
   const [selectedPosture, setSelectedPosture] = useState<QuotePosture>("balanced");
-  const startedAt = useRef(Date.now());
+  const startedAt = useRef(0);
   const startMetadata = useRef({ seed: session.state.seed, rounds: session.state.maxRounds });
   const view = marketMakerPrototypeView(session);
   const result = marketMakerPrototypeResult(session);
@@ -30,7 +30,7 @@ export function MarketMakerPrototypePanel({ onEvent }: Props) {
   const selectedQuote = view.quotes.find((quote) => quote.posture === selectedPosture) ?? view.quotes[0];
 
   useEffect(() => {
-    startedAt.current = Date.now();
+    startedAt.current = prototypeNowMs();
     onEvent?.("game_started", startMetadata.current);
   }, [onEvent]);
 
@@ -58,14 +58,14 @@ export function MarketMakerPrototypePanel({ onEvent }: Props) {
         score: next.state.score,
         ending_inventory: next.state.inventory,
         raw_pnl: finalRound?.markedPnl ?? next.state.cash + next.state.inventory * next.state.fairValue,
-        duration_ms: Math.max(0, Date.now() - startedAt.current),
+        duration_ms: Math.max(0, prototypeNowMs() - startedAt.current),
       });
     }
   }
 
   function reset() {
     onEvent?.("game_restarted", { previous_score: result?.score ?? null });
-    startedAt.current = Date.now();
+    startedAt.current = prototypeNowMs();
     setSession(createMarketMakerPrototype());
     setSelectedPosture("balanced");
   }

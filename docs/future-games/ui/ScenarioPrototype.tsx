@@ -14,7 +14,7 @@ import {
   summarizeScenarioOutcome,
   type MetricDirection,
 } from "../scenario-insights";
-import { prototypeMetricProperties, type PrototypeEventSink } from "./prototype-events";
+import { prototypeMetricProperties, prototypeNowMs, type PrototypeEventSink } from "./prototype-events";
 import insightStyles from "./ResultInsights.module.css";
 import styles from "./PrototypeLab.module.css";
 
@@ -41,14 +41,14 @@ export function ScenarioPrototype<K extends string, Style extends string>({
 }: Props<K, Style>) {
   const [session, setSession] = useState(() => createScenarioSession(definition));
   const [notice, setNotice] = useState<string | null>(null);
-  const startedAt = useRef(Date.now());
+  const startedAt = useRef(0);
   const view = scenarioSessionView(definition, session);
   const outcomeSummary = session.result
     ? summarizeScenarioOutcome(definition.initialMetrics, session.state.metrics, metricDirections)
     : null;
 
   useEffect(() => {
-    startedAt.current = Date.now();
+    startedAt.current = prototypeNowMs();
     onEvent?.("game_started", { pack: definition.slug, version: definition.version });
   }, [definition.slug, definition.version, onEvent]);
 
@@ -85,14 +85,14 @@ export function ScenarioPrototype<K extends string, Style extends string>({
       onEvent?.("game_completed", {
         score: next.result.score,
         style: next.result.style,
-        duration_ms: Math.max(0, Date.now() - startedAt.current),
+        duration_ms: Math.max(0, prototypeNowMs() - startedAt.current),
       });
     }
   }
 
   function reset() {
     onEvent?.("game_restarted", { previous_score: session.result?.score ?? null });
-    startedAt.current = Date.now();
+    startedAt.current = prototypeNowMs();
     setSession(resetScenarioSession(definition));
     setNotice(null);
   }
