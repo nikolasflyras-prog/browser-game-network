@@ -7,7 +7,7 @@ const targetUrl = process.env.FUTURE_GAMES_LAB_URL ?? "http://127.0.0.1:3010/lab
 const artifactDir = process.env.FUTURE_GAMES_ARTIFACT_DIR ?? "artifacts/browser";
 const debugBase = "http://127.0.0.1:9227";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const learnGames = ["Market Maker", "Supply Chain Shock", "Chip Fab", "Power Grid Dispatcher"];
+const stagedLearnGames = ["Supply Chain Shock", "Chip Fab", "Power Grid Dispatcher"];
 
 await mkdir(artifactDir, { recursive: true });
 
@@ -92,7 +92,7 @@ try {
       if (!button) return false;
       button.click();
       return true;
-  })()`);
+    })()`);
     if (!clicked) throw new Error(`Could not activate ${title}`);
     await waitForExpression(`(document.querySelector('[data-lab-event-history]')?.getAttribute('data-lab-event-history') ?? '').includes('game_started')`);
   }
@@ -110,7 +110,7 @@ try {
 
   async function eventHistory() {
     const raw = await evaluate("document.querySelector('[data-lab-event-history]')?.getAttribute('data-lab-event-history') ?? ''");
-    return raw ? raw.split(","): [];
+    return raw ? raw.split(",") : [];
   }
 
   async function assertLifecycle(title, resolvedCount) {
@@ -130,33 +130,6 @@ try {
     })()`);
     if (!clicked) throw new Error(`${surface} restart control missing`);
     await waitForExpression(`(document.querySelector('[data-lab-event-history]')?.getAttribute('data-lab-event-history') ?? '').includes('game_restarted')`);
-  }
-
-  async function completeMarketMaker(suffix) {
-    const title = "Market Maker";
-    const surface = "Market Maker staged prototype";
-    await activate(title);
-    await waitForExpression(`Boolean(document.querySelector('section[aria-label=${JSON.stringify(surface)}]'))`);
-
-    for (let round = 0; round < 16; round += 1) {
-      const acted = await evaluate(`(() => {
-        const section = document.querySelector('section[aria-label=${JSON.stringify(surface)}]');
-        const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Make market'));
-        button?.click();
-        return Boolean(button);
-      })()`);
-      if (!acted) throw new Error(`Market Maker stopped before round ${round + 1}`);
-      await sleep(45);
-    }
-
-    await waitForExpression(`document.querySelector('section[aria-label=${JSON.stringify(surface)}]')?.textContent?.includes('Dealer style')`);
-    const resultText = await evaluate(`document.querySelector('section[aria-label=${JSON.stringify(surface)}]')?.textContent ?? ''`);
-    for (const label of ["Customer fills", "Peak inventory", "Risk penalty"]) {
-      if (!resultText.includes(label)) throw new Error(`Market Maker result missing ${label}`);
-    }
-    await assertLifecycle(title, 16);
-    await capture(title, surface, suffix);
-    await clickRestart(surface, "Deal again");
   }
 
   async function completeScenario(title, suffix) {
@@ -188,15 +161,19 @@ try {
   await send("Runtime.enable");
   await send("Page.enable");
 
-  await completeMarketMaker("desktop");
-  for (const title of learnGames.slice(1)) await completeScenario(title, "desktop");
+  for (const title of stagedLearnGames) await completeScenario(title, "desktop");
 
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-  await completeMarketMaker("mobile");
-  for (const title of learnGames.slice(1)) await completeScenario(title, "mobile");
+  for (const title of stagedLearnGames) await completeScenario(title, "mobile");
 
   if (runtimeErrors.length) throw new Error(`Runtime errors detected during result QA: ${runtimeErrors.join(" | ")}`);
-  console.log(JSON.stringify({ targetUrl, completedLearnGames: learnGames, resultCaptures: 8, analyticsLifecycleVerified: true }));
+  console.log(JSON.stringify({
+    targetUrl,
+    completedLearnGames: stagedLearnGames,
+    resultCaptures: stagedLearnGames.length * 2,
+    analyticsLifecycleVerified: true,
+    promotedLearnGamesExcluded: ["Market Maker"],
+  }));
 } finally {
   socket?.close();
   if (chrome.exitCode === null) {
