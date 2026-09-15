@@ -140,6 +140,13 @@ export const supplyChainScenarios: readonly ScenarioStep<SupplyMetric>[] = [
   },
 ] as const;
 
+export function supplyChainCapabilities(metrics: Record<SupplyMetric, number>) {
+  return {
+    alternateCapacityReady: metrics.resilience >= 50,
+    safetyStockReady: metrics.inventory >= 60,
+  } as const;
+}
+
 export function supplyChainFinalScore(metrics: Record<SupplyMetric, number>) {
   const cashHealth = metrics.cash;
   const backlogControl = 100 - metrics.backlog;
