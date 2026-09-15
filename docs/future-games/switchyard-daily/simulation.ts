@@ -21,6 +21,8 @@ export type SwitchyardState = {
   }[];
 };
 
+const ACTIONS: readonly SwitchyardAction[] = ["HOLD", "A", "B", "C"];
+
 function nextRandom(seed: number) {
   const next = (seed * 1103515245 + 12345) >>> 0;
   return { seed: next, value: next / 0xffffffff };
@@ -36,13 +38,21 @@ function applyAction(switches: Record<SwitchId, boolean>, action: SwitchyardActi
   return { ...switches, [action]: !switches[action] };
 }
 
+export function routeAfterAction(switches: Record<SwitchId, boolean>, action: SwitchyardAction) {
+  return routeDepot(applyAction(switches, action));
+}
+
+function reachableDepotsForSwitches(switches: Record<SwitchId, boolean>): Depot[] {
+  return [...new Set(ACTIONS.map((action) => routeAfterAction(switches, action)))].sort() as Depot[];
+}
+
 function generateTarget(switches: Record<SwitchId, boolean>, seed: number) {
   const roll = nextRandom(seed);
-  const actions: SwitchyardAction[] = ["HOLD", "A", "B", "C"];
-  const action = actions[Math.floor(roll.value * actions.length)] ?? "HOLD";
+  const depots = reachableDepotsForSwitches(switches);
+  const index = Math.min(depots.length - 1, Math.floor(roll.value * depots.length));
   return {
     seed: roll.seed,
-    target: routeDepot(applyAction(switches, action)),
+    target: depots[index] ?? 0,
   };
 }
 
@@ -70,7 +80,7 @@ export function playSwitchyardTurn(state: SwitchyardState, action: SwitchyardAct
   const actual = routeDepot(switches);
   const correct = actual === state.target;
   const turn = state.turn + 1;
-  const score = state.score + (correct ? 100 + state.strikes * -10 : 0);
+  const score = state.score + (correct ? 100 - state.strikes * 10 : 0);
   const strikes = state.strikes + (correct ? 0 : 1);
   const terminal = strikes >= 3 || turn >= state.maxTurns;
 
@@ -100,6 +110,5 @@ export function playSwitchyardTurn(state: SwitchyardState, action: SwitchyardAct
 }
 
 export function reachableDepots(state: SwitchyardState): Depot[] {
-  const actions: SwitchyardAction[] = ["HOLD", "A", "B", "C"];
-  return [...new Set(actions.map((action) => routeDepot(applyAction(state.switches, action))))] as Depot[];
+  return reachableDepotsForSwitches(state.switches);
 }

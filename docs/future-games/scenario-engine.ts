@@ -1,10 +1,18 @@
 export type MetricMap<K extends string> = Record<K, number>;
 
+export type ScenarioMetricRequirement = {
+  min?: number;
+  max?: number;
+};
+
 export type ScenarioChoice<K extends string> = {
   id: string;
   label: string;
   detail: string;
   impacts: Partial<Record<K, number>>;
+  resolveImpacts?: (metrics: MetricMap<K>) => Partial<Record<K, number>>;
+  requirements?: Partial<Record<K, ScenarioMetricRequirement>>;
+  unavailableFeedback?: string;
   scoreDelta?: number;
   feedback: string;
 };
@@ -53,6 +61,36 @@ export function createScenarioState<K extends string>(metrics: MetricMap<K>): Sc
   };
 }
 
+export function isScenarioChoiceAvailable<K extends string>(
+  metrics: MetricMap<K>,
+  choice: ScenarioChoice<K>,
+) {
+  const requirements = choice.requirements ?? {};
+  return (Object.keys(requirements) as K[]).every((metric) => {
+    const requirement = requirements[metric];
+    if (!requirement) return true;
+    const value = metrics[metric];
+    if (requirement.min !== undefined && value < requirement.min) return false;
+    if (requirement.max !== undefined && value > requirement.max) return false;
+    return true;
+  });
+}
+
+export function availableScenarioChoices<K extends string>(state: ScenarioState<K>, step: ScenarioStep<K>) {
+  return step.choices.filter((choice) => isScenarioChoiceAvailable(state.metrics, choice));
+}
+
+function resolvedImpacts<K extends string>(choice: ScenarioChoice<K>, metrics: MetricMap<K>) {
+  const impacts: Partial<Record<K, number>> = { ...choice.impacts };
+  const dynamic = choice.resolveImpacts?.(metrics) ?? {};
+
+  for (const metric of Object.keys(dynamic) as K[]) {
+    impacts[metric] = (impacts[metric] ?? 0) + (dynamic[metric] ?? 0);
+  }
+
+  return impacts;
+}
+
 export function applyScenarioChoice<K extends string>(
   state: ScenarioState<K>,
   step: ScenarioStep<K>,
@@ -63,12 +101,16 @@ export function applyScenarioChoice<K extends string>(
 
   const choice = step.choices.find((candidate) => candidate.id === choiceId);
   if (!choice) throw new Error(`Unknown choice ${choiceId} for step ${step.id}`);
+  if (!isScenarioChoiceAvailable(state.metrics, choice)) {
+    throw new Error(choice.unavailableFeedback ?? `Choice ${choiceId} is unavailable for step ${step.id}`);
+  }
 
   const before = { ...state.metrics };
   const after = { ...state.metrics };
+  const impacts = resolvedImpacts(choice, before);
 
-  for (const metric of Object.keys(choice.impacts) as K[]) {
-    const delta = choice.impacts[metric] ?? 0;
+  for (const metric of Object.keys(impacts) as K[]) {
+    const delta = impacts[metric] ?? 0;
     const minimum = rules.min?.[metric];
     const maximum = rules.max?.[metric];
     after[metric] = clamp(after[metric] + delta, minimum, maximum);

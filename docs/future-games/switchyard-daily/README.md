@@ -1,7 +1,7 @@
 # Switchyard Daily
 
 **Lane:** PLAY  
-**Status:** staged concept + simulation  
+**Status:** staged prototype — headless playtest-ready  
 **Primary hypothesis:** if Linebreak Daily proves daily-return behavior, can a second deterministic daily puzzle create habit without copying the same path-drawing mechanic?
 
 ## Fantasy
@@ -23,11 +23,23 @@ You are the switch operator for a compact rail yard. Each arriving train has a d
 5. Correct route scores; wrong route costs a strike.
 6. Ten trains form the daily puzzle. Three strikes ends the run early.
 
-The simulation intentionally generates each target from a state reachable with at most one legal action, so every round is solvable.
+Every generated target is reachable with at most one legal action. Targets are selected uniformly from the **distinct reachable depots**, rather than by first selecting an action. This avoids accidentally making the current route twice as likely when two actions happen to produce the same destination.
 
 ## Why it is distinct from Linebreak Daily
 
 Linebreak is spatial path planning with ink/key/gate constraints. Switchyard is state transformation and network reasoning under a one-action budget. It can share daily seed/streak/share infrastructure while testing a different cognitive loop.
+
+## Headless mechanic gate
+
+The staged simulation tests an oracle that reads the visible switch state against four blind policies that always choose the same action.
+
+Before UI promotion:
+
+- the visible-state oracle must complete every deterministic seed without a strike;
+- no fixed HOLD/A/B/C strategy should win more than 10% of ten-train puzzles;
+- the oracle should score at least 5× a blind HOLD policy across the seed batch.
+
+This gate is intentionally simple: it proves the state diagram contains usable information and that success does not come from repeating one button. Browser playtesting still has to prove the diagram is readable to humans.
 
 ## Controls
 
@@ -39,7 +51,7 @@ Linebreak is spatial path planning with ink/key/gate constraints. Switchyard is 
 
 - Early rounds highlight the active branch.
 - Mid rounds remove branch highlighting.
-- Later rounds shorten the pre-arrival decision timer in challenge mode, but the baseline daily puzzle should remain untimed.
+- Later rounds can shorten the pre-arrival decision timer in challenge mode, but the baseline daily puzzle should remain untimed.
 
 ## Results / sharing
 
