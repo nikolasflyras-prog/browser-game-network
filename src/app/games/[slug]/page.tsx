@@ -5,6 +5,7 @@ import { GameHost } from "@/components/game/GameHost";
 import { LinebreakDailyProgress } from "@/components/game/LinebreakDailyProgress";
 import { MarketMaker } from "@/components/game/MarketMaker";
 import { RunTheFed } from "@/components/game/RunTheFed";
+import { SupplyChainShock } from "@/components/game/SupplyChainShock";
 import { getGameSeoContent } from "@/content/gameSeo";
 import { getGameMetadata, gameRegistry } from "@/games/registry";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
@@ -93,6 +94,8 @@ export default async function GamePage({ params }: PageProps) {
         <RunTheFed />
       ) : game.slug === "market-maker" ? (
         <MarketMaker />
+      ) : game.slug === "supply-chain-shock" ? (
+        <SupplyChainShock />
       ) : (
         <>
           <GameHost game={game} />

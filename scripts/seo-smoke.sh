@@ -27,9 +27,10 @@ curl -fsS "$BASE_URL/games/orbit-relay" >"$ARTIFACT_DIR/orbit-relay.html"
 curl -fsS "$BASE_URL/games/linebreak-daily" >"$ARTIFACT_DIR/linebreak-daily.html"
 curl -fsS "$BASE_URL/games/run-the-fed" >"$ARTIFACT_DIR/run-the-fed.html"
 curl -fsS "$BASE_URL/games/market-maker" >"$ARTIFACT_DIR/market-maker.html"
+curl -fsS "$BASE_URL/games/supply-chain-shock" >"$ARTIFACT_DIR/supply-chain-shock.html"
 curl -fsS "$BASE_URL/games/system-check" >"$ARTIFACT_DIR/system-check.html"
 
-for path in games/orbit-relay games/linebreak-daily games/run-the-fed games/market-maker about privacy terms; do
+for path in games/orbit-relay games/linebreak-daily games/run-the-fed games/market-maker games/supply-chain-shock about privacy terms; do
   grep -q "https://browser-game-network.vercel.app/$path" "$ARTIFACT_DIR/sitemap.xml"
 done
 
@@ -53,14 +54,17 @@ grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/orb
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/linebreak-daily"' "$ARTIFACT_DIR/linebreak-daily.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/run-the-fed"' "$ARTIFACT_DIR/run-the-fed.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/market-maker"' "$ARTIFACT_DIR/market-maker.html"
+grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/supply-chain-shock"' "$ARTIFACT_DIR/supply-chain-shock.html"
 
-for page in orbit-relay linebreak-daily run-the-fed market-maker; do
+for page in orbit-relay linebreak-daily run-the-fed market-maker supply-chain-shock; do
   grep -q 'application/ld+json' "$ARTIFACT_DIR/$page.html"
   grep -q 'Frequently asked questions' "$ARTIFACT_DIR/$page.html"
   grep -q 'Strategy' "$ARTIFACT_DIR/$page.html"
 done
 
 grep -q 'Bid-ask spread' "$ARTIFACT_DIR/market-maker.html"
+grep -q 'Supply-chain resilience' "$ARTIFACT_DIR/supply-chain-shock.html"
+grep -q 'Path dependence' "$ARTIFACT_DIR/supply-chain-shock.html"
 grep -q 'Games first. Learning through systems.' "$ARTIFACT_DIR/about.html"
 grep -q 'Small games. Minimal data.' "$ARTIFACT_DIR/privacy.html"
 grep -q 'Automatic click tracking and session replay are disabled' "$ARTIFACT_DIR/privacy.html"
@@ -77,4 +81,4 @@ if grep -q 'application/ld+json' "$ARTIFACT_DIR/system-check.html"; then
   exit 1
 fi
 
-echo "SEO smoke test passed: public sitemap, robots rules, canonicals, conservative security headers, structured data for all public games including Market Maker, trust/legal pages, footer launch navigation, and diagnostic noindex are all present."
+echo "SEO smoke test passed: public sitemap, robots rules, canonicals, security headers, structured data for five public games including Supply Chain Shock, trust/legal pages, footer navigation, and diagnostic noindex are all present."

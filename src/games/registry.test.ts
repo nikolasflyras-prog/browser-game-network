@@ -10,12 +10,14 @@ describe("game registry", () => {
   it("resolves registered games", () => {
     expect(getGameMetadata("system-check")?.status).toBe("diagnostic");
     expect(getGameMetadata("market-maker")?.lane).toBe("Learn");
+    expect(getGameMetadata("supply-chain-shock")?.category).toBe("Operations Simulation");
   });
 
-  it("marks the four public games live", () => {
+  it("marks the five public games live", () => {
     expect(publicGameRegistry.map((game) => [game.slug, game.status])).toEqual([
       ["run-the-fed", "live"],
       ["market-maker", "live"],
+      ["supply-chain-shock", "live"],
       ["linebreak-daily", "live"],
       ["orbit-relay", "live"],
     ]);

@@ -86,6 +86,26 @@ export const gameSeoContent: Record<string, GameSeoContent> = {
       { question: "Does Market Maker use real market data?", answer: "No. Prices and customer flow are synthetic. The model is designed to teach the mechanics and tradeoffs of two-sided quoting, not simulate a specific security or exchange." },
     ],
   },
+  "supply-chain-shock": {
+    summary: "Supply Chain Shock is an operations simulation about preparing for and responding to disruption. Decisions about inventory, alternate suppliers, customer allocation, and emergency sourcing change service, cash, backlog, and resilience—and earlier preparation can unlock options that do not exist after a crisis begins.",
+    howTo: [
+      "Review service, resilience, cash, inventory, backlog, and the preparedness capabilities shown above the current scenario.",
+      "Choose one operating response, then inspect the exact metric changes and causal explanation before the next disruption arrives.",
+      "Notice that safety stock and qualified alternate capacity are capabilities, not free score: both consume resources before they are needed.",
+      "Finish the four-scenario sequence with strong service and resilience without exhausting cash or allowing backlog and excess inventory to dominate the network.",
+    ],
+    concepts: ["Supply-chain resilience", "Safety stock", "Contingency capacity", "Service levels", "Backlog", "Working capital", "Path dependence"],
+    strategy: [
+      "Preparation is valuable when it preserves future choices. A qualified second supplier costs cash before the failure but can become the only low-damage response later.",
+      "Inventory is a buffer, not a universal good. Safety stock can absorb a logistics delay, but excess inventory ties up working capital and can become a penalty.",
+      "Do not optimize the current quarter in isolation. A response that looks cheap now can create backlog, service damage, or missing capabilities in later scenarios.",
+    ],
+    faqs: [
+      { question: "Why is alternate capacity sometimes unavailable?", answer: "The backup-supplier response requires enough resilience to represent work completed before the shutdown. If you did not build that capability earlier, the game does not let you create it instantly during the crisis." },
+      { question: "Is more inventory always safer?", answer: "No. Inventory can protect service when logistics break, but it consumes cash and can become inefficient when the buffer is larger than the disruption requires." },
+      { question: "Does Supply Chain Shock model a specific company?", answer: "No. The scenarios are synthetic and simplified to make operating tradeoffs visible. They are not a forecast or a model of a particular company's network." },
+    ],
+  },
 };
 
 export function getGameSeoContent(slug: string): GameSeoContent | undefined {
