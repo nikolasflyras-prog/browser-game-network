@@ -49,6 +49,15 @@ export const gameRegistry: readonly GameMetadata[] = [
     version: "0.1.0",
   },
   {
+    slug: "power-grid-dispatcher",
+    title: "Power Grid Dispatcher",
+    description: "Dispatch generation, storage, demand response, and transmission workarounds through grid stress while balancing reliability, reserve, cost, emissions, and finite flexibility.",
+    lane: "Learn",
+    category: "Energy Systems Simulation",
+    status: "live",
+    version: "0.1.0",
+  },
+  {
     slug: "linebreak-daily",
     title: "Linebreak Daily",
     description: "Draw one continuous route through the daily grid. Find the key, cross the gate, avoid hazards, and reach the exit before your ink runs out.",

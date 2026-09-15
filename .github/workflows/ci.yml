@@ -45,6 +45,9 @@ jobs:
       - name: Chip Fab smoke test
         run: bash scripts/chip-fab-smoke.sh
 
+      - name: Power Grid smoke test
+        run: bash scripts/power-grid-smoke.sh
+
       - name: Run the Fed smoke test
         run: bash scripts/run-the-fed-smoke.sh
 

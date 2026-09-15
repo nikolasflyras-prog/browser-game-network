@@ -29,9 +29,10 @@ curl -fsS "$BASE_URL/games/run-the-fed" >"$ARTIFACT_DIR/run-the-fed.html"
 curl -fsS "$BASE_URL/games/market-maker" >"$ARTIFACT_DIR/market-maker.html"
 curl -fsS "$BASE_URL/games/supply-chain-shock" >"$ARTIFACT_DIR/supply-chain-shock.html"
 curl -fsS "$BASE_URL/games/chip-fab" >"$ARTIFACT_DIR/chip-fab.html"
+curl -fsS "$BASE_URL/games/power-grid-dispatcher" >"$ARTIFACT_DIR/power-grid-dispatcher.html"
 curl -fsS "$BASE_URL/games/system-check" >"$ARTIFACT_DIR/system-check.html"
 
-for path in games/orbit-relay games/linebreak-daily games/run-the-fed games/market-maker games/supply-chain-shock games/chip-fab about privacy terms; do
+for path in games/orbit-relay games/linebreak-daily games/run-the-fed games/market-maker games/supply-chain-shock games/chip-fab games/power-grid-dispatcher about privacy terms; do
   grep -q "https://browser-game-network.vercel.app/$path" "$ARTIFACT_DIR/sitemap.xml"
 done
 
@@ -57,8 +58,9 @@ grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/run
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/market-maker"' "$ARTIFACT_DIR/market-maker.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/supply-chain-shock"' "$ARTIFACT_DIR/supply-chain-shock.html"
 grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/chip-fab"' "$ARTIFACT_DIR/chip-fab.html"
+grep -q 'rel="canonical" href="https://browser-game-network.vercel.app/games/power-grid-dispatcher"' "$ARTIFACT_DIR/power-grid-dispatcher.html"
 
-for page in orbit-relay linebreak-daily run-the-fed market-maker supply-chain-shock chip-fab; do
+for page in orbit-relay linebreak-daily run-the-fed market-maker supply-chain-shock chip-fab power-grid-dispatcher; do
   grep -q 'application/ld+json' "$ARTIFACT_DIR/$page.html"
   grep -q 'Frequently asked questions' "$ARTIFACT_DIR/$page.html"
   grep -q 'Strategy' "$ARTIFACT_DIR/$page.html"
@@ -69,6 +71,8 @@ grep -q 'Supply-chain resilience' "$ARTIFACT_DIR/supply-chain-shock.html"
 grep -q 'Path dependence' "$ARTIFACT_DIR/supply-chain-shock.html"
 grep -q 'Semiconductor yield' "$ARTIFACT_DIR/chip-fab.html"
 grep -q 'Bottleneck utilization' "$ARTIFACT_DIR/chip-fab.html"
+grep -q 'Grid reliability' "$ARTIFACT_DIR/power-grid-dispatcher.html"
+grep -q 'Energy storage dispatch' "$ARTIFACT_DIR/power-grid-dispatcher.html"
 grep -q 'Games first. Learning through systems.' "$ARTIFACT_DIR/about.html"
 grep -q 'Small games. Minimal data.' "$ARTIFACT_DIR/privacy.html"
 grep -q 'Automatic click tracking and session replay are disabled' "$ARTIFACT_DIR/privacy.html"
@@ -85,4 +89,4 @@ if grep -q 'application/ld+json' "$ARTIFACT_DIR/system-check.html"; then
   exit 1
 fi
 
-echo "SEO smoke test passed: public sitemap, robots rules, canonicals, security headers, structured data for six public games including Chip Fab, trust/legal pages, footer navigation, and diagnostic noindex are all present."
+echo "SEO smoke test passed: public sitemap, robots rules, canonicals, security headers, structured data for seven public games including Power Grid Dispatcher, trust/legal pages, footer navigation, and diagnostic noindex are all present."

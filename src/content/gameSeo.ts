@@ -126,6 +126,26 @@ export const gameSeoContent: Record<string, GameSeoContent> = {
       { question: "Does Chip Fab model a specific semiconductor process?", answer: "No. The metrics and scenarios are synthetic and simplified to teach manufacturing tradeoffs, not reproduce a particular fab, node, or company's process flow." },
     ],
   },
+  "power-grid-dispatcher": {
+    summary: "Power Grid Dispatcher is an energy-systems simulation about keeping supply and demand balanced through forecast misses, heat, and transmission constraints. Reliability and reserve are hard operating requirements, while storage is finite flexibility that can solve one problem now and disappear before the next one arrives.",
+    howTo: [
+      "Review reliability, reserve, storage, system cost, emissions, and the three operating signals before each dispatch decision.",
+      "Choose one response to each stress event, then inspect the exact metric changes and explanation before the next contingency arrives.",
+      "Treat storage as optionality rather than free energy: using batteries for an early ramp or wind miss can remove a later heatwave response.",
+      "Finish the four-event sequence with strong reliability and reserve without paying unnecessary cost, emissions, or reliability penalties.",
+    ],
+    concepts: ["Grid reliability", "Reserve margin", "Energy storage dispatch", "Demand response", "Transmission constraints", "Scarcity pricing", "Dispatch cost", "Power-sector emissions"],
+    strategy: [
+      "Preserve enough reserve for the next contingency. A cheap dispatch that leaves the system with no buffer can score worse even if current cost is low.",
+      "Storage has an opportunity cost. Before discharging batteries, ask whether the same flexibility may be more valuable in a later, harder-to-serve event.",
+      "Use demand response and targeted load reduction as system resources, not as free fixes: they can protect reliability and emissions but still carry economic or customer costs.",
+    ],
+    faqs: [
+      { question: "Why can a battery response be unavailable later?", answer: "Storage is finite. If earlier decisions reduce the stored-energy metric below the threshold for a later response, the game blocks that option and explains which flexibility was spent." },
+      { question: "Why does the game penalize low reserve even if the lights stay on?", answer: "A grid can serve current load and still be fragile. Reserve represents the margin available for the next generator, weather, or transmission problem, so running below the buffer creates an operating penalty." },
+      { question: "Does Power Grid Dispatcher model a real power market?", answer: "No. The scenarios and metrics are synthetic and simplified to teach dispatch, reserve, storage, transmission, cost, and emissions tradeoffs rather than reproduce a specific ISO, utility, or market." },
+    ],
+  },
 };
 
 export function getGameSeoContent(slug: string): GameSeoContent | undefined {
