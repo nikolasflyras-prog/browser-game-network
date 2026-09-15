@@ -16,6 +16,7 @@ for _ in $(seq 1 40); do
   sleep 1
 done
 
+curl -fsSI "$BASE_URL/" >"$ARTIFACT_DIR/home.headers"
 curl -fsS "$BASE_URL/sitemap.xml" >"$ARTIFACT_DIR/sitemap.xml"
 curl -fsS "$BASE_URL/robots.txt" >"$ARTIFACT_DIR/robots.txt"
 curl -fsS "$BASE_URL/" >"$ARTIFACT_DIR/home.html"
@@ -36,6 +37,10 @@ if grep -q "system-check" "$ARTIFACT_DIR/sitemap.xml"; then
   echo "Diagnostic System Check leaked into the public sitemap."
   exit 1
 fi
+
+grep -qi '^x-content-type-options: nosniff' "$ARTIFACT_DIR/home.headers"
+grep -qi '^referrer-policy: strict-origin-when-cross-origin' "$ARTIFACT_DIR/home.headers"
+grep -qi '^permissions-policy: camera=(), microphone=(), geolocation=()' "$ARTIFACT_DIR/home.headers"
 
 grep -q "Sitemap: https://browser-game-network.vercel.app/sitemap.xml" "$ARTIFACT_DIR/robots.txt"
 grep -q "Disallow: /games/system-check" "$ARTIFACT_DIR/robots.txt"
@@ -72,4 +77,4 @@ if grep -q 'application/ld+json' "$ARTIFACT_DIR/system-check.html"; then
   exit 1
 fi
 
-echo "SEO smoke test passed: public sitemap, robots rules, canonicals, structured data for all public games including Market Maker, trust/legal pages, footer launch navigation, and diagnostic noindex are all present."
+echo "SEO smoke test passed: public sitemap, robots rules, canonicals, conservative security headers, structured data for all public games including Market Maker, trust/legal pages, footer launch navigation, and diagnostic noindex are all present."
