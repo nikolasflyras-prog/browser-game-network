@@ -42,6 +42,9 @@ jobs:
       - name: Supply Chain Shock smoke test
         run: bash scripts/supply-chain-shock-smoke.sh
 
+      - name: Chip Fab smoke test
+        run: bash scripts/chip-fab-smoke.sh
+
       - name: Run the Fed smoke test
         run: bash scripts/run-the-fed-smoke.sh
 
