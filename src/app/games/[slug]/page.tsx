@@ -5,6 +5,7 @@ import { ChipFab } from "@/components/game/ChipFab";
 import { GameHost } from "@/components/game/GameHost";
 import { LinebreakDailyProgress } from "@/components/game/LinebreakDailyProgress";
 import { MarketMaker } from "@/components/game/MarketMaker";
+import { PowerGridDispatcher } from "@/components/game/PowerGridDispatcher";
 import { RunTheFed } from "@/components/game/RunTheFed";
 import { SupplyChainShock } from "@/components/game/SupplyChainShock";
 import { getGameSeoContent } from "@/content/gameSeo";
@@ -99,6 +100,8 @@ export default async function GamePage({ params }: PageProps) {
         <SupplyChainShock />
       ) : game.slug === "chip-fab" ? (
         <ChipFab />
+      ) : game.slug === "power-grid-dispatcher" ? (
+        <PowerGridDispatcher />
       ) : (
         <>
           <GameHost game={game} />
