@@ -1,0 +1,61 @@
+.quoteButton[aria-pressed="true"] {
+  border-color: var(--prototype-accent);
+  background: color-mix(in srgb, var(--prototype-accent) 11%, rgba(255, 255, 255, 0.04));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--prototype-accent) 35%, transparent);
+}
+
+.quoteButton[aria-pressed="true"] strong::before {
+  content: "Selected · ";
+  color: var(--prototype-accent);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.resultDetails {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.resultStat {
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.resultStat span,
+.resultStat strong {
+  display: block;
+}
+
+.resultStat span {
+  color: #91a0ad;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.resultStat strong {
+  margin-top: 3px;
+  color: #eef3f7;
+  font-size: 1rem;
+}
+
+.resultExplanation {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--prototype-accent);
+  color: #91a0ad;
+  background: rgba(255, 255, 255, 0.025);
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .resultDetails {
+    grid-template-columns: 1fr;
+  }
+}

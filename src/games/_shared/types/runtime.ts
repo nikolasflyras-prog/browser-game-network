@@ -6,6 +6,7 @@ export type GameEventName =
   | "game_restarted"
   | "game_completed"
   | "game_over"
+  | "game_action"
   | "level_started"
   | "level_completed"
   | "daily_started"

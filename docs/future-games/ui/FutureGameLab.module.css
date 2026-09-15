@@ -1,0 +1,241 @@
+.lab {
+  min-height: 100vh;
+  padding: clamp(20px, 4vw, 56px);
+  background: #0c0f12;
+  color: #f4f2ec;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.header {
+  max-width: 1180px;
+  margin: 0 auto 24px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+}
+
+.header h1 {
+  margin: 6px 0 10px;
+  font-size: clamp(32px, 5vw, 58px);
+  letter-spacing: -0.045em;
+}
+
+.header p {
+  max-width: 760px;
+  margin: 0;
+  color: #aab2b8;
+  line-height: 1.55;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 800;
+  color: #7f8c94 !important;
+}
+
+.batchBadge {
+  flex: 0 0 auto;
+  border: 1px solid #303941;
+  border-radius: 999px;
+  padding: 9px 13px;
+  color: #b9c2c8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gameTabs {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gameTabs button {
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid #273038;
+  border-radius: 12px;
+  background: #12171b;
+  color: #d8dde0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gameTabs button[aria-pressed="true"] {
+  border-color: #e5d267;
+  background: #1b1e1c;
+  color: #fffdf4;
+}
+
+.gameTabs button span {
+  display: block;
+  margin-bottom: 6px;
+  color: #7f8c94;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.gameTabs button strong {
+  font-size: 13px;
+}
+
+.contextStrip {
+  max-width: 1180px;
+  margin: 12px auto 18px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  border-left: 3px solid #e5d267;
+  background: #111519;
+}
+
+.contextStrip span {
+  color: #929da4;
+  font-size: 13px;
+}
+
+.stage {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.runtimeShell {
+  overflow: hidden;
+  border: 1px solid #29333a;
+  border-radius: 16px;
+  background: #0b1116;
+}
+
+.runtimeToolbar {
+  min-height: 58px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #222c33;
+  background: #11171c;
+}
+
+.runtimeToolbar > div:first-child {
+  min-width: 0;
+}
+
+.runtimeToolbar strong,
+.runtimeToolbar span {
+  display: block;
+}
+
+.runtimeToolbar span {
+  margin-top: 3px;
+  overflow: hidden;
+  color: #8d9aa2;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtimeControls {
+  display: flex;
+  gap: 8px;
+}
+
+.runtimeControls button {
+  border: 1px solid #36424b;
+  border-radius: 9px;
+  padding: 8px 11px;
+  background: #182027;
+  color: #e8ecee;
+  cursor: pointer;
+}
+
+.runtimeControls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.runtimeMount {
+  width: 100%;
+  height: clamp(460px, 66vh, 720px);
+}
+
+.eventReadout {
+  margin: 0;
+  padding: 9px 14px;
+  border-top: 1px solid #222c33;
+  color: #829099;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.qaCard {
+  max-width: 1180px;
+  margin: 18px auto 0;
+  display: grid;
+  grid-template-columns: 1.2fr repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid #263039;
+  border-radius: 12px;
+  color: #8d999f;
+  font-size: 11px;
+}
+
+.qaCard strong {
+  color: #dfe4e6;
+}
+
+@media (max-width: 900px) {
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .gameTabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .qaCard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .qaCard strong {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .lab {
+    padding: 14px;
+  }
+
+  .gameTabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .contextStrip {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .runtimeToolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .runtimeMount {
+    height: 620px;
+  }
+
+  .qaCard {
+    grid-template-columns: 1fr;
+  }
+}

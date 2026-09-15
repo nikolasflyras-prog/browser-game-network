@@ -1,0 +1,82 @@
+.progress {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid #263039;
+  border-radius: 12px;
+  background: #11171c;
+  color: #dfe4e6;
+}
+
+.stat {
+  min-width: 84px;
+  text-align: center;
+}
+
+.stat span,
+.stat strong,
+.stat small,
+.copy strong,
+.copy span {
+  display: block;
+}
+
+.stat span,
+.stat small,
+.copy span {
+  color: #8d999f;
+  font-size: 0.72rem;
+}
+
+.stat strong {
+  margin: 2px 0;
+  color: #78dfaa;
+  font-size: 1.65rem;
+}
+
+.copy strong {
+  color: #f5f5ef;
+  font-size: 0.88rem;
+}
+
+.copy span {
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+.copy .routeRecord {
+  color: #dfe4e6;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+}
+
+.share {
+  min-width: 104px;
+  padding: 9px 12px;
+  border: 1px solid #67757d;
+  border-radius: 999px;
+  background: #1a2328;
+  color: #f5f5ef;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.share:focus-visible {
+  outline: 2px solid #78dfaa;
+  outline-offset: 2px;
+}
+
+@media (max-width: 620px) {
+  .progress {
+    grid-template-columns: 70px 1fr;
+  }
+
+  .share {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}

@@ -1,0 +1,58 @@
+.capabilityRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.capability {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.capability span,
+.capability strong,
+.capability small {
+  display: block;
+}
+
+.capability span {
+  color: #91a0ad;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.capability strong {
+  margin-top: 3px;
+  color: #eef3f7;
+  font-size: 0.92rem;
+}
+
+.capability small {
+  margin-top: 4px;
+  color: #91a0ad;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.capability[data-status="ready"] {
+  border-color: rgba(120, 223, 170, 0.42);
+}
+
+.capability[data-status="ready"] strong {
+  color: #78dfaa;
+}
+
+.capability[data-status="pending"] {
+  border-style: dashed;
+}
+
+@media (max-width: 620px) {
+  .capabilityRow {
+    grid-template-columns: 1fr;
+  }
+}

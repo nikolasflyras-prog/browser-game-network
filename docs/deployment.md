@@ -3,32 +3,48 @@
 ## Intended workflow
 
 1. Create a feature branch from `main`.
-2. Push a coherent batch of changes and run CI.
-3. Use the Vercel preview deployment for browser QA when the account build quota permits it.
-4. Check desktop and mobile layouts, controls, restart/reset paths, refresh/persistence, console/runtime errors, and affected SEO routes.
-5. Merge only after GitHub CI is green.
-6. Production follows `main` through Vercel Git integration.
-7. After production is ready, run the production checklist in `docs/launch.md` before inviting traffic.
+2. Accumulate a coherent batch of changes before advancing the deployed branch ref.
+3. Run CI on the coherent revision.
+4. Use one Vercel preview for browser QA when the batch is large enough to justify a build.
+5. Check desktop/mobile layouts, controls, restart/reset paths, refresh/persistence, console/runtime errors, and affected SEO routes.
+6. Merge only after GitHub CI is green.
+7. Production follows `main` through Vercel Git integration.
+8. After production is ready, run `docs/launch.md` before inviting traffic.
+
+## Quota-conserving agent batching
+
+When an automated coding session is making many incremental edits, do **not** advance a Vercel-connected branch for every logical commit.
+
+The repository can safely accumulate Git tree/commit objects while leaving the branch ref at the last deployed revision:
+
+1. Build a new Git tree from the current batch head.
+2. Create a commit whose parent is the previous internal batch commit.
+3. Continue chaining commits without updating the Vercel-connected branch ref.
+4. Confirm the unattached commit has no Vercel deployment status.
+5. Once the work forms a coherent QA-worthy batch, move the branch ref to the internal head **once**.
+6. That ref movement becomes the single preview deployment for the accumulated batch.
+
+This is a temporary batching technique, not long-term storage. Do not leave important work only in unattached commits indefinitely; attach the batch to a normal branch when the batch is ready for CI/preview or before ending a workstream.
 
 ## Environments
 
-- **Preview:** non-production branches/PRs when Git integration can create a build.
+- **Preview:** non-production branches/PRs when Git integration creates a build.
 - **Production:** `main`.
 
 Do not commit `.vercel/` project metadata or environment secrets.
 
 ## Ignored Vercel builds
 
-`vercel.json` skips a Vercel build when the only changes since the previous successful deployment are in:
+`vercel.json` attempts to skip a Vercel build when the only changes since the previous successful deployment are in:
 
 - `docs/**`;
 - `README.md`;
 - `.env.example`;
 - `.github/**`.
 
-Vercel documents `ignoreCommand` so exit code `0` ignores the build and exit code `1` continues it. The configured command uses `VERCEL_GIT_PREVIOUS_SHA` and performs a Git diff that excludes only the documentation/CI paths above. If the previous SHA is unavailable, it deliberately exits `1` so the build proceeds rather than being skipped accidentally.
+Vercel `ignoreCommand` uses exit code `0` to ignore a build and exit code `1` to continue it. If the previous SHA is unavailable, the configured guard deliberately allows the build rather than risk skipping real application changes.
 
-Any game, application, UI, configuration, package, public asset, or runtime-script change therefore still requests a normal preview/production build.
+Any game, application, UI, configuration, package, public asset, or runtime-script change therefore still requests a normal build once its branch ref advances.
 
 ## Production environment variables
 
@@ -43,7 +59,7 @@ Only set the key after the public Privacy page is live. Confirm the host matches
 
 ## CI acceptance gates
 
-A pull request is not ready to merge until the repository CI passes:
+A pull request is not ready to merge until repository CI passes:
 
 - lint;
 - TypeScript checking;
@@ -54,6 +70,8 @@ A pull request is not ready to merge until the repository CI passes:
 - real Linebreak Daily solve/persistence/streak/share regression;
 - Run the Fed eight-quarter interaction/persistence regression;
 - SEO checks for sitemap, robots, canonicals, public game content, trust/legal pages, and diagnostic noindex.
+
+Future-game lab code must also keep its deterministic balance and integration-adapter tests green before any candidate is promoted.
 
 ## Production acceptance test
 
@@ -72,16 +90,16 @@ After a new production revision becomes available:
 
 ## Deployment throttling
 
-The current project is hosted under a Vercel Hobby team. During rapid iteration, Git-triggered preview/production builds can hit account-level build-rate limits. A rate-limit status is an infrastructure throttle, not proof that the application build failed.
+During rapid iteration, Git-triggered previews can hit account-level build-rate limits. A rate-limit status is an infrastructure throttle, not proof that the application build failed.
 
-When throttled:
+When throttled or preserving quota:
 
-- do not repeatedly create no-op commits or redeploy attempts;
-- continue code/QA work behind GitHub CI;
-- batch changes so the next allowed Vercel build carries a meaningful revision;
-- rely on the ignored-build guard for documentation-only changes;
-- once the quota resets, verify the first successful production build against `docs/launch.md`;
-- move to an appropriate commercial Vercel plan before monetized/public-commercial operation if required by the platform terms and expected deployment volume.
+- do not create no-op commits or repeated redeploy attempts;
+- continue logic/docs work without advancing a deployed branch ref;
+- batch related code so the next preview represents a meaningful QA checkpoint;
+- use ignored-build rules for documentation-only changes where possible;
+- once a preview is intentionally created, test that revision thoroughly before spending another build;
+- move to an appropriate commercial plan before monetized/public-commercial operation if required by platform terms and expected deployment volume.
 
 ## Diagnostic route
 

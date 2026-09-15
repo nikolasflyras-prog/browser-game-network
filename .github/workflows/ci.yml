@@ -39,6 +39,9 @@ jobs:
       - name: Market Maker smoke test
         run: bash scripts/market-maker-smoke.sh
 
+      - name: Future games lab smoke test
+        run: bash scripts/future-games-lab-smoke.sh
+
       - name: Run the Fed smoke test
         run: bash scripts/run-the-fed-smoke.sh
 
