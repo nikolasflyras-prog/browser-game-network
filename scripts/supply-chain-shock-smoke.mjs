@@ -97,7 +97,9 @@ try {
       const section = document.querySelector('section[aria-label="Supply Chain Shock simulation"]');
       const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(label)}));
       if (!button) return null;
+      button.scrollIntoView({ block: 'center', inline: 'center' });
       const rect = button.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return null;
       return {
         x: rect.left + rect.width / 2,
         y: rect.top + Math.min(rect.height / 2, 28),
@@ -109,8 +111,7 @@ try {
 
   async function realClick(label, expectAdvance = true) {
     const beforeStep = await evaluate(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.getAttribute('data-supply-step')`);
-    const point = await buttonPoint(label);
-    if (!point) throw new Error(`Supply Chain control missing: ${label}`);
+    const point = await waitForValue(() => buttonPoint(label));
     if (expectAdvance && point.disabled === "true") throw new Error(`Supply Chain control unexpectedly disabled: ${label}`);
     await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y });
     await send("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
@@ -132,7 +133,14 @@ try {
   await send("Runtime.enable");
   await send("Page.enable");
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Supply Chain Shock simulation"]'))`);
-  await waitForExpression(`Boolean(Array.from(document.querySelectorAll('button')).find((node) => node.textContent?.includes('Qualify a second supplier')))`);
+  await waitForExpression(`(() => {
+    const section = document.querySelector('section[aria-label="Supply Chain Shock simulation"]');
+    const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Qualify a second supplier'));
+    return Boolean(button && Object.keys(button).some((key) => key.startsWith('__reactProps$') || key.startsWith('__reactFiber$')));
+  })()`);
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyStep === '0'`);
+
+  await evaluate(`localStorage.removeItem('bgn:supply-chain-shock:best-score'); true`);
 
   await realClick("Qualify a second supplier");
   const prepared = await evaluate(`(() => {
