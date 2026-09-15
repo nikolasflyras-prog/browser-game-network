@@ -123,7 +123,11 @@ try {
     if (!acted) throw new Error(`Market Maker stopped before round ${expectedRound}`);
 
     if (expectedRound < 16) {
-      await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.textContent?.includes(${JSON.stringify(`Round${expectedRound}/16`)})`);
+      await waitForExpression(`(() => {
+        const section = document.querySelector('section[aria-label="Market Maker simulation"]');
+        const label = Array.from(section?.querySelectorAll('span') ?? []).find((node) => node.textContent?.trim() === 'Last round');
+        return Boolean(label?.parentElement?.textContent?.includes(${JSON.stringify(`#${expectedRound}`)}));
+      })()`);
     } else {
       await waitForExpression(`document.querySelector('section[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
     }
