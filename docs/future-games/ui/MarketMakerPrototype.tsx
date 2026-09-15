@@ -19,12 +19,12 @@ function money(value: number) {
 type Props = { onEvent?: PrototypeEventSink };
 
 export function MarketMakerPrototypePanel({ onEvent }: Props) {
-  const [session, setSession] = useState(() => createMarket-makerPrototype());
+  const [session, setSession] = useState(() => createMarketMakerPrototype());
   const [selectedPosture, setSelectedPosture] = useState<QuotePosture>("balanced");
   const startedAt = useRef(Date.now());
   const startMetadata = useRef({ seed: session.state.seed, rounds: session.state.maxRounds });
   const view = marketMakerPrototypeView(session);
-  const result = market-makerPrototypeResult(session);
+  const result = marketMakerPrototypeResult(session);
   const inventoryY = `${50 - Math.max(-8, Math.min(8, view.inventory)) * 5}%`;
   const style = { "--inventory-y": inventoryY } as CSSProperties;
   const selectedQuote = view.quotes.find((quote) => quote.posture === selectedPosture) ?? view.quotes[0];
@@ -96,11 +96,11 @@ export function MarketMakerPrototypePanel({ onEvent }: Props) {
 
       <div className={styles.playfield}>
         <div className={styles.marketStage}>
-          <div className={styles.inventoryMeter} aria-label=x`Inventory ${view.inventory}`}>
+          <div className={styles.inventoryMeter} aria-label={`Inventory ${view.inventory}`}>
             <span className={styles.inventoryZero} />
             <span className={styles.inventoryDot} style={style} />
           </div>
-          <div className={styles.priceLadder} aria-label=x`${selectedPosture} quote`}>
+          <div className={styles.priceLadder} aria-label={`${selectedPosture} quote`}>
             <div className={styles.priceMark}><strong>Ask</strong><span className={styles.priceLine} /><span>${money(selectedQuote.ask)}</span></div>
             <div className={styles.priceMark} data-kind="fair"><strong>Fair</strong><span className={styles.priceLine} /><span>${money(view.fairValue)}</span></div>
             <div className={styles.priceMark}><strong>Bid</strong><span className={styles.priceLine} /><span>${money(selectedQuote.bid)}</span></div>
@@ -108,4 +108,49 @@ export function MarketMakerPrototypePanel({ onEvent }: Props) {
         </div>
       </div>
 
-      {!view.complete ? (\n        <div className={styles.decisionDock}>\n          <div className={styles.prompt}>\n            <p className={styles.eyebrow}>Your quote</p>\n            <h3>Select a posture, inspect the exact bid / ask, then make the market.</h3>\n          </div>\n          <div className={styles.quoteGrid}>\n            {view.quotes.map((quote) => (\n              <button\n                className=x`${styles.quoteButton} ${marketStyles.quoteButton}`}\n                type=\"button\"\n                key={quote.posture}\n                onClick={() => setSelectedPosture(quote.posture)}\n                aria-pressed={selectedPosture === quote.posture}\n              >\n                <strong>{quote.posture.replaceAll(\"-\", \" \")}</strong>\n                <span>${money(quote.bid)} / ${money(quote.ask)}</span>\n              </button>\n            ))}\n          </div>\n          <button className={styles.reset} type=\"button\" onClick={executeQuote}>\n            Make market · {selectedPosture.replaceAll(\"-\", \" \")}\n          </button>\n          <div className={styles.feedback} aria-live=\"polite\">\n            <strong>{view.lastRound ? \"Last round: \" : \"Tradeoff: \"}</strong>\n            {view.lastRound?.feedback ?? \"Tighter quotes attract more flow. Quote skew can help work down an inventory imbalance.\"}\n          </div>\n        </div>\n      ) : null}\n\n      {result ? (\n        <div className={styles.result}>\n          <div className={styles.score}><span>Score</span><strong>{money(result.score)}</strong></div>\n          <div><p className={styles.eyebrow}>Dealer style</p><h3 className={styles.title}>{result.style.replaceAll(\"-\", \" \")}</h3></div>\n          <button className={styles.reset} type=\"button\" onClick={reset}>Deal again</button>\n          <div className={marketStyles.resultDetails} aria-label=\"Run explanation\">\n            <div className={marketStyles.resultStat}><span>Customer fills</span><strong>{result.totalFills}</strong></div>\n            <div className={marketStyles.resultStat}><span>Peak inventory</span><strong>{result.peakInventory}</strong></div>\n            <div className={marketStyles.resultStat}><span>Risk penalty</span><strong>{money(result.totalRiskPenalty)}</strong></div>\n            <p className={marketStyles.resultExplanation}>{resultExplanation}</p>\n          </div>\n        </div>\n      ) : null}\n    </section>\n  );\n}\n 
+      {!view.complete ? (
+        <div className={styles.decisionDock}>
+          <div className={styles.prompt}>
+            <p className={styles.eyebrow}>Your quote</p>
+            <h3>Select a posture, inspect the exact bid / ask, then make the market.</h3>
+          </div>
+          <div className={styles.quoteGrid}>
+            {view.quotes.map((quote) => (
+              <button
+                className={`${styles.quoteButton} ${marketStyles.quoteButton}`}
+                type="button"
+                key={quote.posture}
+                onClick={() => setSelectedPosture(quote.posture)}
+                aria-pressed={selectedPosture === quote.posture}
+              >
+                <strong>{quote.posture.replaceAll("-", " ")}</strong>
+                <span>${money(quote.bid)} / ${money(quote.ask)}</span>
+              </button>
+            ))}
+          </div>
+          <button className={styles.reset} type="button" onClick={executeQuote}>
+            Make market · {selectedPosture.replaceAll("-", " ")}
+          </button>
+          <div className={styles.feedback} aria-live="polite">
+            <strong>{view.lastRound ? "Last round: " : "Tradeoff: "}</strong>
+            {view.lastRound?.feedback ?? "Tighter quotes attract more flow. Quote skew can help work down an inventory imbalance."}
+          </div>
+        </div>
+      ) : null}
+
+      {result ? (
+        <div className={styles.result}>
+          <div className={styles.score}><span>Score</span><strong>{money(result.score)}</strong></div>
+          <div><p className={styles.eyebrow}>Dealer style</p><h3 className={styles.title}>{result.style.replaceAll("-", " ")}</h3></div>
+          <button className={styles.reset} type="button" onClick={reset}>Deal again</button>
+          <div className={marketStyles.resultDetails} aria-label="Run explanation">
+            <div className={marketStyles.resultStat}><span>Customer fills</span><strong>{result.totalFills}</strong></div>
+            <div className={marketStyles.resultStat}><span>Peak inventory</span><strong>{result.peakInventory}</strong></div>
+            <div className={marketStyles.resultStat}><span>Risk penalty</span><strong>{money(result.totalRiskPenalty)}</strong></div>
+            <p className={marketStyles.resultExplanation}>{resultExplanation}</p>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}

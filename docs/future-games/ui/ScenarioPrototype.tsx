@@ -20,7 +20,7 @@ import styles from "./PrototypeLab.module.css";
 
 type Props<K extends string, Style extends string> = {
   definition: ScenarioGameDefinition<K, Style>;
-  metricOrder: readonly [];
+  metricOrder: readonly K[];
   metricLabels: Record<K, string>;
   metricDirections: Record<K, MetricDirection>;
   metricFormatters?: Partial<Record<K, (value: number) => string>>;
@@ -108,7 +108,7 @@ export function ScenarioPrototype<K extends string, Style extends string>({
         </div>
         <div className={styles.progress}>
           <span>{view.complete ? "Complete" : "Decision"}</span>
-          <strong>{view.complete ? view.totalSteps : `${view.stepNumber}/${view.totalSteps}`</strong>
+          <strong>{view.complete ? view.totalSteps : `${view.stepNumber}/${view.totalSteps}`}</strong>
         </div>
       </header>
 
@@ -123,4 +123,63 @@ export function ScenarioPrototype<K extends string, Style extends string>({
 
       <div className={styles.playfield}>{renderScene(view)}</div>
 
-      {!view.complete && view.step ? (\n        <div className={styles.decisionDock}>\n          <div className={styles.prompt}>\n            <p className={styles.eyebrow}>{view.step.title}</p>\n            <h3>{view.step.prompt}</h3>\n          </div>\n          <div className={styles.choiceGrid}>\n            {view.choices.map((choice) => (\n              <button\n                className={styles.choice}\n                type=\"button\"\n                key={choice.id}\n                onClick={() => choose(choice.id)}\n                aria-disabled={!choice.available}\n              >\n                <strong>{choice.label}</strong>\n                <span>{choice.detail}</span>\n                {!choice.available ? <small>{choice.unavailableFeedback ?? \"Unavailable from the current state\"}</small> : null}\n              </button>\n            ))}\n          </div>\n          <div className={styles.feedback} aria-live=\"polite\">\n            <strong>{notice ? \"Unavailable: \" : view.lastFeedback ? \"What changed: \" : \"Your move: \"}</strong>\n            {notice ?? view.lastFeedback ?? \"Choose the response that best fits the operating state.\"}\n          </div>\n        </div>\n      ) : null}\n\n      {session.result ? (\n        <div className={styles.result}>\n          <div className={styles.score}><span>Score</span><strong>{session.result.score}</strong></div>\n          <div>\n            <p className={styles.eyebrow}>Operating style</p>\n            <h3 className={styles.title}>{session.result.style.replaceAll(\"-\", \" \")}</h3>\n          </div>\n          <button className={styles.reset} type=\"button\" onClick={reset}>Run again</button>\n\n          {outcomeSummary && (outcomeSummary.strongestImprovement || outcomeSummary.biggestPressure) ? (\n            <div className={insightStyles.resultInsights} aria-label=\"Why this run ended here\">\n              {outcomeSummary.strongestImprovement ? (\n                <div className={insightStyles.resultInsight} data-kind=\"positive\">\n                  <span>Strongest improvement</span>\n                  <strong>{metricLabels[outcomeSummary.strongestImprovement.metric]}</strong>\n                  <small>{formatMetricDelta(outcomeSummary.strongestImprovement.delta)} from start</small>\n                </div>\n              ) : null}\n              {outcomeSummary.biggestPressure ? (\n                <div className={insightStyles.resultInsight} data-kind=\"pressure\">\n                  <span>Main tradeoff</span>\n                  <strong>{metricLabels[outcomeSummary.biggestPressure.metric]}</strong>\n                  <small>{formatMetricDelta(outcomeSummary.biggestPressure.delta)} from start</small>\n                </div>\n              ) : null}\n            </div>\n          ) : null}\n        </div>\n      ) : null}\n    </section>\n  );\n}
+      {!view.complete && view.step ? (
+        <div className={styles.decisionDock}>
+          <div className={styles.prompt}>
+            <p className={styles.eyebrow}>{view.step.title}</p>
+            <h3>{view.step.prompt}</h3>
+          </div>
+          <div className={styles.choiceGrid}>
+            {view.choices.map((choice) => (
+              <button
+                className={styles.choice}
+                type="button"
+                key={choice.id}
+                onClick={() => choose(choice.id)}
+                aria-disabled={!choice.available}
+              >
+                <strong>{choice.label}</strong>
+                <span>{choice.detail}</span>
+                {!choice.available ? <small>{choice.unavailableFeedback ?? "Unavailable from the current state"}</small> : null}
+              </button>
+            ))}
+          </div>
+          <div className={styles.feedback} aria-live="polite">
+            <strong>{notice ? "Unavailable: " : view.lastFeedback ? "What changed: " : "Your move: "}</strong>
+            {notice ?? view.lastFeedback ?? "Choose the response that best fits the operating state."}
+          </div>
+        </div>
+      ) : null}
+
+      {session.result ? (
+        <div className={styles.result}>
+          <div className={styles.score}><span>Score</span><strong>{session.result.score}</strong></div>
+          <div>
+            <p className={styles.eyebrow}>Operating style</p>
+            <h3 className={styles.title}>{session.result.style.replaceAll("-", " ")}</h3>
+          </div>
+          <button className={styles.reset} type="button" onClick={reset}>Run again</button>
+
+          {outcomeSummary && (outcomeSummary.strongestImprovement || outcomeSummary.biggestPressure) ? (
+            <div className={insightStyles.resultInsights} aria-label="Why this run ended here">
+              {outcomeSummary.strongestImprovement ? (
+                <div className={insightStyles.resultInsight} data-kind="positive">
+                  <span>Strongest improvement</span>
+                  <strong>{metricLabels[outcomeSummary.strongestImprovement.metric]}</strong>
+                  <small>{formatMetricDelta(outcomeSummary.strongestImprovement.delta)} from start</small>
+                </div>
+              ) : null}
+              {outcomeSummary.biggestPressure ? (
+                <div className={insightStyles.resultInsight} data-kind="pressure">
+                  <span>Main tradeoff</span>
+                  <strong>{metricLabels[outcomeSummary.biggestPressure.metric]}</strong>
+                  <small>{formatMetricDelta(outcomeSummary.biggestPressure.delta)} from start</small>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
