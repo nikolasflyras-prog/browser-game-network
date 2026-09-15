@@ -8,6 +8,7 @@ import {
   marketMakerPrototypeView,
 } from "../market-maker/prototype";
 import type { QuotePosture } from "../market-maker/simulation";
+import marketStyles from "./MarketMakerPolish.module.css";
 import styles from "./PrototypeLab.module.css";
 
 function money(value: number) {
@@ -32,6 +33,14 @@ export function MarketMakerPrototypePanel() {
     setSession(createMarketMakerPrototype());
     setSelectedPosture("balanced");
   }
+
+  const resultExplanation = result
+    ? result.totalRiskPenalty > 0
+      ? `Inventory concentration created ${money(result.totalRiskPenalty)} points of cumulative risk penalty. Quote skew would have helped work that position down sooner.`
+      : result.noFlowRounds >= Math.ceil(view.maxRounds / 3)
+        ? `You protected inventory well, but ${result.noFlowRounds} rounds produced no customer flow. Wider quotes reduced risk at the cost of trading opportunity.`
+        : `You kept inventory controlled while still attracting ${result.totalFills} customer fills. The run balanced spread capture with position risk.`
+    : null;
 
   return (
     <section className={`${styles.shell} ${styles.marketShell}`} aria-label="Market Maker staged prototype">
@@ -72,7 +81,7 @@ export function MarketMakerPrototypePanel() {
           <div className={styles.quoteGrid}>
             {view.quotes.map((quote) => (
               <button
-                className={styles.quoteButton}
+                className={`${styles.quoteButton} ${marketStyles.quoteButton}`}
                 type="button"
                 key={quote.posture}
                 onClick={() => setSelectedPosture(quote.posture)}
@@ -98,6 +107,12 @@ export function MarketMakerPrototypePanel() {
           <div className={styles.score}><span>Score</span><strong>{money(result.score)}</strong></div>
           <div><p className={styles.eyebrow}>Dealer style</p><h3 className={styles.title}>{result.style.replaceAll("-", " ")}</h3></div>
           <button className={styles.reset} type="button" onClick={reset}>Deal again</button>
+          <div className={marketStyles.resultDetails} aria-label="Run explanation">
+            <div className={marketStyles.resultStat}><span>Customer fills</span><strong>{result.totalFills}</strong></div>
+            <div className={marketStyles.resultStat}><span>Peak inventory</span><strong>{result.peakInventory}</strong></div>
+            <div className={marketStyles.resultStat}><span>Risk penalty</span><strong>{money(result.totalRiskPenalty)}</strong></div>
+            <p className={marketStyles.resultExplanation}>{resultExplanation}</p>
+          </div>
         </div>
       ) : null}
     </section>

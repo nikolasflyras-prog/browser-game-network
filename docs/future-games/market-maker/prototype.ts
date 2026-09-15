@@ -49,11 +49,26 @@ export function marketMakerPrototypeView(session: MarketMakerPrototypeSession) {
 
 export function marketMakerPrototypeResult(session: MarketMakerPrototypeSession) {
   if (!session.state.complete) return null;
+  const totalFills = session.state.history.reduce(
+    (sum, round) => sum + Number(round.buyFill) + Number(round.sellFill),
+    0,
+  );
+  const peakInventory = session.state.history.reduce(
+    (peak, round) => Math.max(peak, Math.abs(round.inventoryAfter)),
+    0,
+  );
+  const totalRiskPenalty = session.state.history.reduce((sum, round) => sum + round.riskPenalty, 0);
+  const noFlowRounds = session.state.history.filter((round) => !round.buyFill && !round.sellFill).length;
+
   return {
     score: session.state.score,
     endingInventory: session.state.inventory,
     cash: session.state.cash,
     fairValue: session.state.fairValue,
     style: marketMakerStyle(session.state),
+    totalFills,
+    peakInventory,
+    totalRiskPenalty: Math.round(totalRiskPenalty * 100) / 100,
+    noFlowRounds,
   } as const;
 }

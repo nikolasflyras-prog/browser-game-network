@@ -16,6 +16,11 @@ describe("Market Maker prototype adapter", () => {
       session = chooseMarketMakerPosture(session, posture);
     }
     expect(session.state.complete).toBe(true);
-    expect(marketMakerPrototypeResult(session)?.style).toBeTypeOf("string");
+    const result = marketMakerPrototypeResult(session);
+    expect(result?.style).toBeTypeOf("string");
+    expect(result?.totalFills).toBeGreaterThanOrEqual(0);
+    expect(result?.peakInventory).toBeGreaterThanOrEqual(Math.abs(result?.endingInventory ?? 0));
+    expect(result?.totalRiskPenalty).toBeGreaterThanOrEqual(0);
+    expect(result?.noFlowRounds).toBeGreaterThanOrEqual(0);
   });
 });

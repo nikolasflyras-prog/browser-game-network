@@ -9,12 +9,19 @@ import {
   type ScenarioGameDefinition,
   type ScenarioSessionView,
 } from "../scenario-session";
+import {
+  formatMetricDelta,
+  summarizeScenarioOutcome,
+  type MetricDirection,
+} from "../scenario-insights";
+import insightStyles from "./ResultInsights.module.css";
 import styles from "./PrototypeLab.module.css";
 
 type Props<K extends string, Style extends string> = {
   definition: ScenarioGameDefinition<K, Style>;
   metricOrder: readonly K[];
   metricLabels: Record<K, string>;
+  metricDirections: Record<K, MetricDirection>;
   metricFormatters?: Partial<Record<K, (value: number) => string>>;
   accent: string;
   renderScene: (view: ScenarioSessionView<K>) => ReactNode;
@@ -24,6 +31,7 @@ export function ScenarioPrototype<K extends string, Style extends string>({
   definition,
   metricOrder,
   metricLabels,
+  metricDirections,
   metricFormatters = {},
   accent,
   renderScene,
@@ -31,6 +39,9 @@ export function ScenarioPrototype<K extends string, Style extends string>({
   const [session, setSession] = useState(() => createScenarioSession(definition));
   const [notice, setNotice] = useState<string | null>(null);
   const view = scenarioSessionView(definition, session);
+  const outcomeSummary = session.result
+    ? summarizeScenarioOutcome(definition.initialMetrics, session.state.metrics, metricDirections)
+    : null;
 
   function choose(choiceId: string) {
     const choice = view.choices.find((candidate) => candidate.id === choiceId);
@@ -110,6 +121,25 @@ export function ScenarioPrototype<K extends string, Style extends string>({
             <h3 className={styles.title}>{session.result.style.replaceAll("-", " ")}</h3>
           </div>
           <button className={styles.reset} type="button" onClick={reset}>Run again</button>
+
+          {outcomeSummary && (outcomeSummary.strongestImprovement || outcomeSummary.biggestPressure) ? (
+            <div className={insightStyles.resultInsights} aria-label="Why this run ended here">
+              {outcomeSummary.strongestImprovement ? (
+                <div className={insightStyles.resultInsight} data-kind="positive">
+                  <span>Strongest improvement</span>
+                  <strong>{metricLabels[outcomeSummary.strongestImprovement.metric]}</strong>
+                  <small>{formatMetricDelta(outcomeSummary.strongestImprovement.delta)} from start</small>
+                </div>
+              ) : null}
+              {outcomeSummary.biggestPressure ? (
+                <div className={insightStyles.resultInsight} data-kind="pressure">
+                  <span>Main tradeoff</span>
+                  <strong>{metricLabels[outcomeSummary.biggestPressure.metric]}</strong>
+                  <small>{formatMetricDelta(outcomeSummary.biggestPressure.delta)} from start</small>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>
