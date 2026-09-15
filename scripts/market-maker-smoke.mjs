@@ -100,6 +100,21 @@ try {
     return waitForValue(() => evaluate(expression), timeout);
   }
 
+  async function clickVisibleButtonContaining(text) {
+    const point = await waitForValue(() => evaluate(`(() => {
+      const section = document.querySelector('section[aria-label="Market Maker simulation"]');
+      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(text)}));
+      if (!button) return null;
+      button.scrollIntoView({ block: 'center', inline: 'center' });
+      const rect = button.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return null;
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    })()`));
+    await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y });
+    await send("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
+    await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
+  }
+
   await send("Runtime.enable");
   await send("Page.enable");
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Market Maker simulation"]'))`);
@@ -113,14 +128,7 @@ try {
 
   for (let round = 0; round < 16; round += 1) {
     const expectedRound = round + 1;
-    const acted = await evaluate(`(() => {
-      const section = document.querySelector('section[aria-label="Market Maker simulation"]');
-      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Make market at'));
-      if (!button) return false;
-      button.click();
-      return true;
-    })()`);
-    if (!acted) throw new Error(`Market Maker stopped before round ${expectedRound}`);
+    await clickVisibleButtonContaining("Make market at");
 
     if (expectedRound < 16) {
       await waitForExpression(`(() => {
@@ -163,13 +171,7 @@ try {
   const mobileShot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
   await writeFile(path.join(artifactDir, "market-maker-result-mobile.png"), Buffer.from(mobileShot.data, "base64"));
 
-  const restarted = await evaluate(`(() => {
-    const button = Array.from(document.querySelectorAll('section[aria-label="Market Maker result"] button')).find((node) => node.textContent?.includes('Deal another market'));
-    if (!button) return false;
-    button.click();
-    return true;
-  })()`);
-  if (!restarted) throw new Error("Market Maker restart control missing");
+  await clickVisibleButtonContaining("Deal another market");
   await waitForExpression(`Array.from(document.querySelectorAll('section[aria-label="Market Maker simulation"] button')).some((node) => node.textContent?.includes('Make market at'))`);
   await waitForExpression(`!document.querySelector('section[aria-label="Market Maker result"]')`);
 
