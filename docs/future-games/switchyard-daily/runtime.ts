@@ -7,7 +7,8 @@ import {
   switchyardPrototypeView,
   type SwitchyardPrototypeSession,
 } from "./prototype";
-import type { Depot, SwitchyardAction } from "./simulation";
+import { switchyardLayout } from "./layout";
+import type { Depot, SwitchId, SwitchyardAction } from "./simulation";
 
 const BACKGROUND = 0x0d1213;
 const TRACK = 0x67757d;
@@ -30,16 +31,14 @@ function seedFromDateKey(value: string) {
   return hash >>> 0;
 }
 
-type Point = { x: number; y: number };
-
-type YardLayout = {
-  start: Point;
-  root: Point;
-  left: Point;
-  right: Point;
-  depots: Record<Depot, Point>;
-  buttonY: number;
+type ActionButton = {
+  action: SwitchyardAction;
+  box: Phaser.GameObjects.Rectangle;
+  text: Phaser.GameObjects.Text;
 };
+
+type SwitchLabel = { id: SwitchId; text: Phaser.GameObjects.Text };
+type DepotLabel = { depot: Depot; text: Phaser.GameObjects.Text };
 
 export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   const dateKey = utcDateKey();
@@ -54,7 +53,9 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     private scoreLabel?: Phaser.GameObjects.Text;
     private targetLabel?: Phaser.GameObjects.Text;
     private instruction?: Phaser.GameObjects.Text;
-    private buttons: Array<{ action: SwitchyardAction; box: Phaser.GameObjects.Rectangle; text: Phaser.GameObjects.Text }> = [];
+    private buttons: ActionButton[] = [];
+    private switchLabels: SwitchLabel[] = [];
+    private depotLabels: DepotLabel[] = [];
     private resultTitle?: Phaser.GameObjects.Text;
     private resultDetail?: Phaser.GameObjects.Text;
     private busy = false;
@@ -67,7 +68,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     create() {
       this.cameras.main.setBackgroundColor(BACKGROUND);
       this.graphics = this.add.graphics();
-      this.train = this.add.circle(0, 0, 9, PAPER).setVisible(false);
+      this.train = this.add.circle(0, 0, 9, PAPER).setVisible(false).setDepth(4);
       this.dateLabel = this.add.text(18, 16, `DAILY · ${dateKey}`, {
         color: "#97a4a8",
         fontFamily: "Arial, Helvetica, sans-serif",
@@ -92,47 +93,51 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
         fontSize: "18px",
         fontStyle: "bold",
       }).setOrigin(0.5, 0);
-      this.instruction = this.add.text(this.scale.width / 2, this.scale.height - 12, "A / B / C OR SPACE TO HOLD", {
+      this.instruction = this.add.text(this.scale.width / 2, this.scale.height - 8, "A / B / C OR SPACE TO HOLD", {
         color: "#97a4a8",
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "11px",
         fontStyle: "bold",
       }).setOrigin(0.5, 1);
 
+      this.createBoardLabels();
+      this.createButtons();
+
       this.input.keyboard?.addCapture(Phaser.Input.Keyboard.KeyCodes.SPACE);
       this.input.keyboard?.on("keydown-A", () => this.handleAction("A", "keyboard"));
       this.input.keyboard?.on("keydown-B", () => this.handleAction("B", "keyboard"));
       this.input.keyboard?.on("keydown-C", () => this.handleAction("C", "keyboard"));
       this.input.keyboard?.on("keydown-SPACE", () => this.handleAction("HOLD", "keyboard"));
-      this.input.keyboard?.on("keydown-R", () => this.resetPuzzle());
+      this.input.keyboard?.on("keydown-R", () => this.restartPuzzle("keyboard"));
       this.scale.on("resize", this.handleResize, this);
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
         this.scale.off("resize", this.handleResize, this);
       });
 
-      this.createButtons();
       this.resetPuzzle();
       bridge.emit("daily_started", { daily_id: dateKey, seed: dailySeed });
     }
 
-    private layout(): YardLayout {
-      const width = this.scale.width;
-      const height = this.scale.height;
-      const center = width / 2;
-      const boardBottom = Math.max(280, height - 150);
-      return {
-        start: { x: center, y: 82 },
-        root: { x: center, y: 135 },
-        left: { x: center - Math.min(145, width * 0.22), y: 220 },
-        right: { x: center + Math.min(145, width * 0.22), y: 220 },
-        depots: {
-          0: { x: width * 0.16, y: boardBottom },
-          1: { x: width * 0.36, y: boardBottom },
-          2: { x: width * 0.64, y: boardBottom },
-          3: { x: width * 0.84, y: boardBottom },
-        },
-        buttonY: height - 72,
+    private createBoardLabels() {
+      const switchStyle: Phaser.Types.GameObjects.Text.TextStyle = {
+        color: "#0d1213",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: "12px",
+        fontStyle: "bold",
       };
+      this.switchLabels = (["A", "B", "C"] as const).map((id) => ({
+        id,
+        text: this.add.text(0, 0, id, switchStyle).setOrigin(0.5).setDepth(3),
+      }));
+      this.depotLabels = ([0, 1, 2, 3] as const).map((depot) => ({
+        depot,
+        text: this.add.text(0, 0, `D${depot}`, {
+          color: "#0d1213",
+          fontFamily: "Arial, Helvetica, sans-serif",
+          fontSize: "11px",
+          fontStyle: "bold",
+        }).setOrigin(0.5).setDepth(3),
+      }));
     }
 
     private createButtons() {
@@ -141,9 +146,10 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
         existing.text.destroy();
       }
       this.buttons = [];
-      const actions: readonly SwitchyardAction[] = ["A", "B", "C", "HOLD"];
-      for (const action of actions) {
-        const box = this.add.rectangle(0, 0, 90, 44, 0x1a2328, 1).setStrokeStyle(1, TRACK, 0.8).setInteractive({ useHandCursor: true });
+      for (const action of ["A", "B", "C", "HOLD"] as const) {
+        const box = this.add.rectangle(0, 0, 90, 44, 0x1a2328, 1)
+          .setStrokeStyle(1, TRACK, 0.8)
+          .setInteractive({ useHandCursor: true });
         const text = this.add.text(0, 0, action, {
           color: "#f5f5ef",
           fontFamily: "Arial, Helvetica, sans-serif",
@@ -157,20 +163,23 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     }
 
     private positionButtons() {
-      const { buttonY } = this.layout();
-      const gap = Math.min(105, this.scale.width / 4.6);
-      const startX = this.scale.width / 2 - gap * 1.5;
-      this.buttons.forEach((button, index) => {
-        const x = startX + gap * index;
-        button.box.setPosition(x, buttonY);
-        button.text.setPosition(x, buttonY);
-      });
+      const layout = switchyardLayout(this.scale.width, this.scale.height);
+      for (const button of this.buttons) {
+        const slot = layout.controls[button.action];
+        button.box.setPosition(slot.x, slot.y).setSize(slot.width, slot.height).setDisplaySize(slot.width, slot.height);
+        button.text.setPosition(slot.x, slot.y);
+      }
+    }
+
+    private restartPuzzle(inputType: "pointer" | "keyboard" | "controller") {
+      bridge.emit("game_restarted", { mode: "daily", daily_id: dateKey, input_type: inputType });
+      this.resetPuzzle();
     }
 
     private handleAction(action: SwitchyardAction, inputType: "pointer" | "keyboard") {
       if (this.busy) return;
       if (this.session.state.complete) {
-        this.resetPuzzle();
+        this.restartPuzzle(inputType);
         return;
       }
 
@@ -184,9 +193,10 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       }
 
       this.displayTarget = target;
-      bridge.emit("level_completed", {
+      bridge.emit("game_action", {
+        action: "switchyard_route",
         turn: outcome.turn,
-        action,
+        switch_action: action,
         input_type: inputType,
         target: outcome.target,
         actual: outcome.actual,
@@ -199,7 +209,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     }
 
     private animateTrain(actual: Depot, correct: boolean) {
-      const layout = this.layout();
+      const layout = switchyardLayout(this.scale.width, this.scale.height);
       const branch = actual < 2 ? layout.left : layout.right;
       const depot = layout.depots[actual];
       const train = this.train;
@@ -210,34 +220,36 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
         targets: train,
         x: layout.root.x,
         y: layout.root.y,
-        duration: 220,
+        duration: 180,
         ease: "Sine.easeInOut",
         onComplete: () => {
           this.tweens.add({
             targets: train,
             x: branch.x,
             y: branch.y,
-            duration: 300,
+            duration: 240,
             ease: "Sine.easeInOut",
             onComplete: () => {
               this.tweens.add({
                 targets: train,
                 x: depot.x,
                 y: depot.y,
-                duration: 300,
+                duration: 240,
                 ease: "Sine.easeInOut",
-                onComplete: () => {
-                  train.setVisible(false);
-                  this.busy = false;
-                  this.displayTarget = this.session.state.target;
-                  if (this.session.state.complete) this.completePuzzle();
-                  this.renderBoard();
-                },
+                onComplete: () => this.finishTrainAnimation(),
               });
             },
           });
         },
       });
+    }
+
+    private finishTrainAnimation() {
+      this.train?.setVisible(false);
+      this.busy = false;
+      this.displayTarget = this.session.state.target;
+      if (this.session.state.complete) this.completePuzzle();
+      this.renderBoard();
     }
 
     private completePuzzle() {
@@ -248,6 +260,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
         score: result.score,
         strikes: result.strikes,
         won: result.won,
+        sequence: result.sequence.map((value) => (value ? "1" : "0")).join(""),
       });
       bridge.emit("game_completed", { mode: "daily", score: result.score, won: result.won });
       bridge.setStatus(result.won ? `Daily complete — ${result.score} points` : `Three strikes — ${result.score} points`);
@@ -259,7 +272,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "28px",
         fontStyle: "bold",
-      }).setOrigin(0.5);
+      }).setOrigin(0.5).setDepth(5);
       this.resultDetail = this.add.text(
         this.scale.width / 2,
         this.scale.height / 2 + 20,
@@ -271,10 +284,11 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
           align: "center",
           lineSpacing: 5,
         },
-      ).setOrigin(0.5);
+      ).setOrigin(0.5).setDepth(5);
     }
 
     private resetPuzzle() {
+      if (this.train) this.tweens.killTweensOf(this.train);
       this.session = createSwitchyardPrototype(dailySeed, 10);
       this.displayTarget = this.session.state.target;
       this.busy = false;
@@ -288,11 +302,15 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     }
 
     private handleResize() {
+      if (this.busy && this.train) {
+        this.tweens.killTweensOf(this.train);
+        this.finishTrainAnimation();
+      }
       this.dateLabel?.setPosition(18, 16);
       this.progressLabel?.setPosition(this.scale.width / 2, 16);
       this.scoreLabel?.setPosition(this.scale.width - 18, 16);
       this.targetLabel?.setPosition(this.scale.width / 2, 48);
-      this.instruction?.setPosition(this.scale.width / 2, this.scale.height - 12);
+      this.instruction?.setPosition(this.scale.width / 2, this.scale.height - 8);
       this.resultTitle?.setPosition(this.scale.width / 2, this.scale.height / 2 - 20);
       this.resultDetail?.setPosition(this.scale.width / 2, this.scale.height / 2 + 20);
       this.positionButtons();
@@ -303,10 +321,10 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       const graphics = this.graphics;
       if (!graphics) return;
       const view = switchyardPrototypeView(this.session);
-      const layout = this.layout();
+      const layout = switchyardLayout(this.scale.width, this.scale.height);
       graphics.clear();
 
-      const drawTrack = (from: Point, to: Point, active: boolean) => {
+      const drawTrack = (from: { x: number; y: number }, to: { x: number; y: number }, active: boolean) => {
         graphics.lineStyle(active ? 4 : 2, active ? TRACK_ACTIVE : TRACK, active ? 0.95 : 0.55);
         graphics.beginPath();
         graphics.moveTo(from.x, from.y);
@@ -322,38 +340,37 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       drawTrack(layout.right, layout.depots[2], !view.switches.C);
       drawTrack(layout.right, layout.depots[3], view.switches.C);
 
-      const switchPoints: Array<[Point, string, boolean]> = [
-        [layout.root, "A", view.switches.A],
-        [layout.left, "B", view.switches.B],
-        [layout.right, "C", view.switches.C],
-      ];
-      for (const [point, label, on] of switchPoints) {
+      const switchPoints: Record<SwitchId, { x: number; y: number }> = {
+        A: layout.root,
+        B: layout.left,
+        C: layout.right,
+      };
+      for (const label of this.switchLabels) {
+        const point = switchPoints[label.id];
+        const on = view.switches[label.id];
         graphics.fillStyle(on ? TRACK_ACTIVE : PAPER, 1);
-        graphics.fillCircle(point.x, point.y, 9);
-        this.drawCanvasLabel(graphics, point.x, point.y - 22, label);
+        graphics.fillCircle(point.x, point.y, 12);
+        label.text.setPosition(point.x, point.y).setVisible(true);
       }
 
-      for (const depot of [0, 1, 2, 3] as const) {
-        const point = layout.depots[depot];
-        graphics.fillStyle(depot === this.displayTarget ? TARGET : PAPER, depot === this.displayTarget ? 1 : 0.25);
-        graphics.fillRoundedRect(point.x - 24, point.y - 14, 48, 28, 6);
+      for (const label of this.depotLabels) {
+        const point = layout.depots[label.depot];
+        const isTarget = label.depot === this.displayTarget;
+        graphics.fillStyle(isTarget ? TARGET : PAPER, isTarget ? 1 : 0.35);
+        graphics.fillRoundedRect(point.x - 26, point.y - 15, 52, 30, 6);
+        label.text.setPosition(point.x, point.y).setVisible(true);
       }
 
       this.progressLabel?.setText(view.complete ? "Complete" : `Train ${view.turn + 1} / ${view.maxTurns}`);
       this.scoreLabel?.setText(`${view.score} pts · ${view.strikes} strikes`);
       this.targetLabel?.setText(`Target depot ${this.displayTarget}`);
-      this.targetLabel?.setColor("#78dfaa");
+      this.instruction?.setText(layout.compact ? "TAP A / B / C / HOLD" : "A / B / C OR SPACE TO HOLD");
+
       for (const button of this.buttons) {
         button.box.setFillStyle(this.busy ? 0x111619 : 0x1a2328, 1);
         button.box.setStrokeStyle(1, button.action === "HOLD" ? MUTED : TRACK_ACTIVE, this.busy ? 0.25 : 0.72);
+        button.text.setAlpha(this.busy ? 0.45 : 1);
       }
-    }
-
-    private drawCanvasLabel(graphics: Phaser.GameObjects.Graphics, x: number, y: number, label: string) {
-      // Small label backing keeps switch IDs readable without adding persistent UI panels.
-      graphics.fillStyle(BACKGROUND, 0.9);
-      graphics.fillRoundedRect(x - 10, y - 8, 20, 16, 4);
-      void label;
     }
   }
 
@@ -377,6 +394,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       bridge.setStatus("Switchyard Daily resumed");
     },
     restart() {
+      bridge.emit("game_restarted", { mode: "daily", daily_id: dateKey, input_type: "controller" });
       game.scene.stop("future-switchyard-daily");
       game.scene.start("future-switchyard-daily");
     },

@@ -7,6 +7,7 @@ import {
   marketMakerPrototypeResult,
   marketMakerPrototypeView,
 } from "../market-maker/prototype";
+import type { QuotePosture } from "../market-maker/simulation";
 import styles from "./PrototypeLab.module.css";
 
 function money(value: number) {
@@ -15,14 +16,21 @@ function money(value: number) {
 
 export function MarketMakerPrototypePanel() {
   const [session, setSession] = useState(() => createMarketMakerPrototype());
+  const [selectedPosture, setSelectedPosture] = useState<QuotePosture>("balanced");
   const view = marketMakerPrototypeView(session);
   const result = marketMakerPrototypeResult(session);
   const inventoryY = `${50 - Math.max(-8, Math.min(8, view.inventory)) * 5}%`;
   const style = { "--inventory-y": inventoryY } as CSSProperties;
-  const balanced = view.quotes.find((quote) => quote.posture === "balanced") ?? view.quotes[0];
+  const selectedQuote = view.quotes.find((quote) => quote.posture === selectedPosture) ?? view.quotes[0];
+
+  function executeQuote() {
+    if (view.complete) return;
+    setSession((current) => chooseMarketMakerPosture(current, selectedPosture));
+  }
 
   function reset() {
     setSession(createMarketMakerPrototype());
+    setSelectedPosture("balanced");
   }
 
   return (
@@ -47,10 +55,10 @@ export function MarketMakerPrototypePanel() {
             <span className={styles.inventoryZero} />
             <span className={styles.inventoryDot} style={style} />
           </div>
-          <div className={styles.priceLadder}>
-            <div className={styles.priceMark}><strong>Ask</strong><span className={styles.priceLine} /><span>${money(balanced.ask)}</span></div>
+          <div className={styles.priceLadder} aria-label={`${selectedPosture} quote`}>
+            <div className={styles.priceMark}><strong>Ask</strong><span className={styles.priceLine} /><span>${money(selectedQuote.ask)}</span></div>
             <div className={styles.priceMark} data-kind="fair"><strong>Fair</strong><span className={styles.priceLine} /><span>${money(view.fairValue)}</span></div>
-            <div className={styles.priceMark}><strong>Bid</strong><span className={styles.priceLine} /><span>${money(balanced.bid)}</span></div>
+            <div className={styles.priceMark}><strong>Bid</strong><span className={styles.priceLine} /><span>${money(selectedQuote.bid)}</span></div>
           </div>
         </div>
       </div>
@@ -59,7 +67,7 @@ export function MarketMakerPrototypePanel() {
         <div className={styles.decisionDock}>
           <div className={styles.prompt}>
             <p className={styles.eyebrow}>Your quote</p>
-            <h3>Choose how aggressively to make this market.</h3>
+            <h3>Select a posture, inspect the exact bid / ask, then make the market.</h3>
           </div>
           <div className={styles.quoteGrid}>
             {view.quotes.map((quote) => (
@@ -67,13 +75,17 @@ export function MarketMakerPrototypePanel() {
                 className={styles.quoteButton}
                 type="button"
                 key={quote.posture}
-                onClick={() => setSession((current) => chooseMarketMakerPosture(current, quote.posture))}
+                onClick={() => setSelectedPosture(quote.posture)}
+                aria-pressed={selectedPosture === quote.posture}
               >
                 <strong>{quote.posture.replaceAll("-", " ")}</strong>
                 <span>${money(quote.bid)} / ${money(quote.ask)}</span>
               </button>
             ))}
           </div>
+          <button className={styles.reset} type="button" onClick={executeQuote}>
+            Make market · {selectedPosture.replaceAll("-", " ")}
+          </button>
           <div className={styles.feedback} aria-live="polite">
             <strong>{view.lastRound ? "Last round: " : "Tradeoff: "}</strong>
             {view.lastRound?.feedback ?? "Tighter quotes attract more flow. Quote skew can help work down an inventory imbalance."}
