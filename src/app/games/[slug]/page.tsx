@@ -9,6 +9,7 @@ import { PowerGridDispatcher } from "@/components/game/PowerGridDispatcher";
 import { RunTheFed } from "@/components/game/RunTheFed";
 import { SupplyChainShock } from "@/components/game/SupplyChainShock";
 import { getGameSeoContent } from "@/content/gameSeo";
+import { trafficControlSeo } from "@/content/trafficControlSeo";
 import { getGameMetadata, gameRegistry } from "@/games/registry";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
 
@@ -56,7 +57,7 @@ export default async function GamePage({ params }: PageProps) {
   const game = getGameMetadata(slug);
   if (!game) notFound();
 
-  const seo = getGameSeoContent(game.slug);
+  const seo = getGameSeoContent(game.slug) ?? (game.slug === "traffic-control" ? trafficControlSeo : undefined);
   const isPublic = game.status !== "diagnostic";
   const structuredData = isPublic ? {
     "@context": "https://schema.org",
