@@ -74,6 +74,10 @@ await send("Runtime.enable");
 await send("Page.enable");
 
 await waitForExpression(`document.querySelector('.fed-shell') && document.querySelector('.fed-quarter strong')?.textContent === '0/8'`);
+await waitForExpression(`(() => {
+  const button = document.querySelector('button[aria-label^="Raise policy rate"]');
+  return Boolean(button && Object.keys(button).some((key) => key.startsWith('__reactProps$') || key.startsWith('__reactFiber$')));
+})()`);
 
 const initialRate = await evaluate(`document.querySelector('.fed-rate-control strong')?.textContent`);
 if (initialRate !== "4.50%") throw new Error(`Unexpected initial policy rate: ${initialRate}`);
