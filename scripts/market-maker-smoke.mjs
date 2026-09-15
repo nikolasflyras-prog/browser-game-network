@@ -136,7 +136,7 @@ try {
 
     if (expectedRound === 16) {
       await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'true'`);
-      await waitForExpression(`document.querySelector('section[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
+      await waitForExpression(`document.querySelector('[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
     }
   }
 
@@ -144,7 +144,7 @@ try {
 
   const finalState = await evaluate(`(() => {
     const section = document.querySelector('section[aria-label="Market Maker simulation"]');
-    const result = document.querySelector('section[aria-label="Market Maker result"]');
+    const result = document.querySelector('[aria-label="Market Maker result"]');
     return {
       text: result?.textContent ?? '',
       round: section?.dataset.marketRound ?? null,
@@ -171,7 +171,7 @@ try {
   await writeFile(path.join(artifactDir, "market-maker-result-desktop.png"), Buffer.from(desktopShot.data, "base64"));
 
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-  await evaluate(`document.querySelector('section[aria-label="Market Maker result"]')?.scrollIntoView({ block: 'start' }); true`);
+  await evaluate(`document.querySelector('[aria-label="Market Maker result"]')?.scrollIntoView({ block: 'start' }); true`);
   await sleep(100);
   const mobileShot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
   await writeFile(path.join(artifactDir, "market-maker-result-mobile.png"), Buffer.from(mobileShot.data, "base64"));
@@ -179,7 +179,7 @@ try {
   await clickVisibleButtonContaining("Deal another market");
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0'`);
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'false'`);
-  await waitForExpression(`!document.querySelector('section[aria-label="Market Maker result"]')`);
+  await waitForExpression(`!document.querySelector('[aria-label="Market Maker result"]')`);
 
   console.log(JSON.stringify({ targetUrl, roundsCompleted: 16, bestPersisted: true, resultCaptures: 2, restartVerified: true }));
 } finally {
