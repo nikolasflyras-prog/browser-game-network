@@ -58,6 +58,15 @@ export const gameRegistry: readonly GameMetadata[] = [
     version: "0.1.0",
   },
   {
+    slug: "traffic-control",
+    title: "Traffic Control",
+    description: "Run a busy intersection with one input. Read shifting demand, switch the active light axis, and keep both queues moving before gridlock ends the run.",
+    lane: "Play",
+    category: "Arcade",
+    status: "live",
+    version: "0.1.0",
+  },
+  {
     slug: "linebreak-daily",
     title: "Linebreak Daily",
     description: "Draw one continuous route through the daily grid. Find the key, cross the gate, avoid hazards, and reach the exit before your ink runs out.",

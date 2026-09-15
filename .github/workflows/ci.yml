@@ -36,6 +36,9 @@ jobs:
       - name: Browser smoke test
         run: bash scripts/browser-smoke.sh
 
+      - name: Traffic Control smoke test
+        run: bash scripts/traffic-control-smoke.sh
+
       - name: Market Maker smoke test
         run: bash scripts/market-maker-smoke.sh
 
