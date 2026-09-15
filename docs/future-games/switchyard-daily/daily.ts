@@ -30,10 +30,7 @@ export function switchyardDailyStorageName(dateKey: string) {
   return `daily-${dateKey}`;
 }
 
-export function switchyardDailyRecord(
-  result: SwitchyardDailyResult,
-  completedAt = new Date().toISOString(),
-): StoredSwitchyardDailyResult {
+export function switchyardDailyRecord(result: SwitchyardDailyResult, completedAt = new Date().toISOString()): StoredSwitchyardDailyResult {
   return {
     score: result.score,
     strikes: result.strikes,
@@ -43,12 +40,15 @@ export function switchyardDailyRecord(
   };
 }
 
-export function formatSwitchyardDailyShare(
-  dateKey: string,
-  result: SwitchyardDailyResult,
-  streak = 0,
-  url?: string,
-) {
+export function isBetterSwitchyardDailyResult(current: StoredSwitchyardDailyResult | null, next: StoredSwitchyardDailyResult) {
+  if (!current) return true;
+  if (next.won !== current.won) return next.won;
+  if (next.score !== current.score) return next.score > current.score;
+  if (next.strikes !== current.strikes) return next.strikes < current.strikes;
+  return false;
+}
+
+export function formatSwitchyardDailyShare(dateKey: string, result: SwitchyardDailyResult, streak = 0, url?: string) {
   const routeGrid = result.sequence.map((correct) => (correct ? "🟩" : "🟥")).join("");
   const correct = result.sequence.filter(Boolean).length;
   const lines = [
@@ -56,7 +56,6 @@ export function formatSwitchyardDailyShare(
     `${routeGrid} ${correct}/${result.sequence.length}`,
     `${result.score} pts · ${result.strikes} ${result.strikes === 1 ? "strike" : "strikes"}`,
   ];
-
   if (streak > 0) lines.push(`${streak}-day streak`);
   if (url) lines.push(url);
   return lines.join("\n");

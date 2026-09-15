@@ -24,7 +24,7 @@ export function FutureGameLab() {
     [],
   );
   const loadSwitchyard = useCallback(
-    () => import("../switchyard-daily/runtime").then((module) => module.mountSwitchyardPrototype),
+    () => import("../switchyard-daily/persistent-runtime").then((module) => module.mountPersistedSwitchyardPrototype),
     [],
   );
   const selected = games.find((game) => game.id === active) ?? games[0];
@@ -42,12 +42,7 @@ export function FutureGameLab() {
 
       <nav className={styles.gameTabs} aria-label="Staged game prototypes">
         {games.map((game) => (
-          <button
-            type="button"
-            key={game.id}
-            onClick={() => setActive(game.id)}
-            aria-pressed={active === game.id}
-          >
+          <button type="button" key={game.id} onClick={() => setActive(game.id)} aria-pressed={active === game.id}>
             <span>{game.lane}</span>
             <strong>{game.title}</strong>
           </button>
@@ -60,12 +55,8 @@ export function FutureGameLab() {
       </section>
 
       <section className={styles.stage} key={active}>
-        {active === "traffic-control" ? (
-          <PrototypeRuntimeHost slug="traffic-control" title="Traffic Control" loadRuntime={loadTraffic} />
-        ) : null}
-        {active === "switchyard-daily" ? (
-          <PrototypeRuntimeHost slug="switchyard-daily" title="Switchyard Daily" loadRuntime={loadSwitchyard} />
-        ) : null}
+        {active === "traffic-control" ? <PrototypeRuntimeHost slug="traffic-control" title="Traffic Control" loadRuntime={loadTraffic} /> : null}
+        {active === "switchyard-daily" ? <PrototypeRuntimeHost slug="switchyard-daily" title="Switchyard Daily" loadRuntime={loadSwitchyard} /> : null}
         {active === "market-maker" ? <MarketMakerPrototypePanel /> : null}
         {active === "supply-chain-shock" ? <SupplyChainPrototypePanel /> : null}
         {active === "chip-fab" ? <ChipFabPrototypePanel /> : null}

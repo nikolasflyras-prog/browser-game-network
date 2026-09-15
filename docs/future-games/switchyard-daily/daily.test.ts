@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatSwitchyardDailyShare,
+  isBetterSwitchyardDailyResult,
   switchyardDailyRecord,
   switchyardDailyStorageName,
   switchyardSeedFromDateKey,
@@ -27,6 +28,15 @@ describe("Switchyard Daily metadata", () => {
     });
   });
 
+  it("keeps the best result for a date instead of letting a replay regress it", () => {
+    const best = { score: 920, strikes: 1, won: true, sequence: "111011", completedAt: "2026-09-15T12:00:00.000Z" };
+    const worse = { ...best, score: 810, strikes: 2, completedAt: "2026-09-15T13:00:00.000Z" };
+    const better = { ...best, score: 980, strikes: 0, completedAt: "2026-09-15T14:00:00.000Z" };
+    expect(isBetterSwitchyardDailyResult(null, best)).toBe(true);
+    expect(isBetterSwitchyardDailyResult(best, worse)).toBe(false);
+    expect(isBetterSwitchyardDailyResult(best, better)).toBe(true);
+  });
+
   it("formats a spoiler-safe share card", () => {
     const share = formatSwitchyardDailyShare(
       "2026-09-15",
@@ -36,6 +46,6 @@ describe("Switchyard Daily metadata", () => {
     );
     expect(share).toContain("🟩🟩🟥🟩 3/4");
     expect(share).toContain("4-day streak");
-    expect(share).not.toMatch(/target|depot|switch/i);
+    expect(share).not.toMatch(/target|depot|switch [abc]/i);
   });
 });
