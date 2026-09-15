@@ -103,6 +103,11 @@ try {
   await send("Runtime.enable");
   await send("Page.enable");
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Market Maker simulation"]'))`);
+  await waitForExpression(`(() => {
+    const section = document.querySelector('section[aria-label="Market Maker simulation"]');
+    const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Make market at'));
+    return Boolean(button && Object.keys(button).some((key) => key.startsWith('__reactProps$') || key.startsWith('__reactFiber$')));
+  })()`);
 
   await evaluate(`localStorage.removeItem('bgn:market-maker:best-score'); true`);
 
