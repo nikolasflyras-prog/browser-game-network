@@ -15,6 +15,11 @@ export const supplyChainRules: ScenarioRules<SupplyMetric> = {
   max: { cash: 100, service: 100, inventory: 100, resilience: 100, backlog: 100 },
 };
 
+function consumeSafetyStock(metrics: Record<SupplyMetric, number>) {
+  if (metrics.inventory < 60) return {};
+  return { service: 14, backlog: -14, inventory: -16 } satisfies Partial<Record<SupplyMetric, number>>;
+}
+
 export const supplyChainScenarios: readonly ScenarioStep<SupplyMetric>[] = [
   {
     id: "supplier-warning",
@@ -25,15 +30,15 @@ export const supplyChainScenarios: readonly ScenarioStep<SupplyMetric>[] = [
         id: "dual-source",
         label: "Qualify a second supplier",
         detail: "Spend now to create an alternate source.",
-        impacts: { cash: -10, resilience: 24, inventory: 3 },
-        feedback: "You paid an upfront resilience premium, but future disruption exposure falls sharply.",
+        impacts: { cash: -18, resilience: 24, inventory: 3 },
+        feedback: "You paid a meaningful qualification cost, but created alternate capacity before the disruption arrived.",
       },
       {
         id: "safety-stock",
         label: "Build safety stock",
         detail: "Buy extra units while supply is available.",
         impacts: { cash: -7, inventory: 20, resilience: 10 },
-        feedback: "Buffer inventory buys time, but working capital is now tied up on the balance sheet.",
+        feedback: "Buffer inventory tied up working capital, but it can absorb a near-term logistics shock.",
       },
       {
         id: "wait",
@@ -54,21 +59,24 @@ export const supplyChainScenarios: readonly ScenarioStep<SupplyMetric>[] = [
         label: "Use air freight",
         detail: "Protect service at a steep logistics cost.",
         impacts: { cash: -14, service: 8, backlog: -8 },
-        feedback: "Expediting protected customers, but the premium consumed margin and cash.",
+        resolveImpacts: consumeSafetyStock,
+        feedback: "Expediting protected customers. If you built safety stock earlier, that buffer also absorbs part of the delay.",
       },
       {
         id: "prioritize",
         label: "Prioritize key customers",
         detail: "Allocate scarce inventory to the highest-value accounts.",
         impacts: { service: 2, backlog: 3, inventory: -5, cash: 2 },
-        feedback: "Allocation limited the damage, but lower-priority customers absorbed the shortage.",
+        resolveImpacts: consumeSafetyStock,
+        feedback: "Allocation limited the damage; prior safety stock makes the tradeoff materially easier.",
       },
       {
         id: "accept-delay",
         label: "Accept the delay",
         detail: "Avoid expedite costs and wait for the network to clear.",
         impacts: { cash: 4, service: -12, backlog: 14 },
-        feedback: "Cash was preserved, but customer service deteriorated and backlog accumulated.",
+        resolveImpacts: consumeSafetyStock,
+        feedback: "Cash was preserved. Any earlier safety stock is consumed to cushion service and backlog before the delay reaches customers.",
       },
     ],
   },
@@ -108,9 +116,11 @@ export const supplyChainScenarios: readonly ScenarioStep<SupplyMetric>[] = [
       {
         id: "activate-backup",
         label: "Activate alternate capacity",
-        detail: "Shift volume to qualified backup supply.",
+        detail: "Shift volume to supply you qualified before the shutdown.",
         impacts: { cash: -8, service: 6, resilience: 8, backlog: -9 },
-        feedback: "Prepared alternate capacity converted resilience investment into real service protection.",
+        requirements: { resilience: { min: 50 } },
+        unavailableFeedback: "You do not have enough qualified alternate capacity to activate a backup supplier.",
+        feedback: "Prepared alternate capacity converted an earlier resilience investment into real service protection.",
       },
       {
         id: "broker-market",

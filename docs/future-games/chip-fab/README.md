@@ -1,7 +1,7 @@
 # Chip Fab
 
 **Lane:** LEARN  
-**Status:** staged prototype  
+**Status:** staged prototype — headless playtest-ready  
 **Primary hypothesis:** can a specialist technical simulation become a differentiated flagship for the LEARN lane without requiring a huge asset or backend budget?
 
 ## Fantasy
@@ -21,18 +21,16 @@ You are ramping a new semiconductor process. Customers want wafers now, finance 
 ## Core loop
 
 1. Review yield, throughput, cycle time, defect risk, cash, and customer commitments.
-2. Receive a fab event: tool drift, demand increase, bottleneck, maintenance window, or qualification milestone.
+2. Receive a fab event: ramp pressure, tool drift, bottleneck, or maintenance window.
 3. Choose one operating/capital response.
 4. See immediate metric changes and a short explanation.
-5. Continue for six to eight quarters.
+5. Continue through the deterministic scenario pack.
 
 Target session: 4–7 minutes.
 
 ## Score
 
-Reward **good die output**, not raw wafers started. The player should learn that maximizing utilization can be counterproductive if yield collapses.
-
-A simple first score can combine:
+Reward **good die output**, not raw wafers started.
 
 - 35% yield;
 - 30% throughput;
@@ -40,13 +38,19 @@ A simple first score can combine:
 - 10% cash health;
 - 10% defect-risk control.
 
+## Headless mechanic gate
+
+All 81 four-event decision paths are exhaustively scored before browser work.
+
+The current gate verifies that:
+
+- simply running the bottleneck flat-out scores materially worse on average than adding capacity or improving scheduling;
+- the overall score spread is large enough to distinguish weak and strong ramp strategies;
+- future tuning cannot accidentally turn raw utilization into the dominant objective without breaking the audit.
+
 ## Controls
 
 Three decision cards per event. A simplified fab-flow diagram can highlight the affected process area but should not require direct manipulation in v1.
-
-## Failure states
-
-No binary fail until cash is exhausted or customer delivery drops below a severe threshold. Results should classify the player as **process-first**, **capacity-first**, **balanced ramp**, or **overdriven**.
 
 ## Analytics hypothesis
 

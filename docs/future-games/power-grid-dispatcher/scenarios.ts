@@ -7,12 +7,17 @@ export const initialGridMetrics: Record<GridMetric, number> = {
   cost: 52,
   emissions: 58,
   reserve: 48,
-  storage: 62,
+  storage: 52,
 };
 
 export const gridRules: ScenarioRules<GridMetric> = {
   min: { reliability: 0, cost: 0, emissions: 0, reserve: 0, storage: 0 },
   max: { reliability: 100, cost: 100, emissions: 100, reserve: 100, storage: 100 },
+  scoreMetric: (_before, after) => {
+    const reliabilityShortfall = Math.max(0, 92 - after.reliability);
+    const reserveShortfall = Math.max(0, 40 - after.reserve);
+    return -Math.round(reliabilityShortfall * 2 + reserveShortfall);
+  },
 };
 
 export const gridScenarios: readonly ScenarioStep<GridMetric>[] = [
@@ -33,6 +38,8 @@ export const gridScenarios: readonly ScenarioStep<GridMetric>[] = [
         label: "Discharge batteries",
         detail: "Use stored energy to cover the ramp.",
         impacts: { reliability: 7, reserve: 4, storage: -20, cost: 2, emissions: -3 },
+        requirements: { storage: { min: 20 } },
+        unavailableFeedback: "There is not enough stored energy for this dispatch.",
         feedback: "Storage covered the short ramp cleanly, but left less energy for later stress periods.",
       },
       {
@@ -61,6 +68,8 @@ export const gridScenarios: readonly ScenarioStep<GridMetric>[] = [
         label: "Use storage",
         detail: "Cover the renewable shortfall with batteries.",
         impacts: { reliability: 8, reserve: 7, storage: -24, cost: 3 },
+        requirements: { storage: { min: 24 } },
+        unavailableFeedback: "Earlier dispatches left too little stored energy to cover this wind shortfall.",
         feedback: "Storage smoothed the renewable miss, but depleted a limited flexibility resource.",
       },
       {
@@ -68,7 +77,7 @@ export const gridScenarios: readonly ScenarioStep<GridMetric>[] = [
         label: "Run tight reserves",
         detail: "Avoid dispatch cost and hope conditions recover.",
         impacts: { reliability: -12, reserve: -18, cost: -4, emissions: -3 },
-        feedback: "You saved money in the moment, but left the grid vulnerable to the next contingency.",
+        feedback: "You saved money in the moment, but violated the reliability buffer and exposed the system to the next contingency.",
       },
     ],
   },
@@ -89,6 +98,8 @@ export const gridScenarios: readonly ScenarioStep<GridMetric>[] = [
         label: "Mix storage + demand response",
         detail: "Use two flexible resources to avoid the most expensive plants.",
         impacts: { reliability: 10, reserve: 8, storage: -15, cost: 8, emissions: -2 },
+        requirements: { storage: { min: 15 } },
+        unavailableFeedback: "Earlier battery use left too little stored energy for the mixed response.",
         feedback: "A portfolio response maintained reliability while limiting peaker use, at the cost of stored energy.",
       },
       {
@@ -130,7 +141,7 @@ export const gridScenarios: readonly ScenarioStep<GridMetric>[] = [
   },
 ] as const;
 
-export function gridFinalScore(metrics: Record<GridMetric, number>) {
+export function gridFinalScore(metrics: Record<GridMetric, number>, operatingScore = 0) {
   const costControl = 100 - metrics.cost;
   const emissionsControl = 100 - metrics.emissions;
   const raw =
@@ -139,7 +150,7 @@ export function gridFinalScore(metrics: Record<GridMetric, number>) {
     emissionsControl * 0.2 +
     metrics.reserve * 0.1 +
     metrics.storage * 0.1;
-  return Math.max(0, Math.round(raw));
+  return Math.max(0, Math.round(raw + operatingScore));
 }
 
 export function gridStyle(metrics: Record<GridMetric, number>) {
