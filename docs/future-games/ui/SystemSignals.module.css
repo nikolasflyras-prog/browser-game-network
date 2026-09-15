@@ -1,0 +1,58 @@
+.row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.signal {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.signal span,
+.signal strong,
+.signal small {
+  display: block;
+}
+
+.signal span {
+  color: #91a0ad;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.signal strong {
+  margin-top: 3px;
+  color: #eef3f7;
+  font-size: 0.98rem;
+}
+
+.signal small {
+  margin-top: 3px;
+  color: #91a0ad;
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.signal[data-state="controlled"] strong {
+  color: #78dfaa;
+}
+
+.signal[data-state="watch"] strong {
+  color: #f6c969;
+}
+
+.signal[data-state="high"] strong {
+  color: #ed786f;
+}
+
+@media (max-width: 620px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}

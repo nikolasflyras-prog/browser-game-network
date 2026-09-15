@@ -130,6 +130,13 @@ export const fabScenarios: readonly ScenarioStep<FabMetric>[] = [
   },
 ] as const;
 
+export function fabOperatingSignals(metrics: Record<FabMetric, number>) {
+  const goodOutput = Math.round((metrics.throughput * metrics.yield) / 100);
+  const congestion = metrics.cycleTime >= 70 ? "high" : metrics.cycleTime >= 55 ? "watch" : "controlled";
+  const processRisk = metrics.defectRisk >= 55 ? "high" : metrics.defectRisk >= 35 ? "watch" : "controlled";
+  return { goodOutput, congestion, processRisk } as const;
+}
+
 export function fabFinalScore(metrics: Record<FabMetric, number>) {
   const cycleControl = 100 - metrics.cycleTime;
   const defectControl = 100 - metrics.defectRisk;

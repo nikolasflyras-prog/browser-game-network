@@ -1,10 +1,11 @@
 import type { CSSProperties } from "react";
 import type { ScenarioSessionView } from "../scenario-session";
-import type { FabMetric } from "../chip-fab/scenarios";
+import { fabOperatingSignals, type FabMetric } from "../chip-fab/scenarios";
 import type { GridMetric } from "../power-grid-dispatcher/scenarios";
 import { supplyChainCapabilities, type SupplyMetric } from "../supply-chain-shock/scenarios";
 import styles from "./PrototypeLab.module.css";
 import supplyStyles from "./SupplyChainScene.module.css";
+import signalStyles from "./SystemSignals.module.css";
 
 export function SupplyChainScene({ view }: { view: ScenarioSessionView<SupplyMetric> }) {
   const active = view.step?.id ?? "";
@@ -61,6 +62,11 @@ export function ChipFabScene({ view }: { view: ScenarioSessionView<FabMetric> })
   const active = view.step?.id ?? "";
   const activeStation = active === "metrology-drift" ? "Metrology" : active === "bottleneck" ? "Lithography" : active === "maintenance-window" ? "Etch" : "Ramp";
   const stations = ["Ramp", "Lithography", "Etch", "Deposition", "Metrology", "Test"] as const;
+  const signals = fabOperatingSignals(view.metrics);
+  const context = active === "bottleneck"
+    ? "Bottleneck utilization is not the same as fab output: queueing can raise cycle time even while the tool stays busy."
+    : "Good output combines throughput and yield, so more wafer starts only help when the process can convert them into good die.";
+
   return (
     <div className={styles.fabFlow}>
       <div className={styles.fabRow}>
@@ -71,7 +77,26 @@ export function ChipFabScene({ view }: { view: ScenarioSessionView<FabMetric> })
           </span>
         ))}
       </div>
-      <p className={styles.sceneLabel}>The highlighted station is where the current decision is concentrated; output quality depends on the whole flow.</p>
+
+      <div className={signalStyles.row} aria-label="Fab operating signals">
+        <div className={signalStyles.signal} data-fab-signal="good-output" data-state="controlled">
+          <span>Good output</span>
+          <strong>{signals.goodOutput}</strong>
+          <small>Throughput × yield</small>
+        </div>
+        <div className={signalStyles.signal} data-fab-signal="congestion" data-state={signals.congestion}>
+          <span>Cycle-time pressure</span>
+          <strong>{signals.congestion.toUpperCase()}</strong>
+          <small>Queueing and flow delay</small>
+        </div>
+        <div className={signalStyles.signal} data-fab-signal="process-risk" data-state={signals.processRisk}>
+          <span>Process risk</span>
+          <strong>{signals.processRisk.toUpperCase()}</strong>
+          <small>Defect exposure</small>
+        </div>
+      </div>
+
+      <p className={styles.sceneLabel} data-fab-context>{context}</p>
     </div>
   );
 }
