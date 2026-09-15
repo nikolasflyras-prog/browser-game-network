@@ -3,6 +3,7 @@ import {
   activeSwitchyardDailyStreak,
   formatSwitchyardDailyShare,
   isBetterSwitchyardDailyResult,
+  switchyardDailyId,
   switchyardDailyRecord,
   switchyardDailyStorageName,
   switchyardSeedFromDateKey,
@@ -10,9 +11,11 @@ import {
 } from "./daily";
 
 describe("Switchyard Daily metadata", () => {
-  it("uses a stable UTC date key and deterministic seed", () => {
+  it("uses a stable UTC date key, public daily ID, and deterministic seed", () => {
     const date = new Date("2026-09-15T23:30:00-04:00");
     expect(switchyardUtcDateKey(date)).toBe("2026-09-16");
+    expect(switchyardDailyId("2026-09-16")).toBe("SWY-20260916");
+    expect(() => switchyardDailyId("09/16/2026")).toThrow(/Invalid date key/);
     expect(switchyardSeedFromDateKey("2026-09-16")).toBe(switchyardSeedFromDateKey("2026-09-16"));
     expect(switchyardSeedFromDateKey("2026-09-16")).not.toBe(switchyardSeedFromDateKey("2026-09-17"));
   });
@@ -44,15 +47,17 @@ describe("Switchyard Daily metadata", () => {
     expect(activeSwitchyardDailyStreak(["2026-09-13", "2026-09-15"], "2026-09-15")).toBe(1);
   });
 
-  it("formats a spoiler-safe share card", () => {
+  it("formats a spoiler-safe, non-color-only share card", () => {
     const share = formatSwitchyardDailyShare(
       "2026-09-15",
       { score: 920, strikes: 1, won: true, sequence: [true, true, false, true] },
       4,
       "https://example.com/games/switchyard-daily",
     );
-    expect(share).toContain("🟩🟩🟥🟩 3/4");
+    expect(share).toContain("Switchyard Daily · SWY-20260915");
+    expect(share).toContain("Routes ✓ ✓ × ✓ · 3/4 correct");
     expect(share).toContain("4-day streak");
     expect(share).not.toMatch(/target|depot|switch [abc]/i);
+    expect(share).not.toMatch(/[🟩🟥]/u);
   });
 });

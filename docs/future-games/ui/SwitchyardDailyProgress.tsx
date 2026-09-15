@@ -5,6 +5,7 @@ import { listLocalGameValues } from "@/games/_shared/storage/localGameStorage";
 import {
   activeSwitchyardDailyStreak,
   formatSwitchyardDailyShare,
+  switchyardDailyId,
   switchyardUtcDateKey,
   type StoredSwitchyardDailyResult,
 } from "../switchyard-daily/daily";
@@ -58,6 +59,7 @@ export function SwitchyardDailyProgress({ onEvent }: Props) {
   const [snapshot, setSnapshot] = useState<ProgressSnapshot>(EMPTY_SNAPSHOT);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const todayKey = switchyardUtcDateKey();
+  const dailyId = switchyardDailyId(todayKey);
 
   useEffect(() => {
     let active = true;
@@ -85,6 +87,7 @@ export function SwitchyardDailyProgress({ onEvent }: Props) {
       snapshot.streak,
     );
     onEvent?.("share_clicked", {
+      daily_id: dailyId,
       score: stored.score,
       streak: snapshot.streak,
       won: stored.won,
@@ -109,15 +112,20 @@ export function SwitchyardDailyProgress({ onEvent }: Props) {
       : "Clear today's yard to start a streak.";
 
   return (
-    <section className={styles.progress} aria-label="Switchyard Daily staged progress" data-switchyard-complete={result ? "true" : "false"}>
+    <section
+      className={styles.progress}
+      aria-label="Switchyard Daily staged progress"
+      data-switchyard-complete={result ? "true" : "false"}
+      data-switchyard-daily-id={dailyId}
+    >
       <div className={styles.stat}>
         <span>Clear streak</span>
         <strong data-switchyard-streak>{snapshot.streak}</strong>
         <small>{snapshot.streak === 1 ? "day" : "days"}</small>
       </div>
       <div className={styles.copy} aria-live="polite">
-        <strong data-switchyard-today>{status}</strong>
-        <span>Best result for each UTC date stays in this browser. Failed shifts do not advance the clear streak.</span>
+        <strong data-switchyard-today>{dailyId} · {status}</strong>
+        <span>Best result for each UTC puzzle stays in this browser. Failed shifts do not advance the clear streak.</span>
       </div>
       {result ? (
         <button type="button" className={styles.share} data-switchyard-share onClick={copyResult}>

@@ -17,6 +17,11 @@ export function switchyardUtcDateKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
 
+export function switchyardDailyId(dateKey: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new Error(`Invalid date key: ${dateKey}`);
+  return `SWY-${dateKey.replaceAll("-", "")}`;
+}
+
 export function switchyardSeedFromDateKey(value: string) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -67,11 +72,11 @@ export function isBetterSwitchyardDailyResult(current: StoredSwitchyardDailyResu
 }
 
 export function formatSwitchyardDailyShare(dateKey: string, result: SwitchyardDailyResult, streak = 0, url?: string) {
-  const routeGrid = result.sequence.map((correct) => (correct ? "🟩" : "🟥")).join("");
+  const routeResult = result.sequence.map((correct) => (correct ? "✓" : "×")).join(" ");
   const correct = result.sequence.filter(Boolean).length;
   const lines = [
-    `Switchyard Daily · ${dateKey}`,
-    `${routeGrid} ${correct}/${result.sequence.length}`,
+    `Switchyard Daily · ${switchyardDailyId(dateKey)}`,
+    `Routes ${routeResult} · ${correct}/${result.sequence.length} correct`,
     `${result.score} pts · ${result.strikes} ${result.strikes === 1 ? "strike" : "strikes"}`,
   ];
   if (streak > 0) lines.push(`${streak}-day streak`);
