@@ -1,11 +1,15 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 const targetUrl = process.env.FUTURE_GAMES_LAB_URL ?? "http://127.0.0.1:3010/lab/future-games";
+const artifactDir = process.env.FUTURE_GAMES_ARTIFACT_DIR ?? "artifacts/browser";
 const debugBase = "http://127.0.0.1:9226";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const labGames = ["Traffic Control", "Switchyard Daily", "Market Maker", "Supply Chain Shock", "Chip Fab", "Power Grid Dispatcher"];
+
+await mkdir(artifactDir, { recursive: true });
 
 const response = await fetch(targetUrl);
 if (!response.ok) throw new Error(`Future Games Lab returned ${response.status}`);
@@ -13,6 +17,62 @@ const html = await response.text();
 if (!html.includes("Future Games Lab")) throw new Error("Future Games Lab title missing");
 if (!/name=["']robots["'][^>]*noindex|noindex[^>]*name=["']robots["']/.test(html)) {
   throw new Error("Future Games Lab is missing noindex metadata");
+}
+
+function switchyardSeedFromDateKey(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function nextSwitchyardRandom(seed) {
+  const next = (seed * 1103515245 + 12345) >>> 0;
+  return { seed: next, value: next / 0xffffffff };
+}
+
+function applySwitchyardAction(switches, action) {
+  if (action === "HOLD") return { ...switches };
+  return { ...switches, [action]: !switches[action] };
+}
+
+function routeSwitchyardDepot(switches) {
+  if (!switches.A) return switches.B ? 1 : 0;
+  return switches.C ? 3 : 2;
+}
+
+function routeAfterAction(switches, action) {
+  return routeSwitchyardDepot(applySwitchyardAction(switches, action));
+}
+
+function generateSwitchyardTarget(switches, seed) {
+  const roll = nextSwitchyardRandom(seed);
+  const depots = [...new Set(["HOLD", "A", "B", "C"].map((action) => routeAfterAction(switches, action)))].sort();
+  const index = Math.min(depots.length - 1, Math.floor(roll.value * depots.length));
+  return { seed: roll.seed, target: depots[index] ?? 0 };
+}
+
+function solveSwitchyardDaily(dateKey, maxTurns = 10) {
+  const actions = [];
+  let switches = { A: false, B: false, C: false };
+  let generated = generateSwitchyardTarget(switches, switchyardSeedFromDateKey(dateKey));
+  let seed = generated.seed;
+  let target = generated.target;
+
+  for (let turn = 0; turn < maxTurns; turn += 1) {
+    const action = ["HOLD", "A", "B", "C"].find((candidate) => routeAfterAction(switches, candidate) === target);
+    if (!action) throw new Error(`No Switchyard solution action for turn ${turn + 1}`);
+    actions.push(action);
+    switches = applySwitchyardAction(switches, action);
+    if (turn < maxTurns - 1) {
+      generated = generateSwitchyardTarget(switches, seed);
+      seed = generated.seed;
+      target = generated.target;
+    }
+  }
+  return actions;
 }
 
 async function waitForValue(fn, timeout = 12000) {
@@ -77,9 +137,7 @@ try {
       else resolve(message.result ?? {});
       return;
     }
-    if (message.method === "Runtime.exceptionThrown") {
-      runtimeErrors.push(message.params?.exceptionDetails?.text ?? "Runtime exception");
-    }
+    if (message.method === "Runtime.exceptionThrown") runtimeErrors.push(message.params?.exceptionDetails?.text ?? "Runtime exception");
   });
 
   function send(method, params = {}) {
@@ -91,12 +149,7 @@ try {
   }
 
   async function evaluate(expression) {
-    const result = await send("Runtime.evaluate", {
-      expression,
-      awaitPromise: true,
-      returnByValue: true,
-      userGesture: true,
-    });
+    const result = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true, userGesture: true });
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.text ?? "Runtime.evaluate failed");
     return result.result?.value;
   }
@@ -113,13 +166,33 @@ try {
       return true;
     })()`);
     if (!clicked) throw new Error(`Could not activate ${title}`);
-    await sleep(150);
+    await sleep(180);
+  }
+
+  function fileSlug(title) {
+    return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+
+  async function capture(title, suffix) {
+    await evaluate(`document.querySelector('nav button[aria-pressed="true"]')?.scrollIntoView({ block: 'start' }); window.scrollBy(0, 115); true`);
+    await sleep(100);
+    const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    await writeFile(path.join(artifactDir, `future-${fileSlug(title)}-${suffix}.png`), Buffer.from(shot.data, "base64"));
+  }
+
+  async function dispatchSwitchyardAction(action) {
+    const isHold = action === "HOLD";
+    const key = isHold ? " " : action.toLowerCase();
+    const code = isHold ? "Space" : `Key${action}`;
+    const virtualKey = isHold ? 32 : action.charCodeAt(0);
+    await send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: virtualKey, nativeVirtualKeyCode: virtualKey });
+    await send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: virtualKey, nativeVirtualKeyCode: virtualKey });
   }
 
   await send("Runtime.enable");
   await send("Page.enable");
 
-  for (const title of ["Traffic Control", "Switchyard Daily", "Market Maker", "Supply Chain Shock", "Chip Fab", "Power Grid Dispatcher"]) {
+  for (const title of labGames) {
     const visible = await waitForExpression(`document.body.innerText.includes(${JSON.stringify(title)})`);
     if (!visible) throw new Error(`Missing lab tab: ${title}`);
   }
@@ -132,15 +205,28 @@ try {
     return Boolean(button);
   })()`);
   if (!trafficRestarted) throw new Error("Traffic Control restart control missing");
+  await capture("Traffic Control", "desktop");
 
+  await evaluate(`(() => { for (const key of Object.keys(localStorage)) if (key.startsWith('bgn:switchyard-daily:')) localStorage.removeItem(key); return true; })()`);
   await activate("Switchyard Daily");
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Switchyard Daily staged runtime"] canvas'))`);
-  const switchyardCanvas = await evaluate(`Boolean(document.querySelector('section[aria-label="Switchyard Daily staged runtime"] canvas'))`);
-  if (!switchyardCanvas) throw new Error("Switchyard canvas missing");
-  await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
-  await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
-  await waitForExpression(`document.querySelector('section[aria-label="Switchyard Daily staged runtime"]')?.textContent?.includes('game_action')`, 5000);
-  await sleep(850);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const switchyardActions = solveSwitchyardDaily(todayKey);
+  for (const action of switchyardActions) {
+    await dispatchSwitchyardAction(action);
+    await sleep(730);
+  }
+  await waitForExpression(`document.querySelector('[data-switchyard-complete]')?.getAttribute('data-switchyard-complete') === 'true'`, 5000);
+  await waitForExpression(`document.querySelector('[data-switchyard-streak]')?.textContent === '1'`, 5000);
+  const storedSwitchyard = await evaluate(`localStorage.getItem(${JSON.stringify(`bgn:switchyard-daily:daily-${todayKey}`)})`);
+  if (!storedSwitchyard) throw new Error("Switchyard daily result was not persisted");
+  const parsedSwitchyard = JSON.parse(storedSwitchyard);
+  if (parsedSwitchyard?.value?.won !== true || parsedSwitchyard?.value?.score !== 1000) {
+    throw new Error(`Unexpected Switchyard stored result: ${storedSwitchyard}`);
+  }
+  const clickedShare = await evaluate(`(() => { const button = document.querySelector('[data-switchyard-share]'); button?.click(); return Boolean(button); })()`);
+  if (!clickedShare) throw new Error("Switchyard share control missing after completion");
+  await capture("Switchyard Daily", "desktop");
 
   await activate("Market Maker");
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Market Maker staged prototype"]'))`);
@@ -154,6 +240,7 @@ try {
   })()`);
   if (!marketActed) throw new Error("Market Maker decision controls missing");
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker staged prototype"]')?.textContent?.includes('Last round:')`);
+  await capture("Market Maker", "desktop");
 
   for (const title of ["Supply Chain Shock", "Chip Fab", "Power Grid Dispatcher"]) {
     await activate(title);
@@ -167,6 +254,18 @@ try {
     })()`);
     if (!acted) throw new Error(`${title} has no available decision control`);
     await waitForExpression(`document.querySelector('section[aria-label=${JSON.stringify(aria)}]')?.textContent?.includes('What changed:')`);
+    await capture(title, "desktop");
+  }
+
+  await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  for (const title of labGames) {
+    await activate(title);
+    if (title === "Traffic Control" || title === "Switchyard Daily") {
+      await waitForExpression(`Boolean(document.querySelector('section[aria-label=${JSON.stringify(`${title} staged runtime`)}] canvas'))`);
+    } else {
+      await waitForExpression(`Boolean(document.querySelector('section[aria-label=${JSON.stringify(`${title} staged prototype`)}]'))`);
+    }
+    await capture(title, "mobile");
   }
 
   const finalState = await evaluate(`({
@@ -179,15 +278,12 @@ try {
   if (!finalState.noPublicGameLinks) throw new Error("Future Games Lab exposed a public candidate game link");
   if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
 
-  console.log(JSON.stringify({ targetUrl, finalState, checkedGames: 6 }));
+  console.log(JSON.stringify({ targetUrl, finalState, checkedGames: 6, switchyardActions, visualCaptures: 12 }));
 } finally {
   socket?.close();
   if (chrome.exitCode === null) {
     chrome.kill("SIGTERM");
-    await Promise.race([
-      new Promise((resolve) => chrome.once("exit", resolve)),
-      sleep(1500),
-    ]);
+    await Promise.race([new Promise((resolve) => chrome.once("exit", resolve)), sleep(1500)]);
   }
   await rm(profileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
