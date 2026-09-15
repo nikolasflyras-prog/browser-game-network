@@ -128,7 +128,9 @@ try {
     throw new Error(`Alternate capacity did not become ready: ${JSON.stringify(preparedCapacity)}`);
   }
   const preparedContext = await evaluate(`document.querySelector('[data-supply-context]')?.textContent ?? ''`);
-  if (!preparedContext.includes("capabilities")) throw new Error(`Supply Chain preparedness context missing: ${preparedContext}`);
+  if (!preparedContext.includes("No meaningful safety-stock buffer remains")) {
+    throw new Error(`Supply Chain port-delay context missing: ${preparedContext}`);
+  }
 
   await clickChoice("Prioritize key customers");
   await clickChoice("Cap new orders");
