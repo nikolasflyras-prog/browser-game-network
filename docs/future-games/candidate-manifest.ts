@@ -1,5 +1,5 @@
 export type FutureGameLane = "Play" | "Learn";
-export type FutureGameStage = "simulation-ready" | "scenario-ready";
+export type FutureGameStage = "scenario-ready" | "simulation-ready" | "playtest-ready";
 
 export type FutureGameCandidate = {
   slug: string;
@@ -18,7 +18,7 @@ export const futureGameCandidates: readonly FutureGameCandidate[] = [
     title: "Traffic Control",
     lane: "Play",
     category: "Arcade Management",
-    stage: "simulation-ready",
+    stage: "playtest-ready",
     targetSessionMinutes: [0.75, 2.5],
     primaryHypothesis: "A one-input arcade loop can drive very high restart rate and runs per session.",
     promoteWhen: "Orbit Relay leads the MVP on restart rate or repeat runs.",
@@ -38,7 +38,7 @@ export const futureGameCandidates: readonly FutureGameCandidate[] = [
     title: "Market Maker",
     lane: "Learn",
     category: "Finance Simulation",
-    stage: "simulation-ready",
+    stage: "playtest-ready",
     targetSessionMinutes: [2, 4],
     primaryHypothesis: "Educational finance can support short repeatable rounds rather than one-and-done sessions.",
     promoteWhen: "Run the Fed validates interactive finance learning and shorter repeat sessions look valuable.",

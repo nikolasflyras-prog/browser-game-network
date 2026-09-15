@@ -100,9 +100,18 @@ export function playMarketRound(state: MarketMakerState, posture: QuotePosture):
   seed = pressureRoll.seed;
 
   const directionalPressure = pressureRoll.value * 2 - 1;
-  const spreadCost = profile.halfSpread * 0.9;
-  const buyFillProbability = clamp(0.58 + profile.fillBias + directionalPressure * 0.16 - spreadCost, 0.08, 0.94);
-  const sellFillProbability = clamp(0.58 + profile.fillBias - directionalPressure * 0.16 - spreadCost, 0.08, 0.94);
+  const askDistance = quote.ask - fairBefore;
+  const bidDistance = fairBefore - quote.bid;
+  const buyFillProbability = clamp(
+    0.68 + profile.fillBias * 0.35 + directionalPressure * 0.16 - askDistance * 1.8,
+    0.08,
+    0.94,
+  );
+  const sellFillProbability = clamp(
+    0.68 + profile.fillBias * 0.35 - directionalPressure * 0.16 - bidDistance * 1.8,
+    0.08,
+    0.94,
+  );
 
   const buyFill = buyRoll.value < buyFillProbability;
   const sellFill = sellRoll.value < sellFillProbability;
@@ -128,7 +137,7 @@ export function playMarketRound(state: MarketMakerState, posture: QuotePosture):
   const fairAfter = roundToCent(Math.max(1, fairBefore + randomMove + informedMove));
 
   const markedPnl = roundToCent(cash + inventory * fairAfter);
-  const riskPenalty = roundToCent(Math.max(0, Math.abs(inventory) - 2) ** 2 * 0.18);
+  const riskPenalty = roundToCent(Math.max(0, Math.abs(inventory) - 2) ** 2 * 0.3);
   const score = roundToCent(markedPnl - riskPenalty);
 
   let feedback = "Your quotes balanced spread capture and inventory risk.";

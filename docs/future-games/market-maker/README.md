@@ -1,12 +1,12 @@
 # Market Maker
 
 **Lane:** LEARN  
-**Status:** staged prototype  
+**Status:** staged prototype — headless playtest-ready  
 **Primary hypothesis:** can a finance-learning game produce short, repeatable rounds instead of one-and-done educational sessions?
 
 ## Fantasy
 
-You are the market maker for one volatile stock. Each round you choose how aggressively to quote around fair value, absorb incoming orders, and keep inventory risk under control while news moves the market.
+You are the market maker for one volatile stock. Each round you choose how aggressively to quote around fair value, absorb incoming orders, and keep inventory risk under control while the market moves.
 
 ## What the player learns
 
@@ -14,17 +14,17 @@ You are the market maker for one volatile stock. Each round you choose how aggre
 - liquidity provision;
 - inventory risk;
 - adverse selection;
-- why tighter spreads win flow but expose the dealer to more risk;
+- why tighter spreads win more flow but can create more exposure;
 - why a market maker may skew quotes when inventory becomes unbalanced.
 
 ## Core loop
 
-1. See current fair value, volatility, inventory, and a short market cue.
+1. See current fair value, inventory, and a short market cue.
 2. Choose a quoting posture: **tight**, **balanced**, **wide**, **lean long**, or **lean short**.
-3. Simulated buy/sell flow arrives.
-4. Some orders fill depending on spread and flow pressure.
+3. Simulated buy/sell flow arrives according to the actual bid/ask prices and directional pressure.
+4. Some orders fill.
 5. Fair value moves.
-6. Inventory is marked to market and the player receives immediate feedback explaining the result.
+6. Inventory is marked to market and the player receives immediate causal feedback.
 7. Repeat for 12–20 rounds.
 
 Target session: 2–4 minutes. Every round should take under 10 seconds once learned.
@@ -35,13 +35,24 @@ Finish the session with positive risk-adjusted dealer P&L and inventory inside t
 
 ## Failure / pressure states
 
-The player does not need a hard fail on the first version. Instead, large inventory creates an increasingly visible risk penalty. A catastrophic inventory breach can end a challenge mode later.
+The player does not need a hard fail in the first version. Large inventory creates an increasingly visible risk penalty. A catastrophic inventory breach can become a later challenge mode only if it improves the loop.
 
 ## Scoring
 
-`dealer score = realized spread capture + marked inventory P&L - inventory risk penalty`
+`dealer score = marked dealer P&L - inventory risk penalty`
 
-Display both raw P&L and a normalized score so players learn the economics without needing finance expertise.
+Spread capture enters dealer P&L naturally through customer fills at the bid and ask. Display both raw P&L and normalized score so players can learn the economics without needing finance expertise.
+
+## Quote mechanics
+
+The displayed quote must be the quote used by the simulation.
+
+- Lowering the ask toward fair value increases the chance a customer buys from the dealer.
+- Raising the bid toward fair value increases the chance a customer sells to the dealer.
+- **Lean short** shifts quotes down, making customer buys more likely and helping reduce a long inventory position.
+- **Lean long** shifts quotes up, making customer sells more likely and helping reduce a short inventory position.
+
+This relationship is a hard design requirement; quote skew cannot be merely cosmetic.
 
 ## Input
 
@@ -52,10 +63,21 @@ Five large quote-strategy buttons work on desktop and touch. Keyboard shortcuts 
 After every round, show one short causal sentence such as:
 
 - “Tight quotes won both orders, but the price fell while you were long.”
-- “Wide quotes protected you from adverse selection, but you earned no spread.”
-- “Leaning your bid lower helped reduce long inventory.”
+- “Wide quotes reduced your flow, so you earned less spread this round.”
+- “Leaning your quotes lower helped customers buy from you and reduced your long inventory.”
 
 The explanation is part of the game loop, not a separate textbook panel.
+
+## Headless mechanic gate
+
+The staged simulation includes deterministic bot policies for always-tight, always-balanced, always-wide, and inventory-aware quoting.
+
+Before UI promotion:
+
+- tight quotes must receive materially more fills than wide quotes;
+- inventory-aware quoting must materially reduce absolute ending inventory versus staying balanced;
+- inventory-aware play must remain economically competitive instead of becoming a zero-flow defensive strategy;
+- no posture should dominate solely because a hidden probability ignores the displayed quote.
 
 ## Analytics hypothesis
 

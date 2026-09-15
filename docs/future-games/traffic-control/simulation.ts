@@ -14,6 +14,8 @@ export type TrafficState = {
   nsArrivalIn: number;
   ewArrivalIn: number;
   spawnInterval: number;
+  waveAxis: Axis;
+  waveTicksRemaining: number;
   seed: number;
   complete: boolean;
   gameOverReason?: "gridlock";
@@ -21,6 +23,10 @@ export type TrafficState = {
 
 const MAX_QUEUE = 9;
 const SWITCH_DELAY = 3;
+const HEAVY_WAVE_MULTIPLIER = 0.65;
+const LIGHT_WAVE_MULTIPLIER = 1.25;
+const MIN_WAVE_TICKS = 45;
+const WAVE_JITTER_TICKS = 55;
 
 function random(seed: number) {
   const next = (seed * 1664525 + 1013904223) >>> 0;
@@ -45,6 +51,8 @@ export function createTrafficState(seed = 1): TrafficState {
     nsArrivalIn: 4,
     ewArrivalIn: 7,
     spawnInterval: 8,
+    waveAxis: "NS",
+    waveTicksRemaining: 60,
     seed,
     complete: false,
   };
@@ -58,11 +66,31 @@ function difficultyInterval(tick: number) {
   return 8;
 }
 
+function arrivalIntervalForAxis(state: TrafficState, axis: Axis) {
+  const waveMultiplier = state.waveAxis === axis ? HEAVY_WAVE_MULTIPLIER : LIGHT_WAVE_MULTIPLIER;
+  return state.spawnInterval * waveMultiplier;
+}
+
+function advanceTrafficWave(state: TrafficState): TrafficState {
+  const waveTicksRemaining = state.waveTicksRemaining - 1;
+  if (waveTicksRemaining > 0) return { ...state, waveTicksRemaining };
+
+  const axisRoll = random(state.seed);
+  const durationRoll = random(axisRoll.seed);
+  return {
+    ...state,
+    seed: durationRoll.seed,
+    waveAxis: axisRoll.value < 0.5 ? "NS" : "EW",
+    waveTicksRemaining: MIN_WAVE_TICKS + Math.round(durationRoll.value * WAVE_JITTER_TICKS),
+  };
+}
+
 export function stepTraffic(state: TrafficState, action: TrafficAction): TrafficState {
   if (state.complete) return state;
 
   let next = { ...state, tick: state.tick + 1 };
   next.spawnInterval = difficultyInterval(next.tick);
+  next = advanceTrafficWave(next);
 
   if (action === "switch" && (next.phase === "NS" || next.phase === "EW") && next.phaseTicksRemaining === 0) {
     next.pendingPhase = next.phase === "NS" ? "EW" : "NS";
@@ -84,14 +112,14 @@ export function stepTraffic(state: TrafficState, action: TrafficAction): Traffic
 
   if (next.nsArrivalIn <= 0) {
     next.nsQueue += 1;
-    const arrival = nextArrival(next.seed, next.spawnInterval);
+    const arrival = nextArrival(next.seed, arrivalIntervalForAxis(next, "NS"));
     next.seed = arrival.seed;
     next.nsArrivalIn = arrival.ticks;
   }
 
   if (next.ewArrivalIn <= 0) {
     next.ewQueue += 1;
-    const arrival = nextArrival(next.seed, next.spawnInterval);
+    const arrival = nextArrival(next.seed, arrivalIntervalForAxis(next, "EW"));
     next.seed = arrival.seed;
     next.ewArrivalIn = arrival.ticks;
   }

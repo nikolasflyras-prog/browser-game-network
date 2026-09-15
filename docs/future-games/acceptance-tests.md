@@ -17,11 +17,18 @@ Every promoted prototype must pass:
 - Small mobile viewport remains playable without browser zoom.
 - Reduced-motion mode preserves all gameplay information.
 - No ad placement interrupts active input.
+- A headless balance check exists when the game is simple enough to support one; it should test for obvious dominant, cosmetic, or no-skill strategies before browser polish.
 
 ## Traffic Control
 
 ### Mechanic test
 A new player should understand that switching the signal changes which queue can clear without needing lane-by-lane tutorial text.
+
+### Headless balance gate
+- queue-aware play survives at least 3× longer than never switching across a deterministic seed batch;
+- queue-aware play outscores the best tested fixed-period switching policy by at least 20%;
+- the fixed-period comparison searches several plausible cadences instead of using one hand-picked weak baseline;
+- seeded traffic waves must create asymmetric pressure so reacting to the intersection matters.
 
 ### Must verify later in browser
 - switch input feedback is immediate;
@@ -57,6 +64,12 @@ A player can predict the destination of a train from visible switch states after
 ### Mechanic test
 After three rounds, a novice can state the basic tradeoff: tighter quotes get more flow but create more inventory/adverse-selection risk.
 
+### Headless balance gate
+- tight quotes generate materially more fills than wide quotes across deterministic seeds;
+- quote skew changes flow through the actual displayed bid/ask distance from fair value, not a disconnected hidden bonus;
+- inventory-aware quoting reduces average absolute ending inventory versus staying balanced;
+- inventory-aware play remains economically competitive so risk control is a real strategy rather than a punishment mode.
+
 ### Must verify later in browser
 - bid/fair/ask relationship is visually dominant;
 - inventory direction is unambiguous;
@@ -67,7 +80,8 @@ After three rounds, a novice can state the basic tradeoff: tighter quotes get mo
 ### Kill/rework if
 - players maximize one posture every round;
 - P&L feels random rather than caused by decisions;
-- finance terminology takes longer to explain than the game itself.
+- finance terminology takes longer to explain than the game itself;
+- the displayed quote and the fill model can drift apart.
 
 ## Supply Chain Shock
 
@@ -123,7 +137,8 @@ When MVP data identifies the candidate to pursue:
 
 1. Copy its staged logic into `src/games/<slug>/`.
 2. Convert staged tests into actual Vitest coverage and make them green.
-3. Build the thinnest playable runtime possible.
-4. Run structured browser QA at desktop and mobile sizes.
-5. Fix mechanic/readability failures before visual polish.
-6. Only then add full landing copy, analytics, search metadata, and public discovery.
+3. Keep the staged headless balance gate green after any tuning changes.
+4. Build the thinnest playable runtime possible.
+5. Run structured browser QA at desktop and mobile sizes.
+6. Fix mechanic/readability failures before visual polish.
+7. Only then add full landing copy, analytics, search metadata, and public discovery.
