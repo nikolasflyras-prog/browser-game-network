@@ -29,6 +29,7 @@ export const futureGameAnalyticsContracts: readonly FutureGameAnalyticsContract[
     events: [
       { event: "daily_started", when: "daily seed begins", properties: ["daily_id", "seed"] },
       { event: "level_completed", when: "a train route resolves", properties: ["turn", "action", "target", "actual", "correct", "strikes"] },
+      { event: "game_action", when: "raw switch input resolves", properties: ["action", "turn", "switch_action", "target", "actual", "correct", "strikes"] },
       { event: "daily_completed", when: "daily ends", properties: ["score", "strikes", "won", "sequence", "duration_ms", "saved_best"] },
       { event: "game_completed", when: "daily runtime reaches a terminal state", properties: ["mode", "score", "won"] },
       { event: "game_restarted", when: "daily is replayed", properties: ["mode", "daily_id", "input_type"] },

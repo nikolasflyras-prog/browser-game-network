@@ -56,6 +56,7 @@ export function mountPersistedSwitchyardPrototype(mount: HTMLElement, bridge: Ga
           correct: properties.correct,
           strikes: properties.strikes,
         });
+        bridge.emit(event, properties);
         return;
       }
 
