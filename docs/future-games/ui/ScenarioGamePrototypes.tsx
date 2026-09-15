@@ -7,6 +7,7 @@ import type { GridMetric } from "../power-grid-dispatcher/scenarios";
 import type { MetricDirection } from "../scenario-insights";
 import { supplyChainPrototype } from "../supply-chain-shock/prototype";
 import type { SupplyMetric } from "../supply-chain-shock/scenarios";
+import type { PrototypeEventSink } from "./prototype-events";
 import { ScenarioPrototype } from "./ScenarioPrototype";
 import { ChipFabScene, PowerGridScene, SupplyChainScene } from "./ScenarioVisuals";
 
@@ -58,7 +59,9 @@ const gridDirections: Record<GridMetric, MetricDirection> = {
   storage: "higher",
 };
 
-export function SupplyChainPrototypePanel() {
+type PanelProps = { onEvent?: PrototypeEventSink };
+
+export function SupplyChainPrototypePanel({ onEvent }: PanelProps) {
   return (
     <ScenarioPrototype
       definition={supplyChainPrototype}
@@ -67,11 +70,12 @@ export function SupplyChainPrototypePanel() {
       metricDirections={supplyDirections}
       accent="#f6c969"
       renderScene={(view) => <SupplyChainScene view={view} />}
+      onEvent={onEvent}
     />
   );
 }
 
-export function ChipFabPrototypePanel() {
+export function ChipFabPrototypePanel({ onEvent }: PanelProps) {
   return (
     <ScenarioPrototype
       definition={chipFabPrototype}
@@ -80,11 +84,12 @@ export function ChipFabPrototypePanel() {
       metricDirections={fabDirections}
       accent="#8ed6ff"
       renderScene={(view) => <ChipFabScene view={view} />}
+      onEvent={onEvent}
     />
   );
 }
 
-export function PowerGridPrototypePanel() {
+export function PowerGridPrototypePanel({ onEvent }: PanelProps) {
   return (
     <ScenarioPrototype
       definition={powerGridPrototype}
@@ -93,6 +98,7 @@ export function PowerGridPrototypePanel() {
       metricDirections={gridDirections}
       accent="#9ce88a"
       renderScene={(view) => <PowerGridScene view={view} />}
+      onEvent={onEvent}
     />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import {
   chooseScenarioSession,
   createScenarioSession,
@@ -14,17 +14,19 @@ import {
   summarizeScenarioOutcome,
   type MetricDirection,
 } from "../scenario-insights";
+import { prototypeMetricProperties, type PrototypeEventSink } from "./prototype-events";
 import insightStyles from "./ResultInsights.module.css";
 import styles from "./PrototypeLab.module.css";
 
 type Props<K extends string, Style extends string> = {
   definition: ScenarioGameDefinition<K, Style>;
-  metricOrder: readonly K[];
+  metricOrder: readonly [];
   metricLabels: Record<K, string>;
   metricDirections: Record<K, MetricDirection>;
   metricFormatters?: Partial<Record<K, (value: number) => string>>;
   accent: string;
   renderScene: (view: ScenarioSessionView<K>) => ReactNode;
+  onEvent?: PrototypeEventSink;
 };
 
 export function ScenarioPrototype<K extends string, Style extends string>({
@@ -35,26 +37,62 @@ export function ScenarioPrototype<K extends string, Style extends string>({
   metricFormatters = {},
   accent,
   renderScene,
+  onEvent,
 }: Props<K, Style>) {
   const [session, setSession] = useState(() => createScenarioSession(definition));
   const [notice, setNotice] = useState<string | null>(null);
+  const startedAt = useRef(Date.now());
   const view = scenarioSessionView(definition, session);
   const outcomeSummary = session.result
     ? summarizeScenarioOutcome(definition.initialMetrics, session.state.metrics, metricDirections)
     : null;
 
+  useEffect(() => {
+    startedAt.current = Date.now();
+    onEvent?.("game_started", { pack: definition.slug, version: definition.version });
+  }, [definition.slug, definition.version, onEvent]);
+
   function choose(choiceId: string) {
+    const step = view.step;
     const choice = view.choices.find((candidate) => candidate.id === choiceId);
     if (!choice?.available) {
-      setNotice(choice?.unavailableFeedback ?? "That response is not available from the current state.");
+      const reason = choice?.unavailableFeedback ?? "That response is not available from the current state.";
+      setNotice(reason);
+      onEvent?.("game_action", {
+        action: "unavailable_choice",
+        step: step?.id ?? "complete",
+        choice: choiceId,
+        reason,
+      });
       return;
     }
 
-    setSession((current) => chooseScenarioSession(definition, current, choiceId));
+    const beforeScore = definition.finalScore(session.state);
+    const next = chooseScenarioSession(definition, session, choiceId);
+    const afterScore = definition.finalScore(next.state);
+    const scoreDelta = Math.round((afterScore - beforeScore) * 100) / 100;
+    setSession(next);
     setNotice(null);
+
+    onEvent?.("level_completed", {
+      step: step?.id ?? String(view.stepNumber),
+      choice: choiceId,
+      score_delta: scoreDelta,
+      ...prototypeMetricProperties(next.state.metrics as Record<string, number>),
+    });
+
+    if (next.result) {
+      onEvent?.("game_completed", {
+        score: next.result.score,
+        style: next.result.style,
+        duration_ms: Math.max(0, Date.now() - startedAt.current),
+      });
+    }
   }
 
   function reset() {
+    onEvent?.("game_restarted", { previous_score: session.result?.score ?? null });
+    startedAt.current = Date.now();
     setSession(resetScenarioSession(definition));
     setNotice(null);
   }
@@ -70,7 +108,7 @@ export function ScenarioPrototype<K extends string, Style extends string>({
         </div>
         <div className={styles.progress}>
           <span>{view.complete ? "Complete" : "Decision"}</span>
-          <strong>{view.complete ? view.totalSteps : `${view.stepNumber}/${view.totalSteps}`}</strong>
+          <strong>{view.complete ? view.totalSteps : `${view.stepNumber}/${view.totalSteps}`</strong>
         </div>
       </header>
 
@@ -85,63 +123,4 @@ export function ScenarioPrototype<K extends string, Style extends string>({
 
       <div className={styles.playfield}>{renderScene(view)}</div>
 
-      {!view.complete && view.step ? (
-        <div className={styles.decisionDock}>
-          <div className={styles.prompt}>
-            <p className={styles.eyebrow}>{view.step.title}</p>
-            <h3>{view.step.prompt}</h3>
-          </div>
-          <div className={styles.choiceGrid}>
-            {view.choices.map((choice) => (
-              <button
-                className={styles.choice}
-                type="button"
-                key={choice.id}
-                onClick={() => choose(choice.id)}
-                aria-disabled={!choice.available}
-              >
-                <strong>{choice.label}</strong>
-                <span>{choice.detail}</span>
-                {!choice.available ? <small>{choice.unavailableFeedback ?? "Unavailable from the current state"}</small> : null}
-              </button>
-            ))}
-          </div>
-          <div className={styles.feedback} aria-live="polite">
-            <strong>{notice ? "Unavailable: " : view.lastFeedback ? "What changed: " : "Your move: "}</strong>
-            {notice ?? view.lastFeedback ?? "Choose the response that best fits the operating state."}
-          </div>
-        </div>
-      ) : null}
-
-      {session.result ? (
-        <div className={styles.result}>
-          <div className={styles.score}><span>Score</span><strong>{session.result.score}</strong></div>
-          <div>
-            <p className={styles.eyebrow}>Operating style</p>
-            <h3 className={styles.title}>{session.result.style.replaceAll("-", " ")}</h3>
-          </div>
-          <button className={styles.reset} type="button" onClick={reset}>Run again</button>
-
-          {outcomeSummary && (outcomeSummary.strongestImprovement || outcomeSummary.biggestPressure) ? (
-            <div className={insightStyles.resultInsights} aria-label="Why this run ended here">
-              {outcomeSummary.strongestImprovement ? (
-                <div className={insightStyles.resultInsight} data-kind="positive">
-                  <span>Strongest improvement</span>
-                  <strong>{metricLabels[outcomeSummary.strongestImprovement.metric]}</strong>
-                  <small>{formatMetricDelta(outcomeSummary.strongestImprovement.delta)} from start</small>
-                </div>
-              ) : null}
-              {outcomeSummary.biggestPressure ? (
-                <div className={insightStyles.resultInsight} data-kind="pressure">
-                  <span>Main tradeoff</span>
-                  <strong>{metricLabels[outcomeSummary.biggestPressure.metric]}</strong>
-                  <small>{formatMetricDelta(outcomeSummary.biggestPressure.delta)} from start</small>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
-  );
-}
+      {!view.complete && view.step ? (\n        <div className={styles.decisionDock}>\n          <div className={styles.prompt}>\n            <p className={styles.eyebrow}>{view.step.title}</p>\n            <h3>{view.step.prompt}</h3>\n          </div>\n          <div className={styles.choiceGrid}>\n            {view.choices.map((choice) => (\n              <button\n                className={styles.choice}\n                type=\"button\"\n                key={choice.id}\n                onClick={() => choose(choice.id)}\n                aria-disabled={!choice.available}\n              >\n                <strong>{choice.label}</strong>\n                <span>{choice.detail}</span>\n                {!choice.available ? <small>{choice.unavailableFeedback ?? \"Unavailable from the current state\"}</small> : null}\n              </button>\n            ))}\n          </div>\n          <div className={styles.feedback} aria-live=\"polite\">\n            <strong>{notice ? \"Unavailable: \" : view.lastFeedback ? \"What changed: \" : \"Your move: \"}</strong>\n            {notice ?? view.lastFeedback ?? \"Choose the response that best fits the operating state.\"}\n          </div>\n        </div>\n      ) : null}\n\n      {session.result ? (\n        <div className={styles.result}>\n          <div className={styles.score}><span>Score</span><strong>{session.result.score}</strong></div>\n          <div>\n            <p className={styles.eyebrow}>Operating style</p>\n            <h3 className={styles.title}>{session.result.style.replaceAll(\"-\", \" \")}</h3>\n          </div>\n          <button className={styles.reset} type=\"button\" onClick={reset}>Run again</button>\n\n          {outcomeSummary && (outcomeSummary.strongestImprovement || outcomeSummary.biggestPressure) ? (\n            <div className={insightStyles.resultInsights} aria-label=\"Why this run ended here\">\n              {outcomeSummary.strongestImprovement ? (\n                <div className={insightStyles.resultInsight} data-kind=\"positive\">\n                  <span>Strongest improvement</span>\n                  <strong>{metricLabels[outcomeSummary.strongestImprovement.metric]}</strong>\n                  <small>{formatMetricDelta(outcomeSummary.strongestImprovement.delta)} from start</small>\n                </div>\n              ) : null}\n              {outcomeSummary.biggestPressure ? (\n                <div className={insightStyles.resultInsight} data-kind=\"pressure\">\n                  <span>Main tradeoff</span>\n                  <strong>{metricLabels[outcomeSummary.biggestPressure.metric]}</strong>\n                  <small>{formatMetricDelta(outcomeSummary.biggestPressure.delta)} from start</small>\n                </div>\n              ) : null}\n            </div>\n          ) : null}\n        </div>\n      ) : null}\n    </section>\n  );\n}

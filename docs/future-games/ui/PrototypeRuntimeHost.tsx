@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { GameBridge, GameEventName, GameEventProperties, GameRuntimeController } from "@/games/_shared/types/runtime";
+import type { PrototypeEventSink } from "./prototype-events";
 import styles from "./FutureGameLab.module.css";
 
 type RuntimeMount = (mount: HTMLElement, bridge: GameBridge) => GameRuntimeController;
@@ -10,9 +11,10 @@ type Props = {
   slug: string;
   title: string;
   loadRuntime: () => Promise<RuntimeMount>;
+  onEvent?: PrototypeEventSink;
 };
 
-export function PrototypeRuntimeHost({ slug, title, loadRuntime }: Props) {
+export function PrototypeRuntimeHost({ slug, title, loadRuntime, onEvent }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<GameRuntimeController | null>(null);
   const [status, setStatus] = useState("Loading staged runtime…");
@@ -35,6 +37,7 @@ export function PrototypeRuntimeHost({ slug, title, loadRuntime }: Props) {
             .map(([key, value]) => `${key}=${String(value)}`)
             .join(" · ");
           setLatestEvent(detail ? `${event} · ${detail}` : event);
+          onEvent?.(event, properties);
         };
         controllerRef.current = mountGame(mountElement, {
           gameSlug: slug,
@@ -54,7 +57,7 @@ export function PrototypeRuntimeHost({ slug, title, loadRuntime }: Props) {
       controllerRef.current?.destroy();
       controllerRef.current = null;
     };
-  }, [loadRuntime, slug]);
+  }, [loadRuntime, onEvent, slug]);
 
   function togglePause() {
     const controller = controllerRef.current;

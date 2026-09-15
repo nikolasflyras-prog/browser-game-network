@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { GameEventName, GameEventProperties } from "@/games/_shared/types/runtime";
 import { MarketMakerPrototypePanel } from "./MarketMakerPrototype";
 import { ChipFabPrototypePanel, PowerGridPrototypePanel, SupplyChainPrototypePanel } from "./ScenarioGamePrototypes";
 import { PrototypeRuntimeHost } from "./PrototypeRuntimeHost";
 import { SwitchyardDailyProgress } from "./SwitchyardDailyProgress";
+import { compactPrototypeEvent } from "./prototype-events";
 import styles from "./FutureGameLab.module.css";
 
 type LabGame = "traffic-control" | "switchyard-daily" | "market-maker" | "supply-chain-shock" | "chip-fab" | "power-grid-dispatcher";
@@ -20,6 +22,20 @@ const games: readonly { id: LabGame; title: string; lane: "PLAY" | "LEARN"; note
 
 export function FutureGameLab() {
   const [active, setActive] = useState<LabGame>("traffic-control");
+  const [latestEvent, setLatestEvent] = useState("No event yet");
+  const [eventHistory, setEventHistory] = useState<GameEventName[]>([]);
+
+  const onEvent = useCallback((event: GameEventName, properties: GameEventProperties = {}) => {
+    setLatestEvent(compactPrototypeEvent(event, properties));
+    setEventHistory((current) => [...current, event].slice(-32));
+  }, []);
+
+  const selectGame = useCallback((id: LabGame) => {
+    setEventHistory([]);
+    setLatestEvent("No event yet");
+    setActive(id);
+  }, []);
+
   const loadTraffic = useCallback(
     () => import("../traffic-control/runtime").then((module) => module.mountTrafficControlPrototype),
     [],
@@ -34,7 +50,7 @@ export function FutureGameLab() {
     <main className={styles.lab}>
       <header className={styles.header}>
         <div>
-          <p className={styles.eyebrow}>Internal staging surface · noindex</p>
+          <p className={styles.eyebrow}>Internal staging surface µ noindex</p>
           <h1>Future Games Lab</h1>
           <p>One preview surface for mechanic, responsive-layout, restart, and instrumentation QA before any candidate enters public discovery.</p>
         </div>
@@ -43,7 +59,7 @@ export function FutureGameLab() {
 
       <nav className={styles.gameTabs} aria-label="Staged game prototypes">
         {games.map((game) => (
-          <button type="button" key={game.id} onClick={() => setActive(game.id)} aria-pressed={active === game.id}>
+          <button type="button" key={game.id} onClick={() => selectGame(game.id)} aria-pressed={active === game.id}>
             <span>{game.lane}</span>
             <strong>{game.title}</strong>
           </button>
@@ -56,18 +72,27 @@ export function FutureGameLab() {
       </section>
 
       <section className={styles.stage} key={active}>
-        {active === "traffic-control" ? <PrototypeRuntimeHost slug="traffic-control" title="Traffic Control" loadRuntime={loadTraffic} /> : null}
+        {active === "traffic-control" ? <PrototypeRuntimeHost slug="traffic-control" title="Traffic Control" loadRuntime={loadTraffic} onEvent={onEvent} /> : null}
         {active === "switchyard-daily" ? (
           <>
-            <PrototypeRuntimeHost slug="switchyard-daily" title="Switchyard Daily" loadRuntime={loadSwitchyard} />
-            <SwitchyardDailyProgress />
+            <PrototypeRuntimeHost slug="switchyard-daily" title="Switchyard Daily" loadRuntime={loadSwitchyard} onEvent={onEvent} />
+            <SwitchyardDailyProgress onEvent={onEvent} />
           </>
         ) : null}
-        {active === "market-maker" ? <MarketMakerPrototypePanel /> : null}
-        {active === "supply-chain-shock" ? <SupplyChainPrototypePanel /> : null}
-        {active === "chip-fab" ? <ChipFabPrototypePanel /> : null}
-        {active === "power-grid-dispatcher" ? <PowerGridPrototypePanel /> : null}
+        {active === "market-maker" ? <MarketMakerPrototypePanel onEvent={onEvent} /> : null}
+        {active === "supply-chain-shock" ? <SupplyChainPrototypePanel onEvent={onEvent} /> : null}
+        {active === "chip-fab" ? <ChipFabPrototypePanel onEvent={onEvent} /> : null}
+        {active === "power-grid-dispatcher" ? <PowerGridPrototypePanel onEvent={onEvent} /> : null}
       </section>
+
+      <p
+        className={styles.eventReadout}
+        data-lab-latest-event={latestEvent}
+        data-lab-event-history={eventHistory.join(",")}
+        aria-live="polite"
+      >
+        <strong>Lab event stream:</strong> {latestEvent}
+      </p>
 
       <aside className={styles.qaCard}>
         <strong>Preview gate</strong>
@@ -75,7 +100,7 @@ export function FutureGameLab() {
         <span>Mobile controls do not overlap</span>
         <span>Restart/reset works</span>
         <span>State changes are causally readable</span>
-        <span>No console/runtime errors</span>
+        <span>Analytics lifecycle is complete</span>
         <span>Reduced-motion pass before promotion</span>
       </aside>
     </main>

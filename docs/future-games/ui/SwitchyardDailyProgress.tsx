@@ -8,6 +8,7 @@ import {
   switchyardUtcDateKey,
   type StoredSwitchyardDailyResult,
 } from "../switchyard-daily/daily";
+import type { PrototypeEventSink } from "./prototype-events";
 import styles from "./SwitchyardDailyProgress.module.css";
 
 const GAME_SLUG = "switchyard-daily";
@@ -51,7 +52,9 @@ function legacyCopy(text: string) {
   return copied;
 }
 
-export function SwitchyardDailyProgress() {
+type Props = { onEvent?: PrototypeEventSink };
+
+export function SwitchyardDailyProgress({ onEvent }: Props) {
   const [snapshot, setSnapshot] = useState<ProgressSnapshot>(EMPTY_SNAPSHOT);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const todayKey = switchyardUtcDateKey();
@@ -81,6 +84,12 @@ export function SwitchyardDailyProgress() {
       { score: stored.score, strikes: stored.strikes, won: stored.won, sequence },
       snapshot.streak,
     );
+    onEvent?.("share_clicked", {
+      score: stored.score,
+      streak: snapshot.streak,
+      won: stored.won,
+      method: "clipboard",
+    });
     try {
       if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
       else if (!legacyCopy(text)) throw new Error("Clipboard unavailable");

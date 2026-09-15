@@ -45,6 +45,7 @@ try {
     if (!response.ok) return null;
     return (await response.json()).find((entry) => entry.type === "page" && entry.url.includes("/lab/future-games"));
   });
+
   socket = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("Timed out opening result QA websocket")), 5000);
@@ -91,9 +92,9 @@ try {
       if (!button) return false;
       button.click();
       return true;
-    })()`);
+  })()`);
     if (!clicked) throw new Error(`Could not activate ${title}`);
-    await sleep(120);
+    await waitForExpression(`(document.querySelector('[data-lab-event-history]')?.getAttribute('data-lab-event-history') ?? '').includes('game_started')`);
   }
 
   function fileSlug(title) {
@@ -107,11 +108,36 @@ try {
     await writeFile(path.join(artifactDir, `future-${fileSlug(title)}-result-${suffix}.png`), Buffer.from(shot.data, "base64"));
   }
 
+  async function eventHistory() {
+    const raw = await evaluate("document.querySelector('[data-lab-event-history]')?.getAttribute('data-lab-event-history') ?? ''");
+    return raw ? raw.split(","): [];
+  }
+
+  async function assertLifecycle(title, resolvedCount) {
+    const history = await eventHistory();
+    const count = history.filter((event) => event === "level_completed").length;
+    if (!history.includes("game_started")) throw new Error(`${title} missing game_started`);
+    if (count !== resolvedCount) throw new Error(`${title} expected ${resolvedCount} level_completed events, saw ${count}: ${history.join(",")}`);
+    if (!history.includes("game_completed")) throw new Error(`${title} missing game_completed`);
+  }
+
+  async function clickRestart(surface, label) {
+    const clicked = await evaluate(`(() => {
+      const section = document.querySelector('section[aria-label=${JSON.stringify(surface)}]');
+      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(label)}));
+      button?.click();
+      return Boolean(button);
+    })()`);
+    if (!clicked) throw new Error(`${surface} restart control missing`);
+    await waitForExpression(`(document.querySelector('[data-lab-event-history]')?.getAttribute('data-lab-event-history') ?? '').includes('game_restarted')`);
+  }
+
   async function completeMarketMaker(suffix) {
     const title = "Market Maker";
     const surface = "Market Maker staged prototype";
     await activate(title);
     await waitForExpression(`Boolean(document.querySelector('section[aria-label=${JSON.stringify(surface)}]'))`);
+
     for (let round = 0; round < 16; round += 1) {
       const acted = await evaluate(`(() => {
         const section = document.querySelector('section[aria-label=${JSON.stringify(surface)}]');
@@ -122,18 +148,22 @@ try {
       if (!acted) throw new Error(`Market Maker stopped before round ${round + 1}`);
       await sleep(45);
     }
+
     await waitForExpression(`document.querySelector('section[aria-label=${JSON.stringify(surface)}]')?.textContent?.includes('Dealer style')`);
     const resultText = await evaluate(`document.querySelector('section[aria-label=${JSON.stringify(surface)}]')?.textContent ?? ''`);
     for (const label of ["Customer fills", "Peak inventory", "Risk penalty"]) {
       if (!resultText.includes(label)) throw new Error(`Market Maker result missing ${label}`);
     }
+    await assertLifecycle(title, 16);
     await capture(title, surface, suffix);
+    await clickRestart(surface, "Deal again");
   }
 
   async function completeScenario(title, suffix) {
     const surface = `${title} staged prototype`;
     await activate(title);
     await waitForExpression(`Boolean(document.querySelector('section[aria-label=${JSON.stringify(surface)}]'))`);
+
     for (let decision = 0; decision < 4; decision += 1) {
       const acted = await evaluate(`(() => {
         const section = document.querySelector('section[aria-label=${JSON.stringify(surface)}]');
@@ -144,12 +174,15 @@ try {
       if (!acted) throw new Error(`${title} has no available choice at decision ${decision + 1}`);
       await sleep(45);
     }
+
     await waitForExpression(`document.querySelector('section[aria-label=${JSON.stringify(surface)}]')?.textContent?.includes('Operating style')`);
     const resultText = await evaluate(`document.querySelector('section[aria-label=${JSON.stringify(surface)}]')?.textContent ?? ''`);
     if (!resultText.includes("Strongest improvement") && !resultText.includes("Main tradeoff")) {
       throw new Error(`${title} result explanation is missing`);
     }
+    await assertLifecycle(title, 4);
     await capture(title, surface, suffix);
+    await clickRestart(surface, "Run again");
   }
 
   await send("Runtime.enable");
@@ -163,7 +196,7 @@ try {
   for (const title of learnGames.slice(1)) await completeScenario(title, "mobile");
 
   if (runtimeErrors.length) throw new Error(`Runtime errors detected during result QA: ${runtimeErrors.join(" | ")}`);
-  console.log(JSON.stringify({ targetUrl, completedLearnGames: learnGames, resultCaptures: 8 }));
+  console.log(JSON.stringify({ targetUrl, completedLearnGames: learnGames, resultCaptures: 8, analyticsLifecycleVerified: true }));
 } finally {
   socket?.close();
   if (chrome.exitCode === null) {
