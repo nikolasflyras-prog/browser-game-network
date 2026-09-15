@@ -54,7 +54,10 @@ COMMON_FLAGS=(
 "$CHROME" "${COMMON_FLAGS[@]}" --window-size=390,844 \
   --screenshot="$ARTIFACT_DIR/future-games-lab-mobile.png" "$TARGET_URL" >/dev/null 2>&1
 
-FUTURE_GAMES_LAB_URL="$TARGET_URL" node scripts/future-games-lab-smoke.mjs \
-  | tee "$ARTIFACT_DIR/future-games-lab-smoke.json"
+FUTURE_GAMES_LAB_URL="$TARGET_URL" FUTURE_GAMES_ARTIFACT_DIR="$ARTIFACT_DIR" \
+  node scripts/future-games-lab-smoke.mjs | tee "$ARTIFACT_DIR/future-games-lab-smoke.json"
 
-echo "Future Games Lab smoke test passed: six staged prototypes render, representative decisions execute, screenshots are captured, and the lab remains noindex/unlinked from public game routes."
+FUTURE_GAMES_LAB_URL="$TARGET_URL" FUTURE_GAMES_ARTIFACT_DIR="$ARTIFACT_DIR" \
+  node scripts/future-games-results-smoke.mjs | tee "$ARTIFACT_DIR/future-games-results-smoke.json"
+
+echo "Future Games Lab smoke passed: six staged prototypes execute, Switchyard completes/persists/shares, Learn result explanations complete, desktop/mobile captures are recorded, and the lab remains noindex/unlinked from public game routes."
