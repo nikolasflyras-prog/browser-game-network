@@ -32,6 +32,7 @@ export function mountTrafficControlPrototype(mount: HTMLElement, bridge: GameBri
     private scoreLabel?: Phaser.GameObjects.Text;
     private comboLabel?: Phaser.GameObjects.Text;
     private pressureLabel?: Phaser.GameObjects.Text;
+    private phaseLabel?: Phaser.GameObjects.Text;
     private instruction?: Phaser.GameObjects.Text;
     private resultTitle?: Phaser.GameObjects.Text;
     private resultDetail?: Phaser.GameObjects.Text;
@@ -61,6 +62,14 @@ export function mountTrafficControlPrototype(mount: HTMLElement, bridge: GameBri
         fontSize: "13px",
         fontStyle: "bold",
       }).setOrigin(1, 0);
+      this.phaseLabel = this.add.text(this.scale.width / 2, 94, "N/S GO · E/W STOP", {
+        color: "#f4f7f8",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: "12px",
+        fontStyle: "bold",
+        backgroundColor: "#11171c",
+        padding: { x: 8, y: 4 },
+      }).setOrigin(0.5, 0);
       this.instruction = this.add.text(this.scale.width / 2, this.scale.height - 22, "TAP / CLICK / SPACE TO SWITCH", {
         color: "#93a2af",
         fontFamily: "Arial, Helvetica, sans-serif",
@@ -169,6 +178,7 @@ export function mountTrafficControlPrototype(mount: HTMLElement, bridge: GameBri
       this.scoreLabel?.setPosition(20, 18);
       this.comboLabel?.setPosition(20, 48);
       this.pressureLabel?.setPosition(this.scale.width - 20, 20);
+      this.phaseLabel?.setPosition(this.scale.width / 2, 94);
       this.instruction?.setPosition(this.scale.width / 2, this.scale.height - 22);
       this.resultTitle?.setPosition(this.scale.width / 2, this.scale.height / 2 - 24);
       this.resultDetail?.setPosition(this.scale.width / 2, this.scale.height / 2 + 16);
@@ -214,6 +224,14 @@ export function mountTrafficControlPrototype(mount: HTMLElement, bridge: GameBri
       this.comboLabel?.setText(`Combo ${view.combo}`);
       this.pressureLabel?.setText(`Pressure ${view.pressureBand}`);
       this.pressureLabel?.setColor(view.pressureBand === "critical" ? "#f06c69" : view.pressureBand === "building" ? "#f3c86a" : "#93a2af");
+      this.phaseLabel?.setText(
+        view.phase === "NS"
+          ? "N/S GO · E/W STOP"
+          : view.phase === "EW"
+            ? "E/W GO · N/S STOP"
+            : "ALL RED · SWITCHING",
+      );
+      this.phaseLabel?.setColor(view.phase === "ALL_RED" ? "#f3c86a" : "#f4f7f8");
       this.instruction?.setText(view.complete ? "TAP / SPACE TO RESTART" : view.switching ? "ALL RED · SWITCHING" : "TAP / CLICK / SPACE TO SWITCH");
     }
 
@@ -244,12 +262,19 @@ export function mountTrafficControlPrototype(mount: HTMLElement, bridge: GameBri
       cy: number,
       roadWidth: number,
     ) {
+      const nsX = cx + roadWidth / 2 + 13;
+      const nsY = cy - roadWidth / 2 - 13;
+      const ewX = cx - roadWidth / 2 - 13;
+      const ewY = cy + roadWidth / 2 + 13;
       const nsColor = phase === "NS" ? GREEN : RED;
       const ewColor = phase === "EW" ? GREEN : RED;
       graphics.fillStyle(nsColor, 1);
-      graphics.fillCircle(cx + roadWidth / 2 + 13, cy - roadWidth / 2 - 13, 7);
+      graphics.fillCircle(nsX, nsY, 7);
       graphics.fillStyle(ewColor, 1);
-      graphics.fillCircle(cx - roadWidth / 2 - 13, cy + roadWidth / 2 + 13, 7);
+      graphics.fillCircle(ewX, ewY, 7);
+      graphics.lineStyle(2, PAPER, 0.8);
+      if (phase === "NS") graphics.strokeCircle(nsX, nsY, 11);
+      if (phase === "EW") graphics.strokeCircle(ewX, ewY, 11);
       if (phase === "ALL_RED") {
         graphics.lineStyle(3, AMBER, 0.8);
         graphics.strokeCircle(cx, cy, roadWidth * 0.28);

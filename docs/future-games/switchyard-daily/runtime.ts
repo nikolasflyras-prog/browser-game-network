@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/runtime";
+import { switchyardSeedFromDateKey, switchyardUtcDateKey } from "./daily";
 import {
   chooseSwitchyardAction,
   createSwitchyardPrototype,
@@ -18,19 +19,6 @@ const MUTED = 0x97a4a8;
 const TARGET = 0x78dfaa;
 const ERROR = 0xed786f;
 
-function utcDateKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function seedFromDateKey(value: string) {
-  let hash = 2166136261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
 type ActionButton = {
   action: SwitchyardAction;
   box: Phaser.GameObjects.Rectangle;
@@ -41,8 +29,8 @@ type SwitchLabel = { id: SwitchId; text: Phaser.GameObjects.Text };
 type DepotLabel = { depot: Depot; text: Phaser.GameObjects.Text };
 
 export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
-  const dateKey = utcDateKey();
-  const dailySeed = seedFromDateKey(dateKey);
+  const dateKey = switchyardUtcDateKey();
+  const dailySeed = switchyardSeedFromDateKey(dateKey);
 
   class SwitchyardScene extends Phaser.Scene {
     private session: SwitchyardPrototypeSession = createSwitchyardPrototype(dailySeed, 10);
@@ -59,6 +47,7 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     private resultTitle?: Phaser.GameObjects.Text;
     private resultDetail?: Phaser.GameObjects.Text;
     private busy = false;
+    private reduceMotion = false;
     private displayTarget: Depot = this.session.state.target;
 
     constructor() {
@@ -66,6 +55,8 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
     }
 
     create() {
+      this.reduceMotion = typeof window !== "undefined"
+        && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
       this.cameras.main.setBackgroundColor(BACKGROUND);
       this.graphics = this.add.graphics();
       this.train = this.add.circle(0, 0, 9, PAPER).setVisible(false).setDepth(4);
@@ -215,7 +206,14 @@ export function mountSwitchyardPrototype(mount: HTMLElement, bridge: GameBridge)
       const train = this.train;
       if (!train) return;
 
-      train.setPosition(layout.start.x, layout.start.y).setFillStyle(correct ? TARGET : ERROR).setVisible(true);
+      train.setFillStyle(correct ? TARGET : ERROR).setVisible(true);
+      if (this.reduceMotion) {
+        train.setPosition(depot.x, depot.y);
+        this.time.delayedCall(120, () => this.finishTrainAnimation());
+        return;
+      }
+
+      train.setPosition(layout.start.x, layout.start.y);
       this.tweens.add({
         targets: train,
         x: layout.root.x,
