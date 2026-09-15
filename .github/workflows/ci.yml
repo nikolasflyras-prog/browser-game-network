@@ -39,6 +39,9 @@ jobs:
       - name: Market Maker smoke test
         run: bash scripts/market-maker-smoke.sh
 
+      - name: Supply Chain Shock smoke test
+        run: bash scripts/supply-chain-shock-smoke.sh
+
       - name: Run the Fed smoke test
         run: bash scripts/run-the-fed-smoke.sh
 

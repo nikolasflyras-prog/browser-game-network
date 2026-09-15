@@ -31,6 +31,15 @@ export const gameRegistry: readonly GameMetadata[] = [
     version: "0.1.0",
   },
   {
+    slug: "supply-chain-shock",
+    title: "Supply Chain Shock",
+    description: "Manage service, cash, inventory, resilience, and backlog through disruptions where earlier preparation changes which responses are available later.",
+    lane: "Learn",
+    category: "Operations Simulation",
+    status: "live",
+    version: "0.1.0",
+  },
+  {
     slug: "linebreak-daily",
     title: "Linebreak Daily",
     description: "Draw one continuous route through the daily grid. Find the key, cross the gate, avoid hazards, and reach the exit before your ink runs out.",
