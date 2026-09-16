@@ -4,17 +4,20 @@ import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/ru
 import { MARKET_SESSION_SECONDS, MARKET_WORLD, advanceMarketFloor, createMarketFloorState, interactMarketFloor, marketFloorLayout, marketFloorPnl, marketFloorPrompt, marketFloorQuote, scoreMarketFloor, type MarketFloorEvent, type MarketFloorState } from "./model";
 
 const SAVE_VERSION = 2;
-const BACKGROUND = 0x071012;
-const FLOOR = 0x0c1b1e;
-const GRID = 0x173238;
-const DESK_TOP = 0x20373b;
-const DESK_SIDE = 0x12262a;
+const BACKGROUND = 0x050a0c;
+const FLOOR = 0x0b191c;
+const GRID = 0x16363b;
+const DESK_TOP = 0x284449;
+const DESK_SIDE = 0x12282c;
 const PLAYER = 0xf5fbf7;
-const SHADOW = 0x020607;
+const SHADOW = 0x010405;
 const BUY = 0x63d7ff;
 const SELL = 0xff9b67;
 const HEDGE = 0xb794f6;
 const VENUE_COLORS = { alpha: 0x64e6b5, beta: 0xffd166, gamma: 0xff7185 } as const;
+
+type WorldLabel = { text: Phaser.GameObjects.Text; x: number; y: number };
+type Point = { x: number; y: number };
 
 export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   let muted = false;
@@ -49,6 +52,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     private shockLabel?: Phaser.GameObjects.Text;
     private endTitle?: Phaser.GameObjects.Text;
     private endDetail?: Phaser.GameObjects.Text;
+    private worldLabels: WorldLabel[] = [];
     private statusElapsed = 0;
     private elapsedVisual = 0;
 
@@ -57,18 +61,19 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     create() {
       this.cameras.main.setBackgroundColor(BACKGROUND);
       this.graphics = this.add.graphics();
-      this.pnlLabel = this.add.text(18, 14, "P&L $0.00", { color: "#f5fbf7", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "18px", fontStyle: "bold" }).setDepth(8);
-      this.marketLabel = this.add.text(this.scale.width / 2, 15, "FAIR 100.00", { color: "#a7c0c4", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "14px", fontStyle: "bold" }).setOrigin(0.5, 0).setDepth(8);
-      this.timeLabel = this.add.text(this.scale.width - 18, 14, "3:30", { color: "#f5fbf7", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "18px", fontStyle: "bold" }).setOrigin(1, 0).setDepth(8);
-      this.bestLabel = this.add.text(this.scale.width - 18, 40, `Best ${bestScore}`, { color: "#78949a", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "12px", fontStyle: "bold" }).setOrigin(1, 0).setDepth(8);
-      this.promptLabel = this.add.text(this.scale.width / 2, this.scale.height - 20, "MOVE · FIND CLIENT FLOW", { color: "#f5fbf7", backgroundColor: "#071012dd", padding: { x: 10, y: 6 }, fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", fontStyle: "bold" }).setOrigin(0.5, 1).setDepth(9);
-      this.shockLabel = this.add.text(this.scale.width / 2, 48, "", { color: "#ff7185", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "15px", fontStyle: "bold" }).setOrigin(0.5, 0).setDepth(9).setAlpha(0);
+      this.pnlLabel = this.add.text(18, 14, "P&L $0.00", { color: "#f5fbf7", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "17px", fontStyle: "bold" }).setDepth(20);
+      this.marketLabel = this.add.text(this.scale.width / 2, 15, "FAIR 100.00", { color: "#a7c0c4", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", fontStyle: "bold" }).setOrigin(0.5, 0).setDepth(20);
+      this.timeLabel = this.add.text(this.scale.width - 18, 14, "3:30", { color: "#f5fbf7", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "17px", fontStyle: "bold" }).setOrigin(1, 0).setDepth(20);
+      this.bestLabel = this.add.text(this.scale.width - 18, 38, `Best ${bestScore}`, { color: "#78949a", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "11px", fontStyle: "bold" }).setOrigin(1, 0).setDepth(20);
+      this.promptLabel = this.add.text(this.scale.width / 2, this.scale.height - 14, "MOVE · FIND CLIENT FLOW", { color: "#f5fbf7", backgroundColor: "#050a0ce8", padding: { x: 9, y: 5 }, fontFamily: "Arial, Helvetica, sans-serif", fontSize: "12px", fontStyle: "bold" }).setOrigin(0.5, 1).setDepth(22);
+      this.shockLabel = this.add.text(this.scale.width / 2, 45, "", { color: "#ff7185", backgroundColor: "#050a0cdd", padding: { x: 8, y: 4 }, fontFamily: "Arial, Helvetica, sans-serif", fontSize: "14px", fontStyle: "bold" }).setOrigin(0.5, 0).setDepth(22).setAlpha(0);
+      this.buildWorldLabels();
       if (this.input.keyboard) this.keys = this.input.keyboard.addKeys("W,A,S,D,UP,DOWN,LEFT,RIGHT,SHIFT,E,SPACE,R") as Record<string, Phaser.Input.Keyboard.Key>;
       this.input.keyboard?.on("keydown-E", () => this.interact());
       this.input.keyboard?.on("keydown-SPACE", () => this.interact());
       this.input.keyboard?.on("keydown-R", () => this.resetRun());
       this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
-        if (pointer.x >= this.scale.width - 150 && pointer.y >= this.scale.height - 88) this.interact();
+        if (pointer.x >= this.scale.width - 132 && pointer.y >= this.scale.height - 72) this.interact();
       });
       this.scale.on("resize", this.handleResize, this);
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off("resize", this.handleResize, this));
@@ -81,7 +86,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       let x = Number(Boolean(this.keys.D?.isDown || this.keys.RIGHT?.isDown)) - Number(Boolean(this.keys.A?.isDown || this.keys.LEFT?.isDown));
       let y = Number(Boolean(this.keys.S?.isDown || this.keys.DOWN?.isDown)) - Number(Boolean(this.keys.W?.isDown || this.keys.UP?.isDown));
       const pointer = this.input.activePointer;
-      if (pointer?.isDown && !(pointer.x >= this.scale.width - 150 && pointer.y >= this.scale.height - 88)) {
+      if (pointer?.isDown && !(pointer.x >= this.scale.width - 132 && pointer.y >= this.scale.height - 72)) {
         const world = this.pointerToWorld(pointer.x, pointer.y);
         const dx = world.x - this.state.playerX;
         const dy = world.y - this.state.playerY;
@@ -99,72 +104,139 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       }
     }
 
-    private viewport() {
-      const scale = Math.min(this.scale.width / MARKET_WORLD.width, this.scale.height / MARKET_WORLD.height);
-      return { scale, ox: (this.scale.width - MARKET_WORLD.width * scale) / 2, oy: (this.scale.height - MARKET_WORLD.height * scale) / 2 };
+    private isMobileView() { return this.scale.width < 620; }
+
+    private projection() {
+      const mobile = this.isMobileView();
+      const cameraX = mobile ? this.state.playerX : MARKET_WORLD.width / 2;
+      const cameraY = mobile ? this.state.playerY : MARKET_WORLD.height / 2;
+      const scale = mobile
+        ? Math.max(0.58, Math.min(0.82, this.scale.width / 520))
+        : Math.min((this.scale.width - 48) / 850, (this.scale.height - 86) / 450);
+      const anchorX = this.scale.width / 2;
+      const anchorY = mobile ? this.scale.height * 0.53 : 56 + MARKET_WORLD.height * 0.34 * scale;
+      return { mobile, cameraX, cameraY, scale, anchorX, anchorY };
     }
 
-    private pointerToWorld(x: number, y: number) {
-      const view = this.viewport();
-      return { x: (x - view.ox) / view.scale, y: (y - view.oy) / view.scale };
+    private project(x: number, y: number): Point {
+      const p = this.projection();
+      const dx = x - p.cameraX;
+      const dy = y - p.cameraY;
+      return {
+        x: p.anchorX + (dx * 0.72 + dy * 0.18) * p.scale,
+        y: p.anchorY + dy * 0.68 * p.scale,
+      };
+    }
+
+    private pointerToWorld(screenX: number, screenY: number) {
+      const p = this.projection();
+      const dyProjected = (screenY - p.anchorY) / p.scale;
+      const dy = dyProjected / 0.68;
+      const dxProjected = (screenX - p.anchorX) / p.scale;
+      const dx = (dxProjected - dy * 0.18) / 0.72;
+      return { x: p.cameraX + dx, y: p.cameraY + dy };
+    }
+
+    private polygon(points: Point[], fill: number, alpha = 1, stroke?: number) {
+      const graphics = this.graphics; if (!graphics || points.length < 3) return;
+      graphics.fillStyle(fill, alpha); graphics.beginPath(); graphics.moveTo(points[0].x, points[0].y);
+      for (const point of points.slice(1)) graphics.lineTo(point.x, point.y);
+      graphics.closePath(); graphics.fillPath();
+      if (stroke !== undefined) { graphics.lineStyle(1.25, stroke, 0.8); graphics.strokePath(); }
     }
 
     private drawDesk(x: number, y: number, width: number, height: number) {
+      const p1 = this.project(x, y); const p2 = this.project(x + width, y); const p3 = this.project(x + width, y + height); const p4 = this.project(x, y + height);
+      const depth = Math.max(5, 12 * this.projection().scale);
+      const down = (point: Point) => ({ x: point.x, y: point.y + depth });
+      this.polygon([down(p1), down(p2), down(p3), down(p4)], SHADOW, 0.58);
+      this.polygon([p4, p3, down(p3), down(p4)], DESK_SIDE, 1);
+      this.polygon([p2, p3, down(p3), down(p2)], 0x173136, 1);
+      this.polygon([p1, p2, p3, p4], DESK_TOP, 1, GRID);
+      const screen = this.project(x + width * 0.52, y + height * 0.38);
+      const monitorW = Math.max(5, 17 * this.projection().scale); const monitorH = Math.max(3, 9 * this.projection().scale);
+      this.graphics?.fillStyle(0x071214, 1).fillRoundedRect(screen.x - monitorW / 2, screen.y - monitorH, monitorW, monitorH, 2);
+      this.graphics?.fillStyle(0x5b8f98, 0.5).fillRect(screen.x - monitorW * 0.35, screen.y - monitorH * 0.72, monitorW * 0.7, Math.max(1, monitorH * 0.18));
+    }
+
+    private drawPerson(x: number, y: number, color: number, facing = 1, small = false) {
       const graphics = this.graphics; if (!graphics) return;
-      const view = this.viewport();
-      const sx = view.ox + x * view.scale; const sy = view.oy + y * view.scale; const sw = width * view.scale; const sh = height * view.scale; const depth = Math.max(4, 9 * view.scale);
-      graphics.fillStyle(SHADOW, 0.5); graphics.fillRoundedRect(sx + depth, sy + depth, sw, sh, 7 * view.scale);
-      graphics.fillStyle(DESK_SIDE, 1); graphics.fillRoundedRect(sx + depth * 0.5, sy + depth * 0.55, sw, sh, 7 * view.scale);
-      graphics.fillStyle(DESK_TOP, 1); graphics.fillRoundedRect(sx, sy, sw, sh, 7 * view.scale);
-      graphics.lineStyle(Math.max(1, view.scale), GRID, 0.9); graphics.strokeRoundedRect(sx, sy, sw, sh, 7 * view.scale);
+      const p = this.project(x, y); const s = this.projection().scale * (small ? 0.82 : 1);
+      const bob = Math.sin((this.elapsedVisual + x * 2.7) / 170) * 1.1 * s;
+      graphics.fillStyle(SHADOW, 0.5).fillEllipse(p.x + 2 * s, p.y + 11 * s, 24 * s, 8 * s);
+      graphics.lineStyle(Math.max(1, 3 * s), color, 1); graphics.lineBetween(p.x - 4 * s, p.y + 2 * s + bob, p.x - 6 * s, p.y + 13 * s); graphics.lineBetween(p.x + 4 * s, p.y + 2 * s + bob, p.x + 6 * s, p.y + 13 * s);
+      graphics.fillStyle(color, 1).fillRoundedRect(p.x - 8 * s, p.y - 12 * s + bob, 16 * s, 17 * s, 5 * s);
+      graphics.fillStyle(0xf1c7a2, 1).fillCircle(p.x + facing * 1.5 * s, p.y - 18 * s + bob, 6.5 * s);
+    }
+
+    private buildWorldLabels() {
+      const specs = [
+        ...marketFloorLayout.clientSpots.map((spot, index) => ({ label: `CLIENT ${index + 1}`, x: spot.x - 20, y: spot.y - 58, color: "#63d7ff" })),
+        ...marketFloorLayout.venues.map((venue) => ({ label: venue.label, x: venue.x, y: venue.y - 64, color: venue.id === "alpha" ? "#64e6b5" : venue.id === "beta" ? "#ffd166" : "#ff7185" })),
+        { label: "HEDGE", x: marketFloorLayout.hedge.x, y: marketFloorLayout.hedge.y - 62, color: "#b794f6" },
+      ];
+      this.worldLabels = specs.map((spec) => ({ text: this.add.text(0, 0, spec.label, { color: spec.color, fontFamily: "Arial, Helvetica, sans-serif", fontSize: "11px", fontStyle: "bold", backgroundColor: "#050a0cc4", padding: { x: 4, y: 2 } }).setOrigin(0.5, 1).setDepth(14), x: spec.x, y: spec.y }));
+    }
+
+    private drawFloor() {
+      const graphics = this.graphics; if (!graphics) return;
+      const corners = [this.project(0, 0), this.project(MARKET_WORLD.width, 0), this.project(MARKET_WORLD.width, MARKET_WORLD.height), this.project(0, MARKET_WORLD.height)];
+      this.polygon(corners.map((point) => ({ x: point.x + 9, y: point.y + 14 })), SHADOW, 0.72);
+      this.polygon(corners, FLOOR, 1, GRID);
+      graphics.lineStyle(Math.max(0.8, this.projection().scale), GRID, 0.44);
+      for (let x = 0; x <= MARKET_WORLD.width; x += 100) { const a = this.project(x, 0); const b = this.project(x, MARKET_WORLD.height); graphics.lineBetween(a.x, a.y, b.x, b.y); }
+      for (let y = 0; y <= MARKET_WORLD.height; y += 80) { const a = this.project(0, y); const b = this.project(MARKET_WORLD.width, y); graphics.lineBetween(a.x, a.y, b.x, b.y); }
     }
 
     private draw() {
       const graphics = this.graphics; if (!graphics) return;
-      graphics.clear();
-      const view = this.viewport();
-      graphics.fillStyle(BACKGROUND, 1); graphics.fillRect(0, 0, this.scale.width, this.scale.height);
-      graphics.fillStyle(FLOOR, 1); graphics.fillRoundedRect(view.ox, view.oy, MARKET_WORLD.width * view.scale, MARKET_WORLD.height * view.scale, 10 * view.scale);
-      graphics.lineStyle(Math.max(1, view.scale), GRID, 0.42);
-      for (let wx = 0; wx <= MARKET_WORLD.width; wx += 100) { const sx = view.ox + wx * view.scale; graphics.lineBetween(sx, view.oy, sx, view.oy + MARKET_WORLD.height * view.scale); }
-      for (let wy = 0; wy <= MARKET_WORLD.height; wy += 80) { const sy = view.oy + wy * view.scale; graphics.lineBetween(view.ox, sy, view.ox + MARKET_WORLD.width * view.scale, sy); }
+      graphics.clear(); graphics.fillStyle(BACKGROUND, 1).fillRect(0, 0, this.scale.width, this.scale.height);
+      this.drawFloor();
       for (const rect of marketFloorLayout.obstacles) this.drawDesk(rect.x, rect.y, rect.width, rect.height);
 
+      marketFloorLayout.clientSpots.forEach((spot, index) => this.drawPerson(112, spot.y + 10, index % 2 ? 0xb2c7cb : 0x8ca8ae, 1, true));
+      marketFloorLayout.venues.forEach((venue) => this.drawPerson(900, venue.y + 8, 0xb2c7cb, -1, true));
+
+      const scale = this.projection().scale;
       for (const venue of marketFloorLayout.venues) {
-        const sx = view.ox + venue.x * view.scale; const sy = view.oy + venue.y * view.scale; const color = VENUE_COLORS[venue.id];
-        graphics.fillStyle(color, 0.12); graphics.fillCircle(sx, sy, 43 * view.scale); graphics.lineStyle(Math.max(2, 3 * view.scale), color, 0.95); graphics.strokeCircle(sx, sy, 43 * view.scale);
-        const quote = marketFloorQuote(this.state, venue.id); const margin = (quote.ask - quote.bid).toFixed(2);
-        graphics.fillStyle(color, 0.8); graphics.fillRect(sx - 25 * view.scale, sy - 3 * view.scale, 50 * view.scale, 6 * view.scale);
-        void margin;
+        const p = this.project(venue.x, venue.y); const color = VENUE_COLORS[venue.id]; const radius = Math.max(18, 34 * scale);
+        graphics.fillStyle(color, 0.1).fillCircle(p.x, p.y, radius); graphics.lineStyle(Math.max(1.5, 3 * scale), color, 0.95).strokeCircle(p.x, p.y, radius);
+        const quote = marketFloorQuote(this.state, venue.id); const bar = Math.max(16, 42 * scale); graphics.fillStyle(color, 0.86).fillRect(p.x - bar / 2, p.y - Math.max(2, 3 * scale), bar, Math.max(3, 5 * scale));
+        const spreadHeat = Math.min(1, (quote.ask - quote.bid) / 1.7); graphics.fillStyle(color, 0.24 + spreadHeat * 0.28).fillCircle(p.x, p.y, Math.max(7, 11 * scale));
       }
 
-      const hx = view.ox + marketFloorLayout.hedge.x * view.scale; const hy = view.oy + marketFloorLayout.hedge.y * view.scale;
-      graphics.fillStyle(HEDGE, 0.12); graphics.fillCircle(hx, hy, 40 * view.scale); graphics.lineStyle(Math.max(2, 3 * view.scale), HEDGE, 0.95); graphics.strokeCircle(hx, hy, 40 * view.scale);
+      const hedge = this.project(marketFloorLayout.hedge.x, marketFloorLayout.hedge.y); const hedgeRadius = Math.max(17, 32 * scale);
+      graphics.fillStyle(HEDGE, 0.1).fillCircle(hedge.x, hedge.y, hedgeRadius); graphics.lineStyle(Math.max(1.5, 3 * scale), HEDGE, 0.95).strokeCircle(hedge.x, hedge.y, hedgeRadius);
+      graphics.lineBetween(hedge.x - 10 * scale, hedge.y, hedge.x + 10 * scale, hedge.y); graphics.lineBetween(hedge.x, hedge.y - 10 * scale, hedge.x, hedge.y + 10 * scale);
 
       for (const order of this.state.orders) {
-        const ox = view.ox + order.x * view.scale; const oy = view.oy + order.y * view.scale; const color = order.side === "buy" ? BUY : SELL;
-        const pulse = 1 + Math.sin((this.elapsedVisual + order.id * 310) / 180) * 0.08;
-        graphics.fillStyle(color, 0.16); graphics.fillCircle(ox, oy, 26 * view.scale * pulse); graphics.lineStyle(Math.max(2, 3 * view.scale), color, 1); graphics.strokeCircle(ox, oy, 17 * view.scale);
-        graphics.fillStyle(color, 1); graphics.fillRoundedRect(ox - 7 * view.scale, oy - 7 * view.scale, 14 * view.scale, 14 * view.scale, 3 * view.scale);
+        const p = this.project(order.x, order.y); const color = order.side === "buy" ? BUY : SELL; const urgency = Math.max(0, Math.min(1, order.timeLeft / 14)); const pulse = 1 + Math.sin((this.elapsedVisual + order.id * 310) / 180) * 0.08;
+        graphics.fillStyle(color, 0.11 + (1 - urgency) * 0.18).fillCircle(p.x, p.y, Math.max(14, 23 * scale) * pulse); graphics.lineStyle(Math.max(1.5, 3 * scale), color, 1).strokeCircle(p.x, p.y, Math.max(9, 15 * scale));
+        const cube = Math.max(7, 12 * scale); graphics.fillStyle(color, 1).fillRoundedRect(p.x - cube / 2, p.y - cube / 2, cube, cube, Math.max(2, 3 * scale));
       }
 
-      const px = view.ox + this.state.playerX * view.scale; const py = view.oy + this.state.playerY * view.scale; const moving = Math.hypot(this.state.vx, this.state.vy) > 30; const bob = moving ? Math.sin(this.elapsedVisual / 75) * 2.2 * view.scale : 0;
-      graphics.fillStyle(SHADOW, 0.58); graphics.fillEllipse(px + 3 * view.scale, py + 13 * view.scale, 30 * view.scale, 12 * view.scale);
-      graphics.fillStyle(PLAYER, 1); graphics.fillRoundedRect(px - 10 * view.scale, py - 10 * view.scale + bob, 20 * view.scale, 27 * view.scale, 7 * view.scale); graphics.fillCircle(px, py - 15 * view.scale + bob, 9 * view.scale);
-      graphics.fillStyle(0x2c4a52, 1); graphics.fillRect(px - 2 * view.scale, py - 6 * view.scale + bob, 4 * view.scale, 15 * view.scale);
-      if (this.state.carried) {
-        const color = this.state.carried.side === "buy" ? BUY : SELL; graphics.fillStyle(color, 1); graphics.fillCircle(px + 17 * view.scale, py - 18 * view.scale + bob, 7 * view.scale); graphics.lineStyle(2 * view.scale, color, 0.8); graphics.strokeCircle(px + 17 * view.scale, py - 18 * view.scale + bob, 11 * view.scale);
+      this.drawPerson(this.state.playerX, this.state.playerY, PLAYER, 1, false);
+      const player = this.project(this.state.playerX, this.state.playerY);
+      if (this.state.carried) { const color = this.state.carried.side === "buy" ? BUY : SELL; graphics.fillStyle(color, 1).fillCircle(player.x + 14 * scale, player.y - 26 * scale, Math.max(4, 6 * scale)); graphics.lineStyle(Math.max(1, 2 * scale), color, 0.85).strokeCircle(player.x + 14 * scale, player.y - 26 * scale, Math.max(7, 10 * scale)); }
+
+      for (const label of this.worldLabels) { const p = this.project(label.x, label.y); label.text.setPosition(p.x, p.y).setScale(Math.max(0.78, Math.min(1, scale))); }
+
+      const mobile = this.isMobileView(); const seconds = Math.ceil(this.state.timeLeft); const prompt = marketFloorPrompt(this.state); const pnl = marketFloorPnl(this.state);
+      if (mobile) {
+        this.pnlLabel?.setPosition(12, 10).setFontSize(13).setText(`P&L $${pnl.toFixed(2)} · Inv ${this.state.inventory}`);
+        this.marketLabel?.setOrigin(0, 0).setPosition(12, 31).setFontSize(10).setText(`Fair ${this.state.fairValue.toFixed(2)} · Rep ${Math.round(this.state.reputation)}`);
+        this.timeLabel?.setPosition(this.scale.width - 12, 10).setFontSize(14).setText(`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`);
+        this.bestLabel?.setPosition(this.scale.width - 12, 31).setFontSize(9).setText(`${this.state.completed} clients · Dash ${Math.round(this.state.dashEnergy)}%`);
+      } else {
+        this.pnlLabel?.setPosition(18, 14).setFontSize(17).setText(`P&L $${pnl.toFixed(2)} · Inv ${this.state.inventory} · Rep ${Math.round(this.state.reputation)}`);
+        this.marketLabel?.setOrigin(0.5, 0).setPosition(this.scale.width / 2, 15).setFontSize(13).setText(`FAIR ${this.state.fairValue.toFixed(2)} · Clients ${this.state.completed} · Risk ${this.state.riskCost.toFixed(1)}`);
+        this.timeLabel?.setPosition(this.scale.width - 18, 14).setFontSize(17).setText(`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`);
+        this.bestLabel?.setPosition(this.scale.width - 18, 38).setFontSize(11).setText(`Best ${bestScore} · Dash ${Math.round(this.state.dashEnergy)}%`);
       }
+      this.promptLabel?.setPosition(this.scale.width / 2, this.scale.height - 12).setFontSize(mobile ? 10 : 12).setText(`E / SPACE · ${prompt}`);
+      this.shockLabel?.setPosition(this.scale.width / 2, mobile ? 52 : 45).setFontSize(mobile ? 11 : 14).setText(this.state.shockLabel ?? "").setAlpha(this.state.shockLabel ? 1 : 0);
 
-      const prompt = marketFloorPrompt(this.state);
-      this.promptLabel?.setText(`E / SPACE · ${prompt}`);
-      this.pnlLabel?.setText(`P&L $${marketFloorPnl(this.state).toFixed(2)} · Inv ${this.state.inventory} · Rep ${Math.round(this.state.reputation)}`);
-      this.marketLabel?.setText(`FAIR ${this.state.fairValue.toFixed(2)} · Clients ${this.state.completed} · Risk ${this.state.riskCost.toFixed(1)}`);
-      const seconds = Math.ceil(this.state.timeLeft); this.timeLabel?.setText(`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`);
-      this.bestLabel?.setText(`Best ${bestScore} · Dash ${Math.round(this.state.dashEnergy)}%`);
-      this.shockLabel?.setText(this.state.shockLabel ?? "").setAlpha(this.state.shockLabel ? 1 : 0);
-
-      graphics.fillStyle(0x0b1518, 0.92); graphics.fillRoundedRect(this.scale.width - 142, this.scale.height - 76, 124, 52, 9); graphics.lineStyle(2, 0x56747b, 0.9); graphics.strokeRoundedRect(this.scale.width - 142, this.scale.height - 76, 124, 52, 9); graphics.fillStyle(PLAYER, 0.9); graphics.fillRect(this.scale.width - 119, this.scale.height - 52, 78, 4);
+      graphics.fillStyle(0x071214, 0.92).fillRoundedRect(this.scale.width - (mobile ? 102 : 132), this.scale.height - (mobile ? 55 : 66), mobile ? 90 : 118, mobile ? 38 : 46, 8); graphics.lineStyle(1.5, 0x56747b, 0.9).strokeRoundedRect(this.scale.width - (mobile ? 102 : 132), this.scale.height - (mobile ? 55 : 66), mobile ? 90 : 118, mobile ? 38 : 46, 8);
 
       mount.dataset.marketArcade = "true";
       mount.dataset.marketMode = this.state.mode;
@@ -174,6 +246,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       mount.dataset.marketCompleted = String(this.state.completed);
       mount.dataset.marketCarried = this.state.carried ? String(this.state.carried.id) : "";
       mount.dataset.marketScore = String(scoreMarketFloor(this.state));
+      mount.dataset.marketTime = this.state.timeLeft.toFixed(1);
     }
 
     private interact() {
@@ -196,19 +269,20 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const score = scoreMarketFloor(this.state); bestScore = Math.max(bestScore, score); writeLocalGameValue(bridge.gameSlug, "arcade-best", SAVE_VERSION, bestScore);
       bridge.emit("game_over", { score, completed: this.state.completed, missed: this.state.missed, inventory: this.state.inventory, pnl: Number(marketFloorPnl(this.state).toFixed(2)), closing_bell: closingBell, best_score: bestScore });
       bridge.setStatus(`${closingBell ? "Closing bell" : "Desk lost"} · ${this.state.completed} clients · score ${score} · press R to retry`);
-      this.endTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 24, closingBell ? "CLOSING BELL" : "DESK LOST", { color: "#f5fbf7", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "30px", fontStyle: "bold" }).setOrigin(0.5).setDepth(12);
-      this.endDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 28, `${this.state.completed} clients · P&L $${marketFloorPnl(this.state).toFixed(2)} · Inventory ${this.state.inventory}\nScore ${score} · Press R or Restart`, { color: "#9db3b7", align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "15px", lineSpacing: 6 }).setOrigin(0.5).setDepth(12);
+      this.endTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 24, closingBell ? "CLOSING BELL" : "DESK LOST", { color: "#f5fbf7", backgroundColor: "#050a0ce8", padding: { x: 12, y: 8 }, fontFamily: "Arial, Helvetica, sans-serif", fontSize: "28px", fontStyle: "bold" }).setOrigin(0.5).setDepth(30);
+      this.endDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 32, `${this.state.completed} clients · P&L $${marketFloorPnl(this.state).toFixed(2)} · Inventory ${this.state.inventory}\nScore ${score} · Press R or Restart`, { color: "#9db3b7", backgroundColor: "#050a0ce8", padding: { x: 12, y: 8 }, align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "14px", lineSpacing: 6 }).setOrigin(0.5).setDepth(30);
       tone(closingBell ? 620 : 110, 0.22, 0.055);
     }
 
     private resetRun() {
       this.endTitle?.destroy(); this.endDetail?.destroy(); this.endTitle = undefined; this.endDetail = undefined; this.state = createMarketFloorState(); this.elapsedVisual = 0; this.statusElapsed = 0; this.draw();
-      bridge.setStatus(`Trading floor open — ${MARKET_SESSION_SECONDS / 60}m ${MARKET_SESSION_SECONDS % 60}s session · move with WASD/arrows · E interacts · Shift dashes`);
+      const minutes = Math.floor(MARKET_SESSION_SECONDS / 60); const seconds = MARKET_SESSION_SECONDS % 60;
+      bridge.setStatus(`Trading floor open — ${minutes}m ${seconds}s session · WASD/arrows move · E interacts · Shift dashes`);
       bridge.emit("game_started", { mode: "trading-floor-arcade", session_seconds: MARKET_SESSION_SECONDS, best_score: bestScore });
     }
 
     private handleResize() {
-      this.marketLabel?.setPosition(this.scale.width / 2, 15); this.timeLabel?.setPosition(this.scale.width - 18, 14); this.bestLabel?.setPosition(this.scale.width - 18, 40); this.promptLabel?.setPosition(this.scale.width / 2, this.scale.height - 20); this.shockLabel?.setPosition(this.scale.width / 2, 48); this.endTitle?.setPosition(this.scale.width / 2, this.scale.height / 2 - 24); this.endDetail?.setPosition(this.scale.width / 2, this.scale.height / 2 + 28); this.draw();
+      this.endTitle?.setPosition(this.scale.width / 2, this.scale.height / 2 - 24); this.endDetail?.setPosition(this.scale.width / 2, this.scale.height / 2 + 32); this.draw();
     }
   }
 
@@ -218,6 +292,6 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     resume() { game.scene.resume("market-maker-arcade"); bridge.setStatus("Trading floor resumed"); },
     restart() { game.scene.stop("market-maker-arcade"); game.scene.start("market-maker-arcade"); },
     setMuted(nextMuted: boolean) { muted = nextMuted; },
-    destroy() { delete mount.dataset.marketArcade; delete mount.dataset.marketMode; delete mount.dataset.marketPlayerX; delete mount.dataset.marketPlayerY; delete mount.dataset.marketInventory; delete mount.dataset.marketCompleted; delete mount.dataset.marketCarried; delete mount.dataset.marketScore; game.destroy(true); void audioContext?.close(); audioContext = null; },
+    destroy() { delete mount.dataset.marketArcade; delete mount.dataset.marketMode; delete mount.dataset.marketPlayerX; delete mount.dataset.marketPlayerY; delete mount.dataset.marketInventory; delete mount.dataset.marketCompleted; delete mount.dataset.marketCarried; delete mount.dataset.marketScore; delete mount.dataset.marketTime; game.destroy(true); void audioContext?.close(); audioContext = null; },
   } satisfies GameRuntimeController;
 }
