@@ -25,6 +25,6 @@ grep -q "Package warpage" "$ARTIFACT_DIR/packaging-lab.initial.html"
 grep -q "Chip Architect" "$ARTIFACT_DIR/semiconductor-campus-batch-2.html"
 grep -q "Packaging Lab" "$ARTIFACT_DIR/semiconductor-campus-batch-2.html"
 
-SEMI_BATCH2_BASE_URL="$BASE_URL" SEMI_BATCH2_ARTIFACT_DIR="$ARTIFACT_DIR" node scripts/semiconductor-campus-batch-2-interaction.mjs | tee "$ARTIFACT_DIR/semiconductor-campus-batch-2-smoke.json"
+SEMI_BATCH2_BASE_URL="$BASE_URL" SEMI_BATCH2_ARTIFACT_DIR="$ARTIFACT_DIR" node scripts/semiconductor-campus-batch-2-stable.mjs | tee "$ARTIFACT_DIR/semiconductor-campus-batch-2-smoke.json"
 
-echo "Semiconductor campus batch 2 smoke passed: Chip Architect and Packaging Lab render, move, accept spatial component placement, complete real browser workflow gates, support shared controls, and capture desktop/mobile QA."
+echo "Semiconductor campus batch 2 smoke passed: Chip Architect and Packaging Lab render, move precisely, accept spatial component placement, complete real browser workflow gates, support shared controls, and capture desktop/mobile QA."
