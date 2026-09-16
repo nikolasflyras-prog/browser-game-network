@@ -23,5 +23,5 @@ grep -q '<canvas' "$ARTIFACT_DIR/courier-loop.dom.html"; grep -q '<canvas' "$ART
 grep -q '>Pause<' "$ARTIFACT_DIR/courier-loop.dom.html"; grep -q '>Restart<' "$ARTIFACT_DIR/magnet-field.dom.html"
 if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/courier-loop.dom.html"; then echo "Courier Loop rendered an application error."; exit 1; fi
 if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/magnet-field.dom.html"; then echo "Magnet Field rendered an application error."; exit 1; fi
-PLAY_BATCH_6_BASE_URL="$BASE_URL" node scripts/play-batch-6-interaction.mjs | tee "$ARTIFACT_DIR/play-batch-6-interaction.json"
-echo "Batch 6 Play smoke passed: Courier Loop and Magnet Field render on desktop/mobile and accept real movement plus shared-control input."
+PLAY_BATCH_6_BASE_URL="$BASE_URL" node scripts/play-batch-6-stable.mjs | tee "$ARTIFACT_DIR/play-batch-6-interaction.json"
+echo "Batch 6 Play smoke passed: Courier Loop and Magnet Field render desktop/mobile, accept real movement, drain field energy correctly, and prove pause stops and resume restarts simulation."
