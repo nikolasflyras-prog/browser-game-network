@@ -36,7 +36,7 @@ COMMON_FLAGS=(--headless --no-sandbox --disable-gpu --disable-dev-shm-usage --hi
 
 grep -q '<canvas' "$ARTIFACT_DIR/vector-drift.dom.html"
 grep -q '<canvas' "$ARTIFACT_DIR/pulse-bloom.dom.html"
-grep -q 'steer through the moving gates' "$ARTIFACT_DIR/vector-drift.dom.html"
+grep -q 'Drifting —' "$ARTIFACT_DIR/vector-drift.dom.html"
 grep -q 'capture 5 with one pulse' "$ARTIFACT_DIR/pulse-bloom.dom.html"
 grep -q '>Pause<' "$ARTIFACT_DIR/vector-drift.dom.html"
 grep -q '>Restart<' "$ARTIFACT_DIR/pulse-bloom.dom.html"

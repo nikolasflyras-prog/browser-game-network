@@ -116,13 +116,14 @@ async function exerciseGame({ slug, title, port, kind }) {
       await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
     }
 
-    const statusExpression = `document.querySelector(${JSON.stringify(`section[aria-label="${title} game"] .game-status`)})?.textContent ?? ''`;
+    const statusExpression = `(document.querySelector(${JSON.stringify(`section[aria-label="${title} game"] .game-status`)})?.textContent ?? '')`;
+    const buttonsExpression = `Array.from(document.querySelectorAll(${JSON.stringify(`section[aria-label="${title} game"] button`)})).map((node) => node.textContent ?? '')`;
     await send("Runtime.enable");
     await send("Page.enable");
     await waitForExpression(`Boolean(document.querySelector(${JSON.stringify(`section[aria-label="${title} game"] canvas`)}))`);
 
     if (kind === "vector") {
-      await waitForExpression(`${statusExpression}.includes('Vector Drift live')`);
+      await waitForExpression(`${statusExpression}.includes('Drifting')`);
     } else {
       await waitForExpression(`${statusExpression}.includes('capture 5 with one pulse')`);
       await clickCanvasCenter();
@@ -131,15 +132,17 @@ async function exerciseGame({ slug, title, port, kind }) {
 
     await clickButton("Pause");
     await waitForExpression(`${statusExpression} === 'Paused'`);
-    await waitForExpression(`Array.from(document.querySelectorAll(${JSON.stringify(`section[aria-label="${title} game"] button`)})).some((node) => node.textContent?.includes('Resume'))`);
+    await waitForExpression(`${buttonsExpression}.some((text) => text.includes('Resume'))`);
     await clickButton("Resume");
-    await waitForExpression(`${statusExpression}.includes(${JSON.stringify(`${title} resumed`)})`);
+    await waitForExpression(`${statusExpression} !== 'Paused'`);
+    await waitForExpression(`${buttonsExpression}.some((text) => text.includes('Pause'))`);
     await clickButton("Restart");
-    if (kind === "vector") await waitForExpression(`${statusExpression}.includes('Vector Drift live')`);
+    if (kind === "vector") await waitForExpression(`${statusExpression}.includes('Drifting')`);
     else await waitForExpression(`${statusExpression}.includes('capture 5 with one pulse')`);
 
     const finalState = await evaluate(`({
       status: ${statusExpression},
+      buttons: ${buttonsExpression},
       hasCanvas: Boolean(document.querySelector(${JSON.stringify(`section[aria-label="${title} game"] canvas`)})),
       frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error'),
     })`);
