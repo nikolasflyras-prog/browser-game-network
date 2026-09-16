@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { publicGameRegistry } from "@/games/registry";
-import { getGameSeoContent } from "./gameSeo";
-import { getExtraGameSeoContent } from "./gameSeoExtras";
+import { getAnyGameSeoContent } from "./gameSeoResolver";
 
 describe("public game guide coverage", () => {
   it("provides guide content for every public game", () => {
-    const missing = publicGameRegistry.filter((game) => !(getGameSeoContent(game.slug) ?? getExtraGameSeoContent(game.slug))).map((game) => game.slug);
+    const missing = publicGameRegistry.filter((game) => !getAnyGameSeoContent(game.slug)).map((game) => game.slug);
     expect(missing).toEqual([]);
   });
 });

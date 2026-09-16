@@ -11,6 +11,8 @@ const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
   "railflip": () => import("@/games/railflip/runtime"),
   "courier-loop": () => import("@/games/courier-loop/runtime"),
   "magnet-field": () => import("@/games/magnet-field/runtime"),
+  "skybound": () => import("@/games/skybound/runtime"),
+  "circuit-coil": () => import("@/games/circuit-coil/runtime"),
   "system-check": () => import("@/games/system-check/runtime"),
 };
 
