@@ -15,19 +15,14 @@ describe("game registry", () => {
     expect(getGameMetadata("power-grid-dispatcher")?.category).toBe("Energy Systems Simulation");
     expect(getGameMetadata("vector-drift")?.category).toBe("Arcade Dodger");
     expect(getGameMetadata("pulse-bloom")?.category).toBe("Chain Reaction");
+    expect(getGameMetadata("stackline")?.category).toBe("Precision Stacker");
+    expect(getGameMetadata("switchyard")?.category).toBe("Routing Arcade");
   });
 
-  it("marks the nine public games live", () => {
+  it("marks the eleven public games live", () => {
     expect(publicGameRegistry.map((game) => [game.slug, game.status])).toEqual([
-      ["run-the-fed", "live"],
-      ["market-maker", "live"],
-      ["supply-chain-shock", "live"],
-      ["chip-fab", "live"],
-      ["power-grid-dispatcher", "live"],
-      ["linebreak-daily", "live"],
-      ["orbit-relay", "live"],
-      ["vector-drift", "live"],
-      ["pulse-bloom", "live"],
+      ["run-the-fed", "live"], ["market-maker", "live"], ["supply-chain-shock", "live"], ["chip-fab", "live"], ["power-grid-dispatcher", "live"],
+      ["linebreak-daily", "live"], ["orbit-relay", "live"], ["vector-drift", "live"], ["pulse-bloom", "live"], ["stackline", "live"], ["switchyard", "live"],
     ]);
   });
 });

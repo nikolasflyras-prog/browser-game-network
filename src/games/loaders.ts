@@ -5,6 +5,8 @@ const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
   "orbit-relay": () => import("@/games/orbit-relay/runtime"),
   "vector-drift": () => import("@/games/vector-drift/runtime"),
   "pulse-bloom": () => import("@/games/pulse-bloom/runtime"),
+  "stackline": () => import("@/games/stackline/runtime"),
+  "switchyard": () => import("@/games/switchyard/runtime"),
   "system-check": () => import("@/games/system-check/runtime"),
 };
 
