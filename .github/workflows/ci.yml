@@ -11,52 +11,39 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-
       - name: Lint
         run: npm run lint
-
       - name: Typecheck
         run: npm run typecheck
-
       - name: Unit tests
         run: npm run test:run
-
       - name: Production build
         run: npm run build
-
       - name: Browser smoke test
         run: bash scripts/browser-smoke.sh
-
       - name: Play batch smoke test
         run: bash scripts/play-batch-smoke.sh
-
+      - name: Play batch 4 smoke test
+        run: bash scripts/play-batch-4-smoke.sh
       - name: Market Maker smoke test
         run: bash scripts/market-maker-smoke.sh
-
       - name: Supply Chain Shock smoke test
         run: bash scripts/supply-chain-shock-smoke.sh
-
       - name: Chip Fab smoke test
         run: bash scripts/chip-fab-smoke.sh
-
       - name: Power Grid smoke test
         run: bash scripts/power-grid-smoke.sh
-
       - name: Run the Fed smoke test
         run: bash scripts/run-the-fed-smoke.sh
-
       - name: SEO smoke test
         run: bash scripts/seo-smoke.sh
-
       - name: Upload QA artifacts
         if: always()
         uses: actions/upload-artifact@v4
