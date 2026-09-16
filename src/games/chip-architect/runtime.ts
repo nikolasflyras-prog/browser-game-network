@@ -28,9 +28,7 @@ const INK = 0xeaf5f8;
 const MUTED = 0x8ca1aa;
 const GREEN = 0x5ce1b9;
 const YELLOW = 0xffcf66;
-const RED = 0xff6f83;
 const BLUE = 0x68c8ff;
-const PURPLE = 0xb89cff;
 const MODULE_COLORS: Record<ModuleType, number> = {
   compute: 0xffb454,
   memory: 0x67d6ff,

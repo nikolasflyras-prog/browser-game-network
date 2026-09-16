@@ -162,7 +162,7 @@ export function chipDesignStats(state: Pick<ChipArchitectState, "slots" | "frequ
 
   let performance = variants.reduce((sum, variant) => sum + variant.performance, 0);
   let power = variants.reduce((sum, variant) => sum + variant.power, 0);
-  let area = variants.reduce((sum, variant) => sum + variant.area, 0);
+  const area = variants.reduce((sum, variant) => sum + variant.area, 0);
   let timing = 5 + variants.reduce((sum, variant) => sum + variant.timing, 0);
   const reliability = variants.length ? variants.reduce((sum, variant) => sum + variant.reliability, 0) / variants.length : 0;
   const workload = getArchitectWorkload(state);

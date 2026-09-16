@@ -65,7 +65,7 @@ describe("Chip Architect model", () => {
   });
 
   it("requires verification before a design can tape out", () => {
-    let state = buildAiDesign();
+    const state = buildAiDesign();
     expect(tapeoutReady(state)).toBe(false);
 
     const verified = interactChipArchitect({ ...state, playerX: chipArchitectLayout.verify.x, playerY: chipArchitectLayout.verify.y });
