@@ -9,6 +9,8 @@ const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
   "switchyard": () => import("@/games/switchyard/runtime"),
   "rebound-rush": () => import("@/games/rebound-rush/runtime"),
   "railflip": () => import("@/games/railflip/runtime"),
+  "courier-loop": () => import("@/games/courier-loop/runtime"),
+  "magnet-field": () => import("@/games/magnet-field/runtime"),
   "system-check": () => import("@/games/system-check/runtime"),
 };
 

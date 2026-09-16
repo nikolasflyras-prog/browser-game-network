@@ -12,11 +12,13 @@ describe("game registry", () => {
     expect(getGameMetadata("switchyard")?.category).toBe("Routing Arcade");
     expect(getGameMetadata("rebound-rush")?.category).toBe("Paddle Arcade");
     expect(getGameMetadata("railflip")?.category).toBe("One-Button Runner");
+    expect(getGameMetadata("courier-loop")?.category).toBe("Top-Down Delivery");
+    expect(getGameMetadata("magnet-field")?.category).toBe("Physics Collection");
   });
-  it("marks the thirteen public games live", () => {
+  it("marks the fifteen public games live", () => {
     expect(publicGameRegistry.map((game) => [game.slug, game.status])).toEqual([
       ["run-the-fed", "live"], ["market-maker", "live"], ["supply-chain-shock", "live"], ["chip-fab", "live"], ["power-grid-dispatcher", "live"],
-      ["linebreak-daily", "live"], ["orbit-relay", "live"], ["vector-drift", "live"], ["pulse-bloom", "live"], ["stackline", "live"], ["switchyard", "live"], ["rebound-rush", "live"], ["railflip", "live"],
+      ["linebreak-daily", "live"], ["orbit-relay", "live"], ["vector-drift", "live"], ["pulse-bloom", "live"], ["stackline", "live"], ["switchyard", "live"], ["rebound-rush", "live"], ["railflip", "live"], ["courier-loop", "live"], ["magnet-field", "live"],
     ]);
   });
 });
