@@ -22,7 +22,7 @@ function clamp(value: number, min: number, max: number) { return Math.max(min, M
 function random(seed: number) { const next = (seed * 1103515245 + 12345) >>> 0; return { seed: next, value: next / 0xffffffff }; }
 
 function nextPlatform(seed: number, id: number, y: number, width: number, heightClimbed: number): { seed: number; platform: SkyPlatform } {
-  let r = random(seed);
+  const r = random(seed);
   const platformWidth = Math.max(76, 150 - heightClimbed * 0.018);
   const margin = 24;
   const x = margin + r.value * Math.max(1, width - platformWidth - margin * 2);
@@ -44,7 +44,7 @@ export function createSkyboundState(width: number, height: number, seed = 71): S
   let nextId = 1;
   let y = baseY;
   for (let index = 0; index < 9; index += 1) {
-    let gapRoll = random(currentSeed); currentSeed = gapRoll.seed;
+    const gapRoll = random(currentSeed); currentSeed = gapRoll.seed;
     const difficulty = skyboundDifficulty(index * 80);
     y -= difficulty.gapMin + gapRoll.value * difficulty.gapRange;
     const built = nextPlatform(currentSeed, nextId, y, width, index * 80);
@@ -87,7 +87,7 @@ export function advanceSkybound(state: SkyboundState, horizontalInput: number, d
   const input = clamp(horizontalInput, -1, 1);
   const targetVx = input * difficulty.horizontalSpeed;
   const vx = state.vx + (targetVx - state.vx) * Math.min(1, dt * 9);
-  let playerX = clamp(state.playerX + vx * dt, PLAYER_RADIUS + 5, width - PLAYER_RADIUS - 5);
+  const playerX = clamp(state.playerX + vx * dt, PLAYER_RADIUS + 5, width - PLAYER_RADIUS - 5);
   const previousY = state.playerY;
   let vy = state.vy + GRAVITY * dt;
   let playerY = previousY + vy * dt;
