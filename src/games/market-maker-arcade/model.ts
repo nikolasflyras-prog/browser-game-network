@@ -218,8 +218,8 @@ export function interactMarketFloor(state: MarketFloorState): { state: MarketFlo
   const orderIndex = state.orders.findIndex((order) => distance(state.playerX, state.playerY, order.x, order.y) <= 52);
   if (orderIndex >= 0) {
     const orders = [...state.orders];
-    const [carried] = orders.splice(orderIndex, 1);
-    return { state: { ...state, orders, carried, interactionCooldown: 0.2 }, event: "picked_up" };
+    const carried = orders.splice(orderIndex, 1)[0] ?? null;
+    return { state: { ...state, orders, carried, interactionCooldown: 0.2 }, event: carried ? "picked_up" : "none" };
   }
 
   if (Math.abs(state.inventory) > 0.01 && distance(state.playerX, state.playerY, marketFloorLayout.hedge.x, marketFloorLayout.hedge.y) <= 58) {
@@ -258,8 +258,8 @@ export function advanceMarketFloor(state: MarketFloorState, input: MarketFloorIn
 
   let dashEnergy = dashing ? state.dashEnergy - dt * 34 : state.dashEnergy + dt * 19;
   dashEnergy = clamp(dashEnergy, 0, 100);
-  let elapsed = state.elapsed + dt;
-  let timeLeft = Math.max(0, state.timeLeft - dt);
+  const elapsed = state.elapsed + dt;
+  const timeLeft = Math.max(0, state.timeLeft - dt);
   let spawnTimer = state.spawnTimer - dt;
   let marketAccumulator = state.marketAccumulator + dt;
   let fairValue = state.fairValue;
