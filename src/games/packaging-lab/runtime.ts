@@ -256,7 +256,12 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       else if (event === "profile_changed") { tone(this.state.bondProfile === "fast" ? 760 : this.state.bondProfile === "gentle" ? 410 : 570); bridge.emit("game_action", { action: "bond_profile", profile: this.state.bondProfile }); }
       else if (event === "inspection_started") { tone(530, 0.09, 0.035); bridge.emit("game_action", { action: "inspection_started", profile: this.state.bondProfile }); bridge.setStatus("X-ray and reflow inspection running — keep moving while the package is evaluated"); }
       else if (event === "inspection_passed") { tone(840, 0.12, 0.045); bridge.emit("level_completed", { action: "inspection_pass", workload: getPackageSpec(this.state).id }); bridge.setStatus("Package passed inspection — move it to shipping"); }
-      else if (event === "inspection_failed") { tone(170, 0.14, 0.045); bridge.emit("game_action", { action: "inspection_fail", stats: packageStats(this.state) }); bridge.setStatus("Inspection failed — rework placement, thermals, bandwidth, warpage, yield, or component mix"); }
+      else if (event === "inspection_failed") {
+        tone(170, 0.14, 0.045);
+        const stats = packageStats(this.state);
+        bridge.emit("game_action", { action: "inspection_fail", compute: stats.compute, bandwidth: stats.bandwidth, thermal_peak: stats.thermalPeak, warpage: stats.warpage, yield: stats.yield });
+        bridge.setStatus("Inspection failed — rework placement, thermals, bandwidth, warpage, yield, or component mix");
+      }
       else if (event === "ship_blocked") { tone(210); bridge.setStatus("Shipping blocked — the package needs a passing inspection"); }
       else if (event === "package_shipped") { tone(930, 0.14, 0.05); bridge.emit("level_completed", { action: "package_shipped", packages: this.state.packagesShipped, score: packagingScore(this.state) }); bridge.setStatus(`Package shipped — next customer loaded · ${getPackageSpec(this.state).name}`); }
       else if (event === "job_missed") { tone(130, 0.16, 0.045); bridge.emit("game_action", { action: "missed_package", missed: this.state.missedJobs, reputation: this.state.reputation }); bridge.setStatus(`Customer packaging window missed — reputation ${this.state.reputation}`); }
