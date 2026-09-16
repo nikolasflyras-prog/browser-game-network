@@ -14,6 +14,8 @@ const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
   "skybound": () => import("@/games/skybound/runtime"),
   "circuit-coil": () => import("@/games/circuit-coil/runtime"),
   "semiconductor-vc": () => import("@/games/semiconductor-vc/runtime"),
+  "chip-architect": () => import("@/games/chip-architect/runtime"),
+  "packaging-lab": () => import("@/games/packaging-lab/runtime"),
   "system-check": () => import("@/games/system-check/runtime"),
 };
 
