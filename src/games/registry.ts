@@ -42,11 +42,11 @@ export const gameRegistry: readonly GameMetadata[] = [
   {
     slug: "chip-fab",
     title: "Chip Fab",
-    description: "Run a semiconductor fab through ramp pressure, process drift, bottlenecks, and maintenance while balancing yield, useful throughput, cycle time, defect risk, and cash.",
+    description: "Run a live semiconductor line: set wafer starts, move engineering focus, schedule preventive maintenance, and manage evolving queues, bottlenecks, tool health, yield, and useful output.",
     lane: "Learn",
     category: "Semiconductor Simulation",
     status: "live",
-    version: "0.1.0",
+    version: "0.2.0",
   },
   {
     slug: "power-grid-dispatcher",
