@@ -43,4 +43,6 @@ grep -q '>Restart<' "$ARTIFACT_DIR/pulse-bloom.dom.html"
 if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/vector-drift.dom.html"; then echo "Vector Drift rendered an application error."; exit 1; fi
 if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/pulse-bloom.dom.html"; then echo "Pulse Bloom rendered an application error."; exit 1; fi
 
-echo "Play batch smoke passed: Vector Drift and Pulse Bloom render on desktop/mobile with live Phaser canvases, runtime status, shared controls, and public game guides."
+PLAY_ARCADE_BASE_URL="$BASE_URL" node scripts/play-arcade-interaction.mjs | tee "$ARTIFACT_DIR/play-arcade-interaction.json"
+
+echo "Play batch smoke passed: Vector Drift and Pulse Bloom render on desktop/mobile, expose live runtime status, accept real canvas/shared-control input, and include public game guides."
