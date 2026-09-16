@@ -1,12 +1,23 @@
 export type GameLane = "Play" | "Learn";
 export type GameStatus = "diagnostic" | "prototype" | "live";
-export type GameMetadata = { slug: string; title: string; description: string; lane: GameLane; category: string; status: GameStatus; version: string };
+export type GameCollection = "Semiconductors";
+export type GameMetadata = {
+  slug: string;
+  title: string;
+  description: string;
+  lane: GameLane;
+  category: string;
+  status: GameStatus;
+  version: string;
+  collection?: GameCollection;
+};
 
 export const gameRegistry: readonly GameMetadata[] = [
   { slug: "run-the-fed", title: "Run the Fed", description: "Set interest rates across eight quarters and balance inflation, employment, growth, and financial stability as shocks hit the economy.", lane: "Learn", category: "Economics Simulation", status: "live", version: "0.1.0" },
   { slug: "market-maker", title: "Market Maker", description: "Steer a live two-sided market while customer flow and fair value keep moving. Balance spread capture, informed flow, and inventory risk in real time.", lane: "Learn", category: "Finance Simulation", status: "live", version: "0.2.0" },
+  { slug: "semiconductor-vc", title: "Sand Hill VC", description: "Walk a live semiconductor venture office: meet founders, run technical diligence, choose checks in investment committee, hire analysts, manage reserves, react to news, and support a moving portfolio.", lane: "Learn", category: "Semiconductor Venture", status: "live", version: "0.1.0", collection: "Semiconductors" },
   { slug: "supply-chain-shock", title: "Supply Chain Shock", description: "Operate a live sourcing and logistics pipeline: change order rate, source mix, and freight speed while lead times, port delays, demand spikes, inventory, backlog, and supplier failures evolve continuously.", lane: "Learn", category: "Operations Simulation", status: "live", version: "0.2.0" },
-  { slug: "chip-fab", title: "Chip Fab", description: "Run a live semiconductor line: set wafer starts, move engineering focus, schedule preventive maintenance, and manage evolving queues, bottlenecks, tool health, yield, and useful output.", lane: "Learn", category: "Semiconductor Simulation", status: "live", version: "0.2.0" },
+  { slug: "chip-fab", title: "Chip Fab", description: "Run a live semiconductor line: set wafer starts, move engineering focus, schedule preventive maintenance, and manage evolving queues, bottlenecks, tool health, yield, and useful output.", lane: "Learn", category: "Semiconductor Simulation", status: "live", version: "0.2.0", collection: "Semiconductors" },
   { slug: "power-grid-dispatcher", title: "Power Grid Dispatcher", description: "Balance a live power system as demand, renewable output, and transmission capacity move under you. Adjust firm generation, finite battery energy, and demand response in real time.", lane: "Learn", category: "Energy Systems Simulation", status: "live", version: "0.2.0" },
   { slug: "linebreak-daily", title: "Linebreak Daily", description: "Draw one continuous route through the daily grid. Find the key, cross the gate, avoid hazards, and reach the exit before your ink runs out.", lane: "Play", category: "Daily Puzzle", status: "live", version: "0.1.0" },
   { slug: "orbit-relay", title: "Orbit Relay", description: "Time each launch, catch the next relay, and keep the orbital chain alive as the window tightens.", lane: "Play", category: "Timing", status: "live", version: "0.1.0" },
@@ -27,5 +38,9 @@ export const publicGameRegistry = gameRegistry.filter((game) => game.status !== 
 export function getGameMetadata(slug: string): GameMetadata | undefined { return gameRegistry.find((game) => game.slug === slug); }
 export function getRelatedGames(slug: string, limit = 3): GameMetadata[] {
   const current = getGameMetadata(slug); if (!current) return [];
-  return publicGameRegistry.filter((game) => game.slug !== slug).sort((a, b) => { const aScore = Number(a.lane === current.lane) + Number(a.category === current.category); const bScore = Number(b.lane === current.lane) + Number(b.category === current.category); return bScore - aScore; }).slice(0, limit);
+  return publicGameRegistry.filter((game) => game.slug !== slug).sort((a, b) => {
+    const aScore = Number(a.lane === current.lane) + Number(a.category === current.category) + Number(Boolean(current.collection && a.collection === current.collection));
+    const bScore = Number(b.lane === current.lane) + Number(b.category === current.category) + Number(Boolean(current.collection && b.collection === current.collection));
+    return bScore - aScore;
+  }).slice(0, limit);
 }

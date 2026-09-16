@@ -6,6 +6,8 @@ describe("game registry", () => {
   it("resolves registered games", () => {
     expect(getGameMetadata("system-check")?.status).toBe("diagnostic");
     expect(getGameMetadata("market-maker")?.lane).toBe("Learn");
+    expect(getGameMetadata("semiconductor-vc")?.collection).toBe("Semiconductors");
+    expect(getGameMetadata("chip-fab")?.collection).toBe("Semiconductors");
     expect(getGameMetadata("vector-drift")?.category).toBe("Arcade Dodger");
     expect(getGameMetadata("stackline")?.category).toBe("Precision Stacker");
     expect(getGameMetadata("rebound-rush")?.category).toBe("Paddle Arcade");
@@ -14,9 +16,10 @@ describe("game registry", () => {
     expect(getGameMetadata("skybound")?.category).toBe("Vertical Platformer");
     expect(getGameMetadata("circuit-coil")?.category).toBe("Growing Trail");
   });
-  it("marks the seventeen public games live", () => {
-    expect(publicGameRegistry).toHaveLength(17);
+  it("marks the eighteen public games live", () => {
+    expect(publicGameRegistry).toHaveLength(18);
     expect(publicGameRegistry.every((game) => game.status === "live")).toBe(true);
+    expect(publicGameRegistry.map((game) => game.slug)).toContain("semiconductor-vc");
     expect(publicGameRegistry.map((game) => game.slug)).toContain("skybound");
     expect(publicGameRegistry.map((game) => game.slug)).toContain("circuit-coil");
   });
