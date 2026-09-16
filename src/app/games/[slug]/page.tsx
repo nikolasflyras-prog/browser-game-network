@@ -4,7 +4,6 @@ import { GameDiscovery } from "@/components/catalog/GameDiscovery";
 import { ChipFab } from "@/components/game/ChipFab";
 import { GameHost } from "@/components/game/GameHost";
 import { LinebreakDailyProgress } from "@/components/game/LinebreakDailyProgress";
-import { MarketMaker } from "@/components/game/MarketMaker";
 import { PowerGridDispatcher } from "@/components/game/PowerGridDispatcher";
 import { RunTheFed } from "@/components/game/RunTheFed";
 import { SupplyChainShock } from "@/components/game/SupplyChainShock";
@@ -31,7 +30,7 @@ export default async function GamePage({ params }: PageProps) {
     <article className="game-page">
       {structuredData ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, "\\u003c") }} /> : null}
       <header className="game-heading"><div className="game-heading-meta"><p className="eyebrow">{game.lane}</p><span className="category-label">{game.category}</span></div><h1>{game.title}</h1><p>{game.description}</p></header>
-      {game.slug === "run-the-fed" ? <RunTheFed /> : game.slug === "market-maker" ? <MarketMaker /> : game.slug === "supply-chain-shock" ? <SupplyChainShock /> : game.slug === "chip-fab" ? <ChipFab /> : game.slug === "power-grid-dispatcher" ? <PowerGridDispatcher /> : <><GameHost game={game} />{game.slug === "linebreak-daily" ? <LinebreakDailyProgress /> : null}</>}
+      {game.slug === "run-the-fed" ? <RunTheFed /> : game.slug === "supply-chain-shock" ? <SupplyChainShock /> : game.slug === "chip-fab" ? <ChipFab /> : game.slug === "power-grid-dispatcher" ? <PowerGridDispatcher /> : <><GameHost game={game} />{game.slug === "linebreak-daily" ? <LinebreakDailyProgress /> : null}</>}
       {seo ? (
         <div className="game-guide">
           <section className="content-section"><p className="eyebrow">Overview</p><h2>How {game.title} works</h2><p>{seo.summary}</p></section>

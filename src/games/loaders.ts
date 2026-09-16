@@ -1,6 +1,7 @@
 import type { GameRuntimeModule } from "@/games/_shared/types/runtime";
 
 const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
+  "market-maker": () => import("@/games/market-maker-arcade/runtime"),
   "linebreak-daily": () => import("@/games/linebreak-daily/runtime"),
   "orbit-relay": () => import("@/games/orbit-relay/runtime"),
   "vector-drift": () => import("@/games/vector-drift/runtime"),
