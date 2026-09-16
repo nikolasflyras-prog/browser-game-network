@@ -105,7 +105,32 @@ try {
     await send("Input.dispatchKeyEvent", { type: "keyDown", code, key, windowsVirtualKeyCode: virtualKeys[key] ?? key.charCodeAt(0) });
     await sleep(ms);
     await send("Input.dispatchKeyEvent", { type: "keyUp", code, key, windowsVirtualKeyCode: virtualKeys[key] ?? key.charCodeAt(0) });
-    await sleep(180);
+    await sleep(110);
+  }
+
+  async function getPosition() {
+    return evaluate(`(() => {
+      const node = document.querySelector('[data-semi-x]');
+      return {
+        x: Number(node?.dataset.semiX ?? '0'),
+        y: Number(node?.dataset.semiY ?? '0')
+      };
+    })()`);
+  }
+
+  async function moveToX(targetX, tolerance = 42, maxSteps = 26) {
+    let previous = await getPosition();
+    for (let step = 0; step < maxSteps; step += 1) {
+      if (Math.abs(previous.x - targetX) <= tolerance) return previous;
+      const left = previous.x > targetX;
+      await keyHold(left ? "ArrowLeft" : "ArrowRight", left ? "ArrowLeft" : "ArrowRight", 360);
+      const next = await getPosition();
+      if (Math.abs(next.x - previous.x) < 2) {
+        throw new Error(`Dealer stopped moving while routing to x=${targetX}: ${JSON.stringify({ previous, next })}`);
+      }
+      previous = next;
+    }
+    throw new Error(`Dealer failed to reach x=${targetX}; final position ${JSON.stringify(previous)}`);
   }
 
   async function pressE() {
@@ -126,19 +151,20 @@ try {
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Sand Hill VC game"] .game-status')?.textContent?.includes('Semiconductor VC office'))`);
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Sand Hill VC game"] [data-semi-x]'))`);
 
-  const startX = await evaluate(`Number(document.querySelector('[data-semi-x]')?.dataset.semiX ?? '0')`);
-  await keyHold("ArrowLeft", "ArrowLeft", 1680);
-  const founderX = await evaluate(`Number(document.querySelector('[data-semi-x]')?.dataset.semiX ?? '0')`);
-  if (!(founderX < startX - 250)) throw new Error(`Dealer did not move across office: ${startX} -> ${founderX}`);
+  const startPosition = await getPosition();
+  const founderPosition = await moveToX(180, 45);
+  if (!(founderPosition.x < startPosition.x - 250)) {
+    throw new Error(`Dealer did not traverse the office to the founder: ${JSON.stringify({ startPosition, founderPosition })}`);
+  }
 
   await pressE();
   await waitForExpression(`document.querySelector('[data-semi-active]')?.dataset.semiActive === 'latchwave'`);
 
-  await keyHold("ArrowRight", "ArrowRight", 1040);
+  const diligencePosition = await moveToX(420, 48);
   await pressE();
   await waitForExpression(`document.querySelector('[data-semi-diligenced]')?.dataset.semiDiligenced === 'true'`);
 
-  await keyHold("ArrowRight", "ArrowRight", 1430);
+  const icPosition = await moveToX(760, 46);
   await pressE();
   await waitForExpression(`Number(document.querySelector('[data-semi-investments]')?.dataset.semiInvestments ?? '0') >= 1`);
   await waitForExpression(`Number(document.querySelector('[data-semi-holdings]')?.dataset.semiHoldings ?? '0') >= 1`);
@@ -176,6 +202,7 @@ try {
     founderMeetingVerified: true,
     diligenceRouteVerified: true,
     investmentCommitteeVerified: true,
+    movementPath: { startPosition, founderPosition, diligencePosition, icPosition },
     pauseResumeVerified: true,
     desktopMobileCaptured: true,
     restartVerified: true,
