@@ -24,11 +24,11 @@ export const gameRegistry: readonly GameMetadata[] = [
   {
     slug: "market-maker",
     title: "Market Maker",
-    description: "Set bid and ask quotes across short trading rounds. Balance customer flow, spread capture, informed moves, and inventory risk instead of optimizing one number.",
+    description: "Steer a live two-sided market while customer flow and fair value keep moving. Balance spread capture, informed flow, and inventory risk in real time.",
     lane: "Learn",
     category: "Finance Simulation",
     status: "live",
-    version: "0.1.0",
+    version: "0.2.0",
   },
   {
     slug: "supply-chain-shock",

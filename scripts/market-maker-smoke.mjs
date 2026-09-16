@@ -118,28 +118,35 @@ try {
   await send("Runtime.enable");
   await send("Page.enable");
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Market Maker simulation"]'))`);
-  await waitForExpression(`(() => {
-    const section = document.querySelector('section[aria-label="Market Maker simulation"]');
-    const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Make market at'));
-    return Boolean(button && Object.keys(button).some((key) => key.startsWith('__reactProps$') || key.startsWith('__reactFiber$')));
-  })()`);
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0'`);
+  await waitForExpression(`Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.includes('Open live market'))`);
 
   await evaluate(`localStorage.removeItem('bgn:market-maker:best-score'); true`);
 
-  for (let round = 0; round < 16; round += 1) {
-    const expectedRound = round + 1;
-    await clickVisibleButtonContaining("Make market at");
+  await clickVisibleButtonContaining("Open live market");
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'true'`);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '0') >= 2`, 8000);
 
-    await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === ${JSON.stringify(String(expectedRound))}`);
-    await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketLastRound === ${JSON.stringify(String(expectedRound))}`);
+  await clickVisibleButtonContaining("Lean short");
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketPosture === 'lean-short'`);
 
-    if (expectedRound === 16) {
-      await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'true'`);
-      await waitForExpression(`document.querySelector('[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
-    }
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '0') >= 4`, 8000);
+  await clickVisibleButtonContaining("Pause flow");
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'false'`);
+
+  const pausedRound = await evaluate(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '-1')`);
+  await sleep(1800);
+  const stillPausedRound = await evaluate(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '-1')`);
+  if (stillPausedRound !== pausedRound) {
+    throw new Error(`Market Maker advanced while paused: ${pausedRound} -> ${stillPausedRound}`);
   }
 
+  await clickVisibleButtonContaining("Resume live market");
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'true'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'true'`, 30000);
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '16'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketLastRound === '16'`);
+  await waitForExpression(`document.querySelector('[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
   await waitForExpression(`Boolean(localStorage.getItem('bgn:market-maker:best-score'))`);
 
   const finalState = await evaluate(`(() => {
@@ -150,8 +157,14 @@ try {
       round: section?.dataset.marketRound ?? null,
       lastRound: section?.dataset.marketLastRound ?? null,
       complete: section?.dataset.marketComplete ?? null,
+      running: section?.dataset.marketRunning ?? null,
+      posture: section?.dataset.marketPosture ?? null,
       bestStorage: localStorage.getItem('bgn:market-maker:best-score'),
-      makeMarketVisible: Array.from(section?.querySelectorAll('button') ?? []).some((node) => node.textContent?.includes('Make market at')),
+      liveControlVisible: Array.from(section?.querySelectorAll('button') ?? []).some((node) =>
+        node.textContent?.includes('Open live market') ||
+        node.textContent?.includes('Resume live market') ||
+        node.textContent?.includes('Pause flow')
+      ),
       frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error'),
     };
   })()`);
@@ -159,11 +172,12 @@ try {
   for (const label of ["customer fills", "peak inventory", "risk penalty"]) {
     if (!finalState.text.toLowerCase().includes(label)) throw new Error(`Market Maker result missing ${label}`);
   }
-  if (finalState.round !== "16" || finalState.lastRound !== "16" || finalState.complete !== "true") {
+  if (finalState.round !== "16" || finalState.lastRound !== "16" || finalState.complete !== "true" || finalState.running !== "false") {
     throw new Error(`Market Maker completion state invalid: ${JSON.stringify(finalState)}`);
   }
+  if (finalState.posture !== "lean-short") throw new Error(`Market Maker posture change did not persist: ${finalState.posture}`);
   if (!finalState.bestStorage) throw new Error("Market Maker best score was not persisted");
-  if (finalState.makeMarketVisible) throw new Error("Market Maker still showed the quote action after completion");
+  if (finalState.liveControlVisible) throw new Error("Market Maker still showed live controls after completion");
   if (finalState.frameworkError) throw new Error("Framework error UI detected on Market Maker");
   if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
 
@@ -179,9 +193,19 @@ try {
   await clickVisibleButtonContaining("Deal another market");
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0'`);
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'false'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketPosture === 'balanced'`);
   await waitForExpression(`!document.querySelector('[aria-label="Market Maker result"]')`);
 
-  console.log(JSON.stringify({ targetUrl, roundsCompleted: 16, bestPersisted: true, resultCaptures: 2, restartVerified: true }));
+  console.log(JSON.stringify({
+    targetUrl,
+    roundsCompleted: 16,
+    continuousFlowVerified: true,
+    pauseVerified: true,
+    postureSwitchVerified: true,
+    bestPersisted: true,
+    resultCaptures: 2,
+    restartVerified: true,
+  }));
 } finally {
   socket?.close();
   if (chrome.exitCode === null) {
