@@ -33,11 +33,11 @@ export const gameRegistry: readonly GameMetadata[] = [
   {
     slug: "supply-chain-shock",
     title: "Supply Chain Shock",
-    description: "Manage service, cash, inventory, resilience, and backlog through disruptions where earlier preparation changes which responses are available later.",
+    description: "Operate a live sourcing and logistics pipeline: change order rate, source mix, and freight speed while lead times, port delays, demand spikes, inventory, backlog, and supplier failures evolve continuously.",
     lane: "Learn",
     category: "Operations Simulation",
     status: "live",
-    version: "0.1.0",
+    version: "0.2.0",
   },
   {
     slug: "chip-fab",
