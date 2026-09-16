@@ -260,7 +260,7 @@ export function advanceMarketFloor(state: MarketFloorState, input: MarketFloorIn
   dashEnergy = clamp(dashEnergy, 0, 100);
   const elapsed = state.elapsed + dt;
   const timeLeft = Math.max(0, state.timeLeft - dt);
-  let spawnTimer = state.spawnTimer - dt;
+  const spawnTimer = state.spawnTimer - dt;
   let marketAccumulator = state.marketAccumulator + dt;
   let fairValue = state.fairValue;
   let nextShockIn = state.nextShockIn - dt;
