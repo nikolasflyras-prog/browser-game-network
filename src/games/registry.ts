@@ -51,11 +51,11 @@ export const gameRegistry: readonly GameMetadata[] = [
   {
     slug: "power-grid-dispatcher",
     title: "Power Grid Dispatcher",
-    description: "Dispatch generation, storage, demand response, and transmission workarounds through grid stress while balancing reliability, reserve, cost, emissions, and finite flexibility.",
+    description: "Balance a live power system as demand, renewable output, and transmission capacity move under you. Adjust firm generation, finite battery energy, and demand response in real time.",
     lane: "Learn",
     category: "Energy Systems Simulation",
     status: "live",
-    version: "0.1.0",
+    version: "0.2.0",
   },
   {
     slug: "linebreak-daily",
