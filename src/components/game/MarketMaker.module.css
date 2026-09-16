@@ -24,7 +24,7 @@
 
 .mandate {
   margin: 0;
-  max-width: 700px;
+  max-width: 760px;
   color: var(--muted);
 }
 
@@ -39,7 +39,8 @@
 .panelHeading span,
 .quoteLadder span,
 .tapeGrid span,
-.resultScore span {
+.resultScore span,
+.clockCopy span {
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
@@ -48,6 +49,70 @@
 }
 
 .roundBox strong { font-size: 22px; }
+
+.liveStrip {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+  background: #f3efe6;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.statusDot {
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.liveStrip[data-running="true"] .statusDot {
+  background: var(--accent);
+}
+
+.clockTrack {
+  height: 5px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.clockFill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--ink);
+}
+
+.liveStrip[data-running="true"] .clockFill {
+  animation: marketTick 1.05s linear infinite;
+}
+
+.clockCopy {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.clockCopy strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
 
 .metrics {
   display: grid;
@@ -120,6 +185,7 @@
   border-radius: 50%;
   background: var(--accent);
   outline: 1px solid var(--ink);
+  transition: top .18s ease;
 }
 
 .inventoryTop,
@@ -190,7 +256,7 @@
 }
 
 .postureButton {
-  min-height: 122px;
+  min-height: 126px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -206,18 +272,58 @@
   cursor: pointer;
 }
 
-.postureButton span { font-size: 13px; font-weight: 800; text-transform: capitalize; }
-.postureButton strong { margin-top: auto; font-size: 16px; font-variant-numeric: tabular-nums; }
-.postureButton small { color: var(--muted); line-height: 1.25; }
+.postureTopline {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.postureTopline > span {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.postureTopline kbd {
+  min-width: 24px;
+  padding: 2px 6px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+  opacity: .65;
+}
+
+.postureButton > strong { margin-top: auto; font-size: 16px; font-variant-numeric: tabular-nums; }
+.postureButton > small { color: var(--muted); line-height: 1.25; }
 .postureButton[aria-pressed="true"] { background: var(--ink); color: white; }
-.postureButton[aria-pressed="true"] small { color: #d8d5ce; }
+.postureButton[aria-pressed="true"] > small { color: #d8d5ce; }
 .postureButton:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 
+.liveControls {
+  display: grid;
+  grid-template-columns: minmax(220px, .65fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.liveControls > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .makeMarket,
+.pauseButton,
 .resetButton {
   width: 100%;
   min-height: 52px;
-  margin-top: 16px;
   border: 1px solid var(--ink);
   background: var(--ink);
   color: white;
@@ -226,10 +332,21 @@
   cursor: pointer;
 }
 
+.pauseButton {
+  background: var(--panel);
+  color: var(--ink);
+}
+
 .makeMarket:hover,
 .makeMarket:focus-visible,
+.pauseButton:hover,
+.pauseButton:focus-visible,
 .resetButton:hover,
-.resetButton:focus-visible { background: var(--accent-dark); border-color: var(--accent-dark); }
+.resetButton:focus-visible {
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+  color: white;
+}
 
 .result {
   display: grid;
@@ -246,7 +363,6 @@
 .resultBody > p:not(.kicker) { margin: 8px 0 0; color: var(--muted); }
 .resultStats { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 13px; font-size: 12px; color: var(--muted); }
 .resultStats strong { color: var(--ink); }
-.resetButton { margin: 0; }
 
 .disclaimer {
   margin: 0;
@@ -254,6 +370,11 @@
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 11px;
+}
+
+@keyframes marketTick {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -276,6 +397,9 @@
 @media (max-width: 560px) {
   .topline { grid-template-columns: 1fr; gap: 12px; padding: 16px; }
   .roundBox { justify-items: start; }
+  .liveStrip { grid-template-columns: auto 1fr; gap: 10px; padding: 9px 14px; }
+  .clockTrack { grid-column: 1 / -1; grid-row: 2; }
+  .clockCopy { justify-self: end; }
   .metrics { grid-template-columns: 1fr 1fr; }
   .metrics > div { padding: 14px; }
   .metrics strong { font-size: 20px; }
@@ -290,12 +414,12 @@
   .postureGrid { grid-template-columns: 1fr; }
   .postureButton,
   .postureButton:last-child { grid-column: auto; min-height: 96px; }
+  .liveControls { grid-template-columns: 1fr; gap: 10px; }
   .result { grid-template-columns: 1fr; padding: 18px; }
   .resetButton { grid-column: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .postureButton,
-  .makeMarket,
-  .resetButton { transition: none; }
+  .inventoryDot { transition: none; }
+  .liveStrip[data-running="true"] .clockFill { animation: none; transform: scaleX(1); }
 }

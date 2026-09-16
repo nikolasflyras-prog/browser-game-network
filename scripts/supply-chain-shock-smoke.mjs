@@ -7,7 +7,6 @@ const targetUrl = process.env.SUPPLY_CHAIN_URL ?? "http://127.0.0.1:3004/games/s
 const artifactDir = process.env.SUPPLY_CHAIN_ARTIFACT_DIR ?? "artifacts/browser";
 const debugBase = "http://127.0.0.1:9232";
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 await mkdir(artifactDir, { recursive: true });
 
 async function waitForValue(fn, timeout = 10000) {
@@ -30,7 +29,7 @@ for (const candidate of ["google-chrome", "google-chrome-stable", "chromium", "c
 }
 if (!chromePath) throw new Error("No Chrome/Chromium binary found on runner");
 
-const profileDir = await mkdtemp(path.join(os.tmpdir(), "supply-chain-public-"));
+const profileDir = await mkdtemp(path.join(os.tmpdir(), "supply-chain-live-"));
 const chrome = spawn(chromePath, [
   "--headless",
   "--no-sandbox",
@@ -88,39 +87,39 @@ try {
     return response.result?.value;
   }
 
-  async function waitForExpression(expression, timeout = 8000) {
+  async function waitForExpression(expression, timeout = 10000) {
     return waitForValue(() => evaluate(expression), timeout);
   }
 
-  async function buttonPoint(label) {
-    return evaluate(`(() => {
+  async function clickButton(label) {
+    const found = await waitForValue(() => evaluate(`(() => {
+      const section = document.querySelector('section[aria-label="Supply Chain Shock simulation"]');
+      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(label)}));
+      if (!button) return false;
+      button.scrollIntoView({ block: 'center', inline: 'center' });
+      return true;
+    })()`));
+    if (!found) throw new Error(`Supply Chain button not found: ${label}`);
+
+    await sleep(140);
+
+    const point = await waitForValue(() => evaluate(`(() => {
       const section = document.querySelector('section[aria-label="Supply Chain Shock simulation"]');
       const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(label)}));
       if (!button) return null;
-      button.scrollIntoView({ block: 'center', inline: 'center' });
       const rect = button.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return null;
-      return {
-        x: rect.left + rect.width / 2,
-        y: rect.top + Math.min(rect.height / 2, 28),
-        disabled: button.getAttribute('aria-disabled'),
-        text: button.textContent ?? '',
-      };
-    })()`);
-  }
+      const x = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+      const hit = document.elementFromPoint(x, y);
+      if (!hit || !(hit === button || button.contains(hit))) return null;
+      return { x, y };
+    })()`));
 
-  async function realClick(label, expectAdvance = true) {
-    const beforeStep = await evaluate(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.getAttribute('data-supply-step')`);
-    const point = await waitForValue(() => buttonPoint(label));
-    if (expectAdvance && point.disabled === "true") throw new Error(`Supply Chain control unexpectedly disabled: ${label}`);
     await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y });
     await send("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
     await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
-    if (expectAdvance) {
-      await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.getAttribute('data-supply-step') !== ${JSON.stringify(beforeStep)}`);
-    } else {
-      await sleep(150);
-    }
+    await sleep(100);
   }
 
   async function capture(name) {
@@ -133,86 +132,86 @@ try {
   await send("Runtime.enable");
   await send("Page.enable");
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Supply Chain Shock simulation"]'))`);
-  await waitForExpression(`(() => {
-    const section = document.querySelector('section[aria-label="Supply Chain Shock simulation"]');
-    const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Qualify a second supplier'));
-    return Boolean(button && Object.keys(button).some((key) => key.startsWith('__reactProps$') || key.startsWith('__reactFiber$')));
-  })()`);
-  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyStep === '0'`);
-
+  await evaluate(`document.documentElement.style.scrollBehavior = 'auto'; document.body.style.scrollBehavior = 'auto'; true`);
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyTick === '0'`);
+  await waitForExpression(`Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.includes('Start network'))`);
   await evaluate(`localStorage.removeItem('bgn:supply-chain-shock:best-score'); true`);
 
-  await realClick("Qualify a second supplier");
-  const prepared = await evaluate(`(() => {
-    const node = document.querySelector('[data-supply-capability="alternate-capacity"]');
-    return { status: node?.getAttribute('data-status'), text: node?.textContent ?? '' };
-  })()`);
-  if (prepared.status !== "ready" || !prepared.text.includes("READY")) {
-    throw new Error(`Prepared capacity did not become ready: ${JSON.stringify(prepared)}`);
-  }
-  const deltaVisible = await evaluate(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.textContent?.includes('What your last decision changed')`);
-  if (!deltaVisible) throw new Error("Supply Chain metric-delta explanation missing after decision");
+  await clickButton("Buffer");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyOrder === 'buffer'`);
+  await clickButton("Split");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplySource === 'split'`);
+  await clickButton("Mixed");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyFreight === 'mixed'`);
 
-  await realClick("Prioritize key customers");
-  await realClick("Cap new orders");
-  const backup = await buttonPoint("Activate alternate capacity");
-  if (!backup || backup.disabled === "true") throw new Error("Prepared path failed to unlock alternate capacity");
-  await realClick("Activate alternate capacity");
-  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.getAttribute('data-supply-complete') === 'true'`);
+  await clickButton("Start network");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyRunning === 'true'`);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyTick ?? '0') >= 2`, 6000);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyTransit ?? '0') > 0`);
+
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyTick ?? '0') >= 5`, 6000);
+  await clickButton("Pause network");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyRunning === 'false'`);
+  const pausedTick = await evaluate(`Number(document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyTick ?? '-1')`);
+  await sleep(1200);
+  const frozenTick = await evaluate(`Number(document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyTick ?? '-1')`);
+  if (pausedTick !== frozenTick) throw new Error(`Supply Chain advanced while paused: ${pausedTick} -> ${frozenTick}`);
+  await clickButton("Resume network");
+
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyEvent === 'port-delay'`, 8000);
+  await clickButton("Air");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyFreight === 'air'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyEvent === 'demand-spike'`, 9000);
+  await clickButton("Mixed");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyFreight === 'mixed'`);
+  await clickButton("Buffer");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyOrder === 'buffer'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyEvent === 'supplier-failure'`, 9000);
+  await clickButton("Backup");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplySource === 'backup'`);
+
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyComplete === 'true'`, 15000);
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Supply Chain Shock result"]'))`);
+  await waitForExpression(`Boolean(localStorage.getItem('bgn:supply-chain-shock:best-score'))`);
 
-  const storedBest = await evaluate(`localStorage.getItem('bgn:supply-chain-shock:best-score')`);
-  if (!storedBest) throw new Error("Supply Chain best score was not persisted");
-  const parsedBest = JSON.parse(storedBest);
-  if (parsedBest?.version !== 1 || typeof parsedBest?.value !== "number" || parsedBest.value <= 0) {
-    throw new Error(`Unexpected Supply Chain best score record: ${storedBest}`);
+  const finalState = await evaluate(`(() => {
+    const section = document.querySelector('section[aria-label="Supply Chain Shock simulation"]');
+    const result = document.querySelector('[aria-label="Supply Chain Shock result"]');
+    return {
+      tick: section?.dataset.supplyTick ?? null,
+      complete: section?.dataset.supplyComplete ?? null,
+      running: section?.dataset.supplyRunning ?? null,
+      resultText: result?.textContent ?? '',
+      frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error'),
+    };
+  })()`);
+
+  if (finalState.tick !== "32" || finalState.complete !== "true" || finalState.running !== "false") throw new Error(`Supply Chain completion state invalid: ${JSON.stringify(finalState)}`);
+  for (const label of ["Final score", "service", "ending inventory", "backlog", "expedite spend"]) {
+    if (!finalState.resultText.toLowerCase().includes(label.toLowerCase())) throw new Error(`Supply Chain result missing ${label}`);
   }
-  await capture("supply-chain-result-desktop.png");
+  if (finalState.frameworkError) throw new Error("Framework error UI detected during Supply Chain Shock smoke test");
+  if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
 
+  await capture("supply-chain-result-desktop.png");
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await capture("supply-chain-result-mobile.png");
   await send("Emulation.clearDeviceMetricsOverride");
 
-  await realClick("Run another network", false);
-  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.getAttribute('data-supply-step') === '0'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.getAttribute('data-supply-complete') === 'false'`);
-
-  await realClick("Wait for evidence");
-  const unprepared = await evaluate(`(() => {
-    const node = document.querySelector('[data-supply-capability="alternate-capacity"]');
-    return { status: node?.getAttribute('data-status'), text: node?.textContent ?? '' };
-  })()`);
-  if (unprepared.status !== "pending" || !unprepared.text.includes("NOT READY")) {
-    throw new Error(`Unprepared path incorrectly shows backup readiness: ${JSON.stringify(unprepared)}`);
-  }
-  await realClick("Prioritize key customers");
-  await realClick("Cap new orders");
-  const blocked = await buttonPoint("Activate alternate capacity");
-  if (!blocked || blocked.disabled !== "true" || !blocked.text.includes("qualified alternate capacity")) {
-    throw new Error(`Unprepared path did not expose locked alternate capacity: ${JSON.stringify(blocked)}`);
-  }
-  await realClick("Activate alternate capacity", false);
-  const blockedNotice = await evaluate(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.textContent ?? ''`);
-  if (!blockedNotice.includes("do not have enough qualified alternate capacity")) {
-    throw new Error("Unavailable backup response did not explain why preparation mattered");
-  }
-
-  const finalState = await evaluate(`({
-    step: document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.getAttribute('data-supply-step'),
-    complete: document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.getAttribute('data-supply-complete'),
-    frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error'),
-  })`);
-  if (finalState.frameworkError) throw new Error("Framework error UI detected during Supply Chain Shock smoke test");
-  if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
+  await clickButton("Run another network");
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyTick === '0'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyOrder === 'steady'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Supply Chain Shock simulation"]')?.dataset.supplyComplete === 'false'`);
 
   console.log(JSON.stringify({
     targetUrl,
-    preparedPathUnlockedBackup: true,
-    unpreparedPathBlockedBackup: true,
+    pipelineVerified: true,
+    leadTimeControlsVerified: true,
+    disruptionRegimesVerified: true,
+    pauseVerified: true,
     bestPersisted: true,
     resultCaptures: 2,
     restartVerified: true,
-    finalState,
   }));
 } finally {
   socket?.close();

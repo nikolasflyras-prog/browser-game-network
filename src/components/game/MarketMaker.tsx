@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { readLocalGameValue, writeLocalGameValue } from "@/games/_shared/storage/localGameStorage";
 import {
   createMarketMakerState,
@@ -15,15 +15,16 @@ import { captureGameEvent } from "@/lib/analytics/client";
 import styles from "./MarketMaker.module.css";
 
 const GAME_SLUG = "market-maker";
-const GAME_VERSION = "0.1.0";
+const GAME_VERSION = "0.2.0";
 const SAVE_VERSION = 1;
+const ROUND_MS = 1050;
 
-const postureCopy: Record<QuotePosture, { label: string; note: string }> = {
-  tight: { label: "Tight", note: "More flow, more exposure" },
-  balanced: { label: "Balanced", note: "Middle-of-book quote" },
-  wide: { label: "Wide", note: "Less flow, more protection" },
-  "lean-long": { label: "Lean long", note: "Favor buying inventory" },
-  "lean-short": { label: "Lean short", note: "Favor selling inventory" },
+const postureCopy: Record<QuotePosture, { label: string; note: string; hotkey: string }> = {
+  tight: { label: "Tight", note: "More flow, more exposure", hotkey: "1" },
+  balanced: { label: "Balanced", note: "Middle-of-book quote", hotkey: "2" },
+  wide: { label: "Wide", note: "Less flow, more protection", hotkey: "3" },
+  "lean-long": { label: "Lean long", note: "Favor buying inventory", hotkey: "4" },
+  "lean-short": { label: "Lean short", note: "Favor selling inventory", hotkey: "5" },
 };
 
 function money(value: number) {
@@ -42,7 +43,10 @@ export function MarketMaker() {
   const [state, setState] = useState(() => createMarketMakerState());
   const [selectedPosture, setSelectedPosture] = useState<QuotePosture>("balanced");
   const [bestScore, setBestScore] = useState<number | null>(() => readBestScore());
+  const [running, setRunning] = useState(false);
   const startedAt = useRef(0);
+  const stateRef = useRef(state);
+  const selectedPostureRef = useRef<QuotePosture>(selectedPosture);
   const result = marketMakerResult(state);
   const selectedQuote = quoteFor(state, selectedPosture);
   const lastRound = state.history.at(-1) ?? null;
@@ -50,25 +54,43 @@ export function MarketMaker() {
   const inventoryStyle = { "--inventory-y": inventoryY } as CSSProperties;
 
   useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    selectedPostureRef.current = selectedPosture;
+  }, [selectedPosture]);
+
+  useEffect(() => {
     captureGameEvent("game_viewed", { game_slug: GAME_SLUG, game_version: GAME_VERSION });
   }, []);
 
-  function executeQuote() {
-    if (state.complete) return;
+  const choosePosture = useCallback((posture: QuotePosture, trigger: "button" | "hotkey" = "button") => {
+    selectedPostureRef.current = posture;
+    setSelectedPosture(posture);
 
-    if (state.round === 0) {
-      startedAt.current = nowMs();
-      captureGameEvent("game_started", {
+    const current = stateRef.current;
+    if (current.round > 0 && !current.complete) {
+      captureGameEvent("game_action", {
         game_slug: GAME_SLUG,
         game_version: GAME_VERSION,
-        seed: state.seed,
-        rounds: state.maxRounds,
-        trigger: "first_quote",
+        action: "quote_posture_changed",
+        posture,
+        round: current.round,
+        trigger,
       });
     }
+  }, []);
 
-    const next = playMarketRound(state, selectedPosture);
+  const settleRound = useCallback(() => {
+    const current = stateRef.current;
+    if (current.complete) return;
+
+    const posture = selectedPostureRef.current;
+    const next = playMarketRound(current, posture);
     const round = next.history.at(-1);
+
+    stateRef.current = next;
     setState(next);
 
     if (round) {
@@ -86,10 +108,15 @@ export function MarketMaker() {
     }
 
     if (next.complete) {
+      setRunning(false);
       const nextResult = marketMakerResult(next);
-      const nextBest = Math.max(bestScore ?? Number.NEGATIVE_INFINITY, next.score);
-      writeLocalGameValue(GAME_SLUG, "best-score", SAVE_VERSION, nextBest);
-      setBestScore(nextBest);
+
+      setBestScore((currentBest) => {
+        const nextBest = Math.max(currentBest ?? Number.NEGATIVE_INFINITY, next.score);
+        writeLocalGameValue(GAME_SLUG, "best-score", SAVE_VERSION, nextBest);
+        return nextBest;
+      });
+
       captureGameEvent("game_completed", {
         game_slug: GAME_SLUG,
         game_version: GAME_VERSION,
@@ -100,6 +127,70 @@ export function MarketMaker() {
         duration_ms: Math.max(0, nowMs() - startedAt.current),
       });
     }
+  }, []);
+
+  useEffect(() => {
+    if (!running || state.complete) return;
+
+    const timer = window.setInterval(settleRound, ROUND_MS);
+    return () => window.clearInterval(timer);
+  }, [running, state.complete, settleRound]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable || target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.tagName === "SELECT") {
+        return;
+      }
+
+      const index = Number(event.key) - 1;
+      const posture = marketMakerPostures[index];
+      if (posture) {
+        event.preventDefault();
+        choosePosture(posture, "hotkey");
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [choosePosture]);
+
+  function startMarket() {
+    const current = stateRef.current;
+    if (current.complete || running) return;
+
+    if (current.round === 0 && startedAt.current === 0) {
+      startedAt.current = nowMs();
+      captureGameEvent("game_started", {
+        game_slug: GAME_SLUG,
+        game_version: GAME_VERSION,
+        seed: current.seed,
+        rounds: current.maxRounds,
+        cadence_ms: ROUND_MS,
+        trigger: "open_live_market",
+      });
+    } else if (current.round > 0) {
+      captureGameEvent("game_resumed", {
+        game_slug: GAME_SLUG,
+        game_version: GAME_VERSION,
+        round: current.round,
+      });
+    }
+
+    setRunning(true);
+  }
+
+  function pauseMarket() {
+    if (!running || state.complete) return;
+    setRunning(false);
+    captureGameEvent("game_paused", {
+      game_slug: GAME_SLUG,
+      game_version: GAME_VERSION,
+      round: state.round,
+      posture: selectedPosture,
+    });
   }
 
   function reset() {
@@ -108,9 +199,14 @@ export function MarketMaker() {
       game_version: GAME_VERSION,
       previous_score: result?.score ?? null,
     });
+
     const nextSeed = (state.seed ^ 0x9e3779b9) >>> 0;
+    const next = createMarketMakerState(nextSeed);
+    stateRef.current = next;
+    selectedPostureRef.current = "balanced";
     startedAt.current = 0;
-    setState(createMarketMakerState(nextSeed));
+    setRunning(false);
+    setState(next);
     setSelectedPosture("balanced");
   }
 
@@ -123,6 +219,7 @@ export function MarketMaker() {
     : null;
 
   const fairMove = lastRound ? lastRound.fairAfter - lastRound.fairBefore : 0;
+  const marketStatus = state.complete ? "Closed" : running ? "Live" : state.round === 0 ? "Ready" : "Paused";
 
   return (
     <section
@@ -131,15 +228,31 @@ export function MarketMaker() {
       data-market-round={state.round}
       data-market-complete={state.complete ? "true" : "false"}
       data-market-last-round={lastRound?.round ?? 0}
+      data-market-running={running ? "true" : "false"}
+      data-market-posture={selectedPosture}
     >
       <div className={styles.topline}>
         <div>
-          <p className={styles.kicker}>Dealer desk</p>
-          <p className={styles.mandate}>Provide liquidity for 16 rounds without letting inventory risk erase your spread capture.</p>
+          <p className={styles.kicker}>Live dealer desk</p>
+          <p className={styles.mandate}>Steer your two-sided quote while customer flow and fair value keep moving. Survive 16 market ticks without letting inventory risk erase your spread capture.</p>
         </div>
         <div className={styles.roundBox}>
-          <span>Round</span>
+          <span>Tick</span>
           <strong>{state.round}/{state.maxRounds}</strong>
+        </div>
+      </div>
+
+      <div className={styles.liveStrip} data-running={running ? "true" : "false"}>
+        <div className={styles.statusBadge}>
+          <span className={styles.statusDot} aria-hidden="true" />
+          <strong>{marketStatus}</strong>
+        </div>
+        <div className={styles.clockTrack} aria-label={running ? "Live market clock running" : "Live market clock stopped"}>
+          <span className={styles.clockFill} />
+        </div>
+        <div className={styles.clockCopy}>
+          <span>Flow cadence</span>
+          <strong>{(ROUND_MS / 1000).toFixed(2)}s</strong>
         </div>
       </div>
 
@@ -166,7 +279,7 @@ export function MarketMaker() {
 
         <div className={styles.quotePanel}>
           <div className={styles.panelHeading}>
-            <span>Selected market</span>
+            <span>Live quote</span>
             <strong>{postureCopy[selectedPosture].label}</strong>
           </div>
           <div className={styles.quoteLadder} aria-label={`${postureCopy[selectedPosture].label} quote`}>
@@ -174,13 +287,13 @@ export function MarketMaker() {
             <div className={styles.fair}><span>Fair</span><strong>${money(state.fairValue)}</strong></div>
             <div><span>Bid</span><strong>${money(selectedQuote.bid)}</strong></div>
           </div>
-          <p className={styles.spreadReadout}>Quoted spread: ${(selectedQuote.ask - selectedQuote.bid).toFixed(2)}</p>
+          <p className={styles.spreadReadout}>Quoted spread: ${(selectedQuote.ask - selectedQuote.bid).toFixed(2)} · updates immediately when you change posture</p>
         </div>
 
         <div className={styles.tapePanel} aria-live="polite">
           <div className={styles.panelHeading}>
-            <span>Last round</span>
-            <strong>{lastRound ? `#${lastRound.round}` : "Waiting"}</strong>
+            <span>Tape</span>
+            <strong>{lastRound ? `Tick #${lastRound.round}` : "Waiting"}</strong>
           </div>
           {lastRound ? (
             <>
@@ -193,7 +306,7 @@ export function MarketMaker() {
               <p>{lastRound.feedback}</p>
             </>
           ) : (
-            <p>Choose a quote posture. The market will decide whether customer buy and sell flow reaches your prices, then fair value moves.</p>
+            <p>Open the desk, then keep changing your quote as the tape moves. Customer flow resolves automatically every market tick.</p>
           )}
         </div>
       </div>
@@ -202,10 +315,10 @@ export function MarketMaker() {
         <div className={styles.decisionPanel}>
           <div className={styles.decisionHeading}>
             <div>
-              <p className={styles.kicker}>Your decision</p>
-              <h2>Set the next two-sided quote</h2>
+              <p className={styles.kicker}>Continuous control</p>
+              <h2>Steer the quote while the market is live</h2>
             </div>
-            <p>Changing the spread changes flow. Skewing the quote changes which side is more attractive.</p>
+            <p>Use 1–5 to switch postures instantly. Tight earns more chances to trade; wide protects you; quote skew helps unwind inventory.</p>
           </div>
 
           <div className={styles.postureGrid}>
@@ -214,19 +327,31 @@ export function MarketMaker() {
                 className={styles.postureButton}
                 type="button"
                 key={posture}
-                onClick={() => setSelectedPosture(posture)}
+                onClick={() => choosePosture(posture)}
                 aria-pressed={selectedPosture === posture}
               >
-                <span>{postureCopy[posture].label}</span>
+                <span className={styles.postureTopline}>
+                  <span>{postureCopy[posture].label}</span>
+                  <kbd>{postureCopy[posture].hotkey}</kbd>
+                </span>
                 <strong>${money(quoteFor(state, posture).bid)} / ${money(quoteFor(state, posture).ask)}</strong>
                 <small>{postureCopy[posture].note}</small>
               </button>
             ))}
           </div>
 
-          <button className={styles.makeMarket} type="button" onClick={executeQuote}>
-            Make market at ${money(selectedQuote.bid)} / ${money(selectedQuote.ask)}
-          </button>
+          <div className={styles.liveControls}>
+            {!running ? (
+              <button className={styles.makeMarket} type="button" onClick={startMarket}>
+                {state.round === 0 ? "Open live market" : "Resume live market"}
+              </button>
+            ) : (
+              <button className={styles.pauseButton} type="button" onClick={pauseMarket}>
+                Pause flow
+              </button>
+            )}
+            <p>{running ? "Quotes stay editable while the tape advances automatically." : "The market clock is stopped. Set your posture, then resume when ready."}</p>
+          </div>
         </div>
       ) : null}
 

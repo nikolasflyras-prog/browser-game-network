@@ -23,24 +23,14 @@ async function waitForValue(fn, timeout = 10000) {
 let chromePath = null;
 for (const candidate of ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
   const found = spawnSync("which", [candidate], { encoding: "utf8" });
-  if (found.status === 0 && found.stdout.trim()) {
-    chromePath = found.stdout.trim();
-    break;
-  }
+  if (found.status === 0 && found.stdout.trim()) { chromePath = found.stdout.trim(); break; }
 }
 if (!chromePath) throw new Error("No Chrome/Chromium binary found on runner");
 
-const profileDir = await mkdtemp(path.join(os.tmpdir(), "power-grid-public-"));
+const profileDir = await mkdtemp(path.join(os.tmpdir(), "power-grid-live-"));
 const chrome = spawn(chromePath, [
-  "--headless",
-  "--no-sandbox",
-  "--disable-gpu",
-  "--disable-dev-shm-usage",
-  "--hide-scrollbars",
-  "--window-size=1280,1000",
-  "--remote-debugging-port=9234",
-  `--user-data-dir=${profileDir}`,
-  targetUrl,
+  "--headless", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--hide-scrollbars",
+  "--window-size=1280,1000", "--remote-debugging-port=9234", `--user-data-dir=${profileDir}`, targetUrl,
 ], { stdio: "ignore" });
 
 let socket;
@@ -88,46 +78,21 @@ try {
     return response.result?.value;
   }
 
-  async function waitForExpression(expression, timeout = 8000) {
-    return waitForValue(() => evaluate(expression), timeout);
-  }
+  async function waitForExpression(expression, timeout = 10000) { return waitForValue(() => evaluate(expression), timeout); }
 
-  async function buttonPoint(label) {
-    return evaluate(`(() => {
+  async function clickButton(label) {
+    const point = await waitForValue(() => evaluate(`(() => {
       const section = document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]');
-      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(label)}));
+      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(label)}) || node.getAttribute('aria-label') === ${JSON.stringify(label)});
       if (!button) return null;
       button.scrollIntoView({ block: 'center', inline: 'center' });
       const rect = button.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return null;
-      return {
-        x: rect.left + rect.width / 2,
-        y: rect.top + Math.min(rect.height / 2, 28),
-        ariaDisabled: button.getAttribute('aria-disabled'),
-        text: button.textContent ?? '',
-      };
-    })()`);
-  }
-
-  async function realClick(label, expectAdvance = true) {
-    const beforeStep = await evaluate(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.getAttribute('data-grid-step')`);
-    const point = await waitForValue(() => buttonPoint(label));
-    if (expectAdvance && point.ariaDisabled === "true") throw new Error(`Power Grid control unexpectedly disabled: ${label}`);
+      return { x: rect.left + rect.width / 2, y: rect.top + Math.min(rect.height / 2, 28) };
+    })()`));
     await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y });
     await send("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
     await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
-    if (expectAdvance) {
-      await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.getAttribute('data-grid-step') !== ${JSON.stringify(beforeStep)}`);
-    } else {
-      await sleep(150);
-    }
-  }
-
-  async function readSignal(name) {
-    return evaluate(`(() => {
-      const node = document.querySelector('[data-grid-signal=${JSON.stringify(name)}]');
-      return { state: node?.getAttribute('data-state') ?? null, text: node?.textContent ?? '' };
-    })()`);
   }
 
   async function capture(name) {
@@ -140,89 +105,83 @@ try {
   await send("Runtime.enable");
   await send("Page.enable");
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]'))`);
-  await waitForExpression(`(() => {
-    const section = document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]');
-    const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes('Discharge batteries'));
-    return Boolean(button && Object.keys(button).some((key) => key.startsWith('__reactProps$') || key.startsWith('__reactFiber$')));
-  })()`);
-  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridStep === '0'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridTick === '0'`);
+  await waitForExpression(`Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.includes('Start dispatch'))`);
   await evaluate(`localStorage.removeItem('bgn:power-grid-dispatcher:best-score'); true`);
 
-  const initialStorage = await readSignal("storage");
-  if (initialStorage.state !== "controlled" || !initialStorage.text.includes("FLEXIBLE") || !initialStorage.text.includes("Wind ✓") || !initialStorage.text.includes("Heatwave ✓")) {
-    throw new Error(`Unexpected initial storage flexibility: ${JSON.stringify(initialStorage)}`);
-  }
+  const initial = await evaluate(`(() => {
+    const section = document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]');
+    return { thermal: Number(section?.dataset.gridThermal), storage: Number(section?.dataset.gridStorage), event: section?.dataset.gridEvent };
+  })()`);
+  if (initial.thermal !== 50 || initial.storage !== 58 || initial.event !== "morning-ramp") throw new Error(`Unexpected initial live-grid state: ${JSON.stringify(initial)}`);
 
-  await realClick("Discharge batteries");
-  await realClick("Use storage");
-  const depleted = await readSignal("storage");
-  if (depleted.state !== "high" || !depleted.text.includes("DEPLETED") || !depleted.text.includes("Wind ×") || !depleted.text.includes("Heatwave ×")) {
-    throw new Error(`Early storage use did not surface depleted flexibility: ${JSON.stringify(depleted)}`);
-  }
-  const depletedContext = await evaluate(`document.querySelector('[data-grid-context]')?.textContent ?? ''`);
-  if (!depletedContext.includes("depleted the flexibility needed for the mixed heatwave response")) {
-    throw new Error(`Power Grid depleted-storage lesson missing: ${depletedContext}`);
-  }
-  const blocked = await buttonPoint("Mix storage + demand response");
-  if (!blocked || blocked.ariaDisabled !== "true" || !blocked.text.includes("Earlier battery use left too little stored energy")) {
-    throw new Error(`Heatwave mixed response should be blocked after storage depletion: ${JSON.stringify(blocked)}`);
-  }
-  await realClick("Mix storage + demand response", false);
-  const blockedNotice = await evaluate(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.textContent ?? ''`);
-  if (!blockedNotice.includes("Earlier battery use left too little stored energy")) throw new Error("Unavailable heatwave response did not explain the depleted storage constraint");
+  await clickButton("Start dispatch");
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridRunning === 'true'`);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridTick ?? '0') >= 2`, 7000);
 
-  await realClick("Use emergency pricing");
-  await realClick("Targeted load reduction");
-  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridComplete === 'true'`);
+  await clickButton("Thermal up");
+  await clickButton("Thermal up");
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridThermal === '60'`);
+
+  await clickButton("Discharge");
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridBattery === 'discharge'`);
+  await clickButton("Enable demand response");
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridDr === 'true'`);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridStorage ?? '58') < 58`, 5000);
+
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridTick ?? '0') >= 5`, 7000);
+  await clickButton("Pause dispatch");
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridRunning === 'false'`);
+  const pausedTick = await evaluate(`Number(document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridTick ?? '-1')`);
+  await sleep(1200);
+  const frozenTick = await evaluate(`Number(document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridTick ?? '-1')`);
+  if (pausedTick !== frozenTick) throw new Error(`Grid advanced while paused: ${pausedTick} -> ${frozenTick}`);
+
+  await clickButton("Idle");
+  await clickButton("Resume dispatch");
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridRunning === 'true'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridEvent === 'wind-drop'`, 9000);
+
+  for (let index = 0; index < 4; index += 1) await clickButton("Thermal up");
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridThermal ?? '0') >= 80`);
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridComplete === 'true'`, 30000);
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Power Grid Dispatcher result"]'))`);
+  await waitForExpression(`Boolean(localStorage.getItem('bgn:power-grid-dispatcher:best-score'))`);
 
-  const storedBest = await evaluate(`localStorage.getItem('bgn:power-grid-dispatcher:best-score')`);
-  if (!storedBest) throw new Error("Power Grid best score was not persisted");
-  const parsedBest = JSON.parse(storedBest);
-  if (parsedBest?.version !== 1 || typeof parsedBest?.value !== "number" || parsedBest.value <= 0) throw new Error(`Unexpected Power Grid best-score record: ${storedBest}`);
+  const finalState = await evaluate(`(() => {
+    const section = document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]');
+    const result = document.querySelector('[aria-label="Power Grid Dispatcher result"]');
+    return {
+      tick: section?.dataset.gridTick ?? null,
+      complete: section?.dataset.gridComplete ?? null,
+      running: section?.dataset.gridRunning ?? null,
+      event: section?.dataset.gridEvent ?? null,
+      resultText: result?.textContent ?? '',
+      bestStorage: localStorage.getItem('bgn:power-grid-dispatcher:best-score'),
+      frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error'),
+    };
+  })()`);
 
-  await realClick("Run another grid", false);
-  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridStep === '0'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridComplete === 'false'`);
-
-  await realClick("Call demand response");
-  await realClick("Start peakers");
-  const preserved = await readSignal("storage");
-  if (preserved.state !== "controlled" || !preserved.text.includes("FLEXIBLE") || !preserved.text.includes("Heatwave ✓")) {
-    throw new Error(`Preserved-storage path lost flexibility unexpectedly: ${JSON.stringify(preserved)}`);
+  if (finalState.tick !== "32" || finalState.complete !== "true" || finalState.running !== "false") throw new Error(`Power Grid completion state invalid: ${JSON.stringify(finalState)}`);
+  if (finalState.event !== "transmission-outage") throw new Error(`Power Grid never reached transmission-outage regime: ${finalState.event}`);
+  for (const label of ["Final score", "energy not served", "storage left", "avg cost index"]) {
+    if (!finalState.resultText.toLowerCase().includes(label.toLowerCase())) throw new Error(`Power Grid result missing ${label}`);
   }
-  const mixed = await buttonPoint("Mix storage + demand response");
-  if (!mixed || mixed.ariaDisabled === "true") throw new Error(`Preserved-storage path failed to keep mixed heatwave response available: ${JSON.stringify(mixed)}`);
-  await realClick("Mix storage + demand response");
-  await realClick("Targeted load reduction");
-  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridComplete === 'true'`);
-
-  const finalState = await evaluate(`({
-    step: document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridStep ?? null,
-    complete: document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridComplete ?? null,
-    resultText: document.querySelector('[aria-label="Power Grid Dispatcher result"]')?.textContent ?? '',
-    frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error'),
-  })`);
-  if (!finalState.resultText.includes("Final score") || !finalState.resultText.includes("Reliability penalty")) throw new Error(`Power Grid result summary missing: ${JSON.stringify(finalState)}`);
+  if (!finalState.bestStorage) throw new Error("Power Grid best score was not persisted");
   if (finalState.frameworkError) throw new Error("Framework error UI detected during Power Grid smoke test");
+  if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
 
   await capture("power-grid-result-desktop.png");
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await capture("power-grid-result-mobile.png");
   await send("Emulation.clearDeviceMetricsOverride");
 
-  if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
+  await clickButton("Run another grid");
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridTick === '0'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridComplete === 'false'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Power Grid Dispatcher simulation"]')?.dataset.gridThermal === '50'`);
 
-  console.log(JSON.stringify({
-    targetUrl,
-    earlyStoragePathLockedHeatwaveMix: true,
-    preservedStoragePathKeptHeatwaveMix: true,
-    finiteOptionalityLessonVerified: true,
-    bestPersisted: true,
-    resultCaptures: 2,
-    restartVerified: true,
-    finalState,
-  }));
+  console.log(JSON.stringify({ targetUrl, continuousDispatchVerified: true, controlChangesVerified: true, pauseVerified: true, eventRegimesVerified: true, bestPersisted: true, resultCaptures: 2, restartVerified: true }));
 } finally {
   socket?.close();
   if (chrome.exitCode === null) {
