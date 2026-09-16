@@ -3,21 +3,22 @@ import { openSpatialBrowser, sleep } from "./spatial-cdp.mjs";
 const baseUrl = process.env.PLAY_BATCH_6_BASE_URL ?? "http://127.0.0.1:3011";
 
 async function hold(browser, key, code, ms) {
-  const virtualKey = key === "ArrowRight" ? 39 : key === " " ? 32 : 0;
-  await browser.send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: virtualKey });
+  const virtualKeys = { ArrowLeft: 37, ArrowRight: 39, " ": 32 };
+  await browser.send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: virtualKeys[key] ?? 0 });
   await sleep(ms);
-  await browser.send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: virtualKey });
+  await browser.send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: virtualKeys[key] ?? 0 });
   await sleep(140);
 }
 
 async function exercise({ slug, title, port, kind }) {
   const browser = await openSpatialBrowser({ url: `${baseUrl}/games/${slug}`, port, profilePrefix: `play-batch6-${slug}` });
-  const mountSelector = `[aria-label="${title} game"]`;
+  const sectionSelector = `section[aria-label="${title} game"]`;
+  const mountSelector = `${sectionSelector} .game-canvas-mount`;
   try {
-    await browser.waitForExpression(`Boolean(document.querySelector(${JSON.stringify(`${mountSelector} canvas`)}))`, 16000, `${title} canvas`);
+    await browser.waitForExpression(`Boolean(document.querySelector(${JSON.stringify(`${sectionSelector} canvas`)}))`, 16000, `${title} canvas`);
     const dataName = kind === "courier" ? "courierX" : "magnetX";
     const dataAttr = kind === "courier" ? "data-courier-x" : "data-magnet-x";
-    await browser.waitForExpression(`Boolean(document.querySelector(${JSON.stringify(`${mountSelector} [${dataAttr}]`)}))`, 16000, `${title} runtime state`);
+    await browser.waitForExpression(`document.querySelector(${JSON.stringify(mountSelector)})?.hasAttribute(${JSON.stringify(dataAttr)}) === true`, 16000, `${title} runtime state`);
 
     const initialX = Number(await browser.evaluate(`document.querySelector(${JSON.stringify(mountSelector)})?.dataset.${dataName} ?? '0'`));
     const initialEnergy = kind === "magnet"
@@ -41,18 +42,18 @@ async function exercise({ slug, title, port, kind }) {
     }
 
     await browser.clickButton("Pause");
-    await browser.waitForExpression(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Resume')`, 6000, `${title} Resume control`);
+    await browser.waitForExpression(`Array.from(document.querySelectorAll(${JSON.stringify(`${sectionSelector} button`)})).some((button) => button.textContent?.trim() === 'Resume')`, 6000, `${title} Resume control`);
     const pausedX = Number(await browser.evaluate(`document.querySelector(${JSON.stringify(mountSelector)})?.dataset.${dataName} ?? '0'`));
-    await hold(browser, "ArrowRight", "ArrowRight", 420);
+    await hold(browser, "ArrowLeft", "ArrowLeft", 420);
     const pausedAfterInputX = Number(await browser.evaluate(`document.querySelector(${JSON.stringify(mountSelector)})?.dataset.${dataName} ?? '0'`));
     if (Math.abs(pausedAfterInputX - pausedX) > 1.5) {
       throw new Error(`${title} moved while paused: ${JSON.stringify({ pausedX, pausedAfterInputX })}`);
     }
 
     await browser.clickButton("Resume");
-    await browser.waitForExpression(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Pause')`, 6000, `${title} Pause control after resume`);
-    await hold(browser, "ArrowRight", "ArrowRight", 360);
-    await browser.waitForExpression(`Number(document.querySelector(${JSON.stringify(mountSelector)})?.dataset.${dataName} ?? '0') > ${pausedX + 4}`, 6000, `${title} movement after resume`);
+    await browser.waitForExpression(`Array.from(document.querySelectorAll(${JSON.stringify(`${sectionSelector} button`)})).some((button) => button.textContent?.trim() === 'Pause')`, 6000, `${title} Pause control after resume`);
+    await hold(browser, "ArrowLeft", "ArrowLeft", 360);
+    await browser.waitForExpression(`Number(document.querySelector(${JSON.stringify(mountSelector)})?.dataset.${dataName} ?? '0') < ${pausedX - 4}`, 6000, `${title} movement after resume`);
 
     await browser.clickButton("Restart");
     if (kind === "courier") {
@@ -62,7 +63,7 @@ async function exercise({ slug, title, port, kind }) {
     }
 
     const finalState = await browser.evaluate(`(() => ({
-      canvas: Boolean(document.querySelector(${JSON.stringify(`${mountSelector} canvas`)})),
+      canvas: Boolean(document.querySelector(${JSON.stringify(`${sectionSelector} canvas`)})),
       x: Number(document.querySelector(${JSON.stringify(mountSelector)})?.dataset.${dataName} ?? '0'),
       frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error')
     }))()`);
