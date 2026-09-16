@@ -46,6 +46,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           <nav className="site-nav" aria-label="Primary navigation">
             <Link href="/games">Play</Link>
             <Link href="/learn">Learn</Link>
+            <Link href="/semiconductors">Semis</Link>
             <Link href="/daily">Daily</Link>
           </nav>
         </header>
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           <nav className="site-nav footer-nav" aria-label="Footer navigation">
             <Link href="/games">Play</Link>
             <Link href="/learn">Learn</Link>
+            <Link href="/semiconductors">Semis</Link>
             <Link href="/daily">Daily</Link>
             <Link href="/about">About</Link>
             <Link href="/privacy">Privacy</Link>

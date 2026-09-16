@@ -13,6 +13,7 @@ const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
   "magnet-field": () => import("@/games/magnet-field/runtime"),
   "skybound": () => import("@/games/skybound/runtime"),
   "circuit-coil": () => import("@/games/circuit-coil/runtime"),
+  "semiconductor-vc": () => import("@/games/semiconductor-vc/runtime"),
   "system-check": () => import("@/games/system-check/runtime"),
 };
 
