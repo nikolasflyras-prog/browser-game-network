@@ -36,9 +36,11 @@ COMMON_FLAGS=(--headless --no-sandbox --disable-gpu --disable-dev-shm-usage --hi
 
 grep -q '<canvas' "$ARTIFACT_DIR/vector-drift.dom.html"
 grep -q '<canvas' "$ARTIFACT_DIR/pulse-bloom.dom.html"
-grep -q 'STEER WITH' "$ARTIFACT_DIR/vector-drift.dom.html"
-grep -q 'PLACE ONE PULSE' "$ARTIFACT_DIR/pulse-bloom.dom.html"
+grep -q 'steer through the moving gates' "$ARTIFACT_DIR/vector-drift.dom.html"
+grep -q 'capture 5 with one pulse' "$ARTIFACT_DIR/pulse-bloom.dom.html"
+grep -q '>Pause<' "$ARTIFACT_DIR/vector-drift.dom.html"
+grep -q '>Restart<' "$ARTIFACT_DIR/pulse-bloom.dom.html"
 if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/vector-drift.dom.html"; then echo "Vector Drift rendered an application error."; exit 1; fi
 if grep -Eq 'Application error|Internal Server Error|data-nextjs-dialog' "$ARTIFACT_DIR/pulse-bloom.dom.html"; then echo "Pulse Bloom rendered an application error."; exit 1; fi
 
-echo "Play batch smoke passed: Vector Drift and Pulse Bloom render on desktop/mobile with live Phaser canvases and public game guides."
+echo "Play batch smoke passed: Vector Drift and Pulse Bloom render on desktop/mobile with live Phaser canvases, runtime status, shared controls, and public game guides."
