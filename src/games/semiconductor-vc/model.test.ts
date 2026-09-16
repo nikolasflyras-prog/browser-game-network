@@ -7,6 +7,7 @@ import {
   semiVcCompanies,
   semiVcFundNav,
   semiVcLayout,
+  type SemiVcState,
 } from "./model";
 
 describe("Semiconductor VC office model", () => {
@@ -79,7 +80,7 @@ describe("Semiconductor VC office model", () => {
 
   it("marks the portfolio while time and news continue to move without player clicks", () => {
     const company = semiVcCompanies[1];
-    const state = {
+    const state: SemiVcState = {
       ...createSemiVcState(13),
       holdings: [{
         companyId: company.id,
@@ -90,7 +91,7 @@ describe("Semiconductor VC office model", () => {
       }],
       dryPowder: 9_000_000,
       newsLabel: "AI demand surge",
-      newsTheme: "ai" as const,
+      newsTheme: "ai",
       newsEffect: 0.002,
       newsTimeLeft: 10,
       dealSpawnTimer: 99,
@@ -98,7 +99,7 @@ describe("Semiconductor VC office model", () => {
       portfolioTimer: 99,
     };
     const before = semiVcFundNav(state);
-    let current = state;
+    let current: SemiVcState = state;
     for (let i = 0; i < 40; i += 1) {
       current = advanceSemiVc(current, { x: 0, y: 0 }, 0.05).state;
     }
