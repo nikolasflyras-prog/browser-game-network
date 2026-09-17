@@ -136,15 +136,22 @@ try {
     return null;
   });
 
+  await navigate(`${baseUrl}/games/hedge-fund-floor`);
+  await waitForExpression(`Boolean(document.querySelector('[aria-label="Hedge Fund HQ game"] canvas'))`);
+  const customLifecycle = await waitForValue(async () => {
+    const state = await readProgression();
+    return state?.playedGames?.includes('hedge-fund-floor') && state?.mastery?.['hedge-fund-floor']?.sessions >= 1 && state.xp >= 20 ? state : null;
+  });
+
   await navigate(`${baseUrl}/progress`);
   await waitForExpression(`document.body.innerText.includes('Daily goals') && document.body.innerText.includes('Mastery')`);
-  await waitForExpression(`document.body.innerText.includes('Market Maker') && document.body.innerText.includes('Orbit Relay') && document.body.innerText.includes('Chip Fab')`);
+  await waitForExpression(`document.body.innerText.includes('Market Maker') && document.body.innerText.includes('Orbit Relay') && document.body.innerText.includes('Chip Fab') && document.body.innerText.includes('Hedge Fund HQ')`);
   await waitForExpression(`document.body.innerText.includes('Play two different games')`);
 
   const progressState = await readProgression();
   if (!progressState) throw new Error("Progression storage missing on progress hub");
-  if (progressState.playedGames.length < 3) throw new Error(`Cross-game exploration did not persist: ${JSON.stringify(progressState)}`);
-  if (progressState.daily.uniqueGames.length < 3) throw new Error(`Daily cross-training goal did not update: ${JSON.stringify(progressState.daily)}`);
+  if (progressState.playedGames.length < 4) throw new Error(`Cross-game exploration did not persist: ${JSON.stringify(progressState)}`);
+  if (progressState.daily.uniqueGames.length < 4) throw new Error(`Daily cross-training goal did not update: ${JSON.stringify(progressState.daily)}`);
   if (!progressState.achievements.includes("first-run")) throw new Error("First Run badge did not unlock");
   if (progressState.streak < 1) throw new Error("Daily streak did not start");
 
@@ -165,6 +172,7 @@ try {
     firstGameXp: first.xp,
     secondGameXp: second.xp,
     legacyGameXp: legacy.xp,
+    hedgeFundXp: customLifecycle.xp,
     gamesExplored: progressState.playedGames.length,
     dailyUniqueGames: progressState.daily.uniqueGames.length,
     streak: progressState.streak,
@@ -172,6 +180,7 @@ try {
     desktopMobileCaptured: true,
     persistenceVerified: true,
     legacyReactVerified: true,
+    customLifecycleVerified: true,
   }));
 } finally {
   socket?.close();
