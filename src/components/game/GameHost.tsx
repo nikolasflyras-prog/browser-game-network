@@ -34,7 +34,8 @@ export function GameHost({ game }: Props) {
   const [unlockNotice, setUnlockNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    setProgression(readProgression(window.localStorage));
+    const frame = window.requestAnimationFrame(() => setProgression(readProgression(window.localStorage)));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
