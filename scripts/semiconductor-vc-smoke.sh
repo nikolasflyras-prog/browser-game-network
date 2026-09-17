@@ -34,6 +34,6 @@ grep -q "Semiconductors" "$ARTIFACT_DIR/learn-semiconductors.html"
 
 SEMI_VC_URL="$BASE_URL/games/semiconductor-vc" \
 SEMI_VC_ARTIFACT_DIR="$ARTIFACT_DIR" \
-  node scripts/semiconductor-vc-smoke.mjs | tee "$ARTIFACT_DIR/semiconductor-vc-smoke.json"
+  node scripts/semiconductor-vc-stable-smoke.mjs | tee "$ARTIFACT_DIR/semiconductor-vc-smoke.json"
 
-echo "Semiconductor VC smoke passed: movement, founder meeting, diligence routing, investment committee, pause/resume, responsive rendering, and restart are verified."
+echo "Semiconductor VC smoke passed: precise movement, founder meeting, diligence routing, investment committee, pause/resume, responsive rendering, and restart are verified."

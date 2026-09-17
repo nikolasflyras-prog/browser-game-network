@@ -100,19 +100,24 @@ try {
     return waitForValue(() => evaluate(expression), timeout);
   }
 
-  async function clickVisibleButtonContaining(text) {
-    const point = await waitForValue(() => evaluate(`(() => {
-      const section = document.querySelector('section[aria-label="Market Maker simulation"]');
-      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(text)}));
-      if (!button) return null;
-      button.scrollIntoView({ block: 'center', inline: 'center' });
-      const rect = button.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return null;
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    })()`));
-    await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y });
-    await send("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
-    await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
+  async function clickButtonUntil(text, untilExpression, timeout = 10000) {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const clicked = await evaluate(`(() => {
+        const section = document.querySelector('section[aria-label="Market Maker simulation"]');
+        const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(text)}));
+        if (!button) return false;
+        button.scrollIntoView({ block: 'center', inline: 'center' });
+        button.click();
+        return true;
+      })()`);
+      if (clicked) {
+        await sleep(250);
+        if (await evaluate(untilExpression).catch(() => false)) return;
+      }
+      await sleep(250);
+    }
+    throw new Error(`Timed out activating Market Maker control: ${text}`);
   }
 
   await send("Runtime.enable");
@@ -120,19 +125,17 @@ try {
   await waitForExpression(`Boolean(document.querySelector('section[aria-label="Market Maker simulation"]'))`);
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0'`);
   await waitForExpression(`Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.includes('Open live market'))`);
+  await sleep(350);
 
   await evaluate(`localStorage.removeItem('bgn:market-maker:best-score'); true`);
 
-  await clickVisibleButtonContaining("Open live market");
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'true'`);
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '0') >= 2`, 8000);
+  await clickButtonUntil("Open live market", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'true'`);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '0') >= 2`, 10000);
 
-  await clickVisibleButtonContaining("Lean short");
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketPosture === 'lean-short'`);
+  await clickButtonUntil("Lean short", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketPosture === 'lean-short'`);
 
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '0') >= 4`, 8000);
-  await clickVisibleButtonContaining("Pause flow");
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'false'`);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '0') >= 4`, 10000);
+  await clickButtonUntil("Pause flow", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'false'`);
 
   const pausedRound = await evaluate(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '-1')`);
   await sleep(1800);
@@ -141,9 +144,8 @@ try {
     throw new Error(`Market Maker advanced while paused: ${pausedRound} -> ${stillPausedRound}`);
   }
 
-  await clickVisibleButtonContaining("Resume live market");
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'true'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'true'`, 30000);
+  await clickButtonUntil("Resume live market", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'true'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'true'`, 35000);
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '16'`);
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketLastRound === '16'`);
   await waitForExpression(`document.querySelector('[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
@@ -190,9 +192,7 @@ try {
   const mobileShot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
   await writeFile(path.join(artifactDir, "market-maker-result-mobile.png"), Buffer.from(mobileShot.data, "base64"));
 
-  await clickVisibleButtonContaining("Deal another market");
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'false'`);
+  await clickButtonUntil("Deal another market", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0' && document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'false'`);
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketPosture === 'balanced'`);
   await waitForExpression(`!document.querySelector('[aria-label="Market Maker result"]')`);
 

@@ -24,8 +24,8 @@ export default function SemiconductorsPage() {
         <h1>Learn the stack by operating it.</h1>
         <p className="lede">
           Move through semiconductor businesses and infrastructure instead of reading a glossary.
-          Invest in chip companies, run manufacturing systems, and learn how design, foundries,
-          packaging, equipment, memory, optics, and data centers fit together.
+          Invest in chip companies, architect silicon, assemble advanced packages, run manufacturing systems,
+          and learn how design, foundries, packaging, memory, optics, and data centers fit together.
         </p>
       </section>
 
@@ -45,21 +45,22 @@ export default function SemiconductorsPage() {
       <section className="roadmap-panel" aria-labelledby="semi-roadmap-heading">
         <div>
           <span className="status-chip">Semiconductor campus</span>
-          <h2 id="semi-roadmap-heading">One stack, several playable jobs.</h2>
+          <h2 id="semi-roadmap-heading">From capital to floorplan to package to fab.</h2>
           <p>
-            Sand Hill VC teaches company formation, financing, technical diligence, foundry risk,
-            design wins, NRE, customer concentration, portfolio construction, and follow-ons.
-            The next worlds expand down the stack rather than turning the same lesson into another menu.
+            Sand Hill VC covers company formation and investing. Chip Architect turns PPA, timing, IP selection,
+            and tapeout into a spatial design problem. Packaging Lab makes HBM adjacency, chiplets, thermals,
+            warpage, yield, and inspection physical. Chip Fab remains the live manufacturing systems game.
           </p>
         </div>
         <p className="roadmap-note">
-          Next environments: Chip Architect, Fab Floor, Packaging Lab, and Data Center Architect.
-          Each will use the same movement-first interaction standard.
+          Next environments: a full walkable Fab Floor, Data Center Architect, and a photonics / optical-I/O lab.
+          The standard remains movement first, with the technical lesson emerging from operating the world.
         </p>
       </section>
 
       <div className="page-actions">
-        <Link className="button primary" href="/games/semiconductor-vc">Enter Sand Hill VC</Link>
+        <Link className="button primary" href="/games/chip-architect">Enter Chip Architect</Link>
+        <Link className="button" href="/games/packaging-lab">Enter Packaging Lab</Link>
         <Link className="button" href="/learn">Back to Learn</Link>
       </div>
     </div>
