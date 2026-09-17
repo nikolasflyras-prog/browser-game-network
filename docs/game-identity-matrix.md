@@ -40,6 +40,7 @@ Movement is a control scheme, not a gameplay loop. A game fails this test if its
 - The office should visually read as distinct functional rooms/teams, not three execution venues on another trading floor.
 - Replayability should come from **different fund mandates and market regimes**, not from making the player run the same route faster.
 - A market-neutral run should reward low beta/net exposure; a capital-preservation run should punish drawdown earlier; a momentum run can tolerate more direction; macro-whipsaw should require active hedge adaptation.
+- Mandate rotation must remain available to touch/mobile players through a visible control; keyboard shortcuts are supplemental, not required.
 - Future iteration should replace simple long/short interaction pads with a richer portfolio-construction or investment-committee interaction rather than copying Market Maker's venue loop.
 
 ## Semiconductor Worlds
