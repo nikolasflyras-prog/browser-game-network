@@ -30,26 +30,11 @@ export const financeGameSeoContent: Record<string, GameSeoContent> = {
       "Large profits do not excuse uncontrolled risk. The fund can still fail if drawdown or reputation breaches the hard limits, so protect the ability to stay in the game rather than maximizing one trade's upside.",
     ],
     faqs: [
-      {
-        question: "Are the companies or prices real?",
-        answer: "No. The securities, company names, prices, research signals, and news are synthetic. The accounting and risk relationships are designed to teach portfolio mechanics rather than reproduce or predict a real security.",
-      },
-      {
-        question: "How is this different from Market Maker?",
-        answer: "Market Maker is an execution game about urgent client flow, venue choice, dealer inventory, and fill quality. Hedge Fund HQ is an investment-management game about research, thesis direction, portfolio construction, staffing, drawdown, beta, and LP confidence.",
-      },
-      {
-        question: "What is gross exposure?",
-        answer: "Gross exposure is the absolute value of long positions plus the absolute value of short positions, divided by fund NAV. It measures how much total market exposure the portfolio carries regardless of direction.",
-      },
-      {
-        question: "What is net exposure?",
-        answer: "Net exposure is long exposure minus short exposure relative to NAV. A positive net book is directionally long; a negative net book is directionally short. Net exposure can be small even when gross exposure is large.",
-      },
-      {
-        question: "What does the beta hedge do?",
-        answer: "The risk function sizes an index position against the current beta-dollar exposure of the stock book. That reduces broad market sensitivity while leaving more of the company-specific long and short theses in place.",
-      },
+      { question: "Are the companies or prices real?", answer: "No. The securities, company names, prices, research signals, and news are synthetic. The accounting and risk relationships are designed to teach portfolio mechanics rather than reproduce or predict a real security." },
+      { question: "How is this different from Market Maker?", answer: "Market Maker is an execution game about urgent client flow, venue choice, dealer inventory, and fill quality. Hedge Fund HQ is an investment-management game about research, thesis direction, portfolio construction, staffing, drawdown, beta, and LP confidence." },
+      { question: "What is gross exposure?", answer: "Gross exposure is the absolute value of long positions plus the absolute value of short positions, divided by fund NAV. It measures how much total market exposure the portfolio carries regardless of direction." },
+      { question: "What is net exposure?", answer: "Net exposure is long exposure minus short exposure relative to NAV. A positive net book is directionally long; a negative net book is directionally short. Net exposure can be small even when gross exposure is large." },
+      { question: "What does the beta hedge do?", answer: "The risk function sizes an index position against the current beta-dollar exposure of the stock book. That reduces broad market sensitivity while leaving more of the company-specific long and short theses in place." },
     ],
   },
 };
