@@ -12,11 +12,13 @@ export type SemiVcEvent =
   | "portfolio_alert"
   | "follow_on"
   | "follow_on_declined"
+  | "exit_realized"
   | "news"
   | "complete"
   | "game_over";
 
 export type SemiTheme = "eda" | "ai" | "power" | "rf" | "packaging" | "memory" | "equipment" | "photonics";
+export type PortfolioAlertKind = "up_round" | "bridge" | "down_round" | "design_win" | "customer_slip";
 
 export type SemiCompany = {
   id: string;
@@ -64,6 +66,8 @@ export type SemiVcState = {
   timeLeft: number;
   elapsed: number;
   dryPowder: number;
+  distributions: number;
+  reserveSpent: number;
   operatingBudget: number;
   reputation: number;
   staff: number;
@@ -81,9 +85,12 @@ export type SemiVcState = {
   newsTimeLeft: number;
   portfolioTimer: number;
   portfolioAlertCompanyId: string | null;
+  portfolioAlertKind: PortfolioAlertKind | null;
+  portfolioAlertHeadline: string | null;
   portfolioAlertTimeLeft: number;
   seed: number;
   investments: number;
+  exits: number;
   passes: number;
   missedDeals: number;
   mode: SemiVcMode;
@@ -96,6 +103,9 @@ export const SEMI_VC_SESSION_SECONDS = 300;
 export const SEMI_VC_FUND_SIZE = 10_000_000;
 export const SEMI_VC_OPERATING_BUDGET = 1_000_000;
 export const SEMI_VC_PLAYER_RADIUS = 15;
+export const SEMI_VC_FOLLOW_ON_CHECK = 250_000;
+export const SEMI_VC_BOARD_SUPPORT_COST = 75_000;
+export const SEMI_VC_EXIT_MULTIPLE = 1.22;
 
 export const semiVcCompanies: readonly SemiCompany[] = [
   {
@@ -282,9 +292,10 @@ export const semiVcLayout = {
     { id: "1m", label: "$1M", x: 760, y: 440, check: 1_000_000 },
   ],
   portfolioPads: [
-    { id: "decline", label: "DECLINE", x: 935, y: 545 },
-    { id: "support", label: "FOLLOW-ON $250K", x: 935, y: 625 },
+    { id: "decline", label: "DECLINE", x: 915, y: 545 },
+    { id: "support", label: "SUPPORT", x: 915, y: 625 },
   ],
+  exit: { x: 1035, y: 585 },
   news: { x: 545, y: 95 },
   obstacles: [
     { x: 70, y: 90, width: 120, height: 88 },
@@ -310,6 +321,8 @@ const newsEvents: readonly { label: string; theme: SemiTheme | "all"; effect: nu
   { label: "Foundry process-control spending expands", theme: "equipment", effect: 0.0014 },
 ] as const;
 
+const portfolioKinds: readonly PortfolioAlertKind[] = ["up_round", "bridge", "down_round", "design_win", "customer_slip"];
+
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -331,6 +344,16 @@ function circleRectCollision(x: number, y: number, radius: number, rect: { x: nu
   const nearestX = clamp(x, rect.x, rect.x + rect.width);
   const nearestY = clamp(y, rect.y, rect.y + rect.height);
   return Math.hypot(x - nearestX, y - nearestY) < radius;
+}
+
+function portfolioHeadline(kind: PortfolioAlertKind, company: SemiCompany) {
+  switch (kind) {
+    case "up_round": return `${company.name}: outside lead offers a higher-priced round`;
+    case "bridge": return `${company.name}: runway bridge needed before the next milestone`;
+    case "down_round": return `${company.name}: insider down round proposed after a schedule slip`;
+    case "design_win": return `${company.name}: major design win needs board-level execution support`;
+    case "customer_slip": return `${company.name}: lead customer qualification slipped`;
+  }
 }
 
 function spawnFounder(state: SemiVcState): SemiVcState {
@@ -364,7 +387,7 @@ function markHoldings(state: SemiVcState, dt: number): SemiVcState {
     const multiplier = 1 + (qualityDrift + newsDrift + noise + support) * dt;
     return {
       ...holding,
-      mark: clamp(holding.mark * multiplier, holding.invested * 0.25, holding.invested * 4.5),
+      mark: clamp(holding.mark * multiplier, holding.invested * 0.2, holding.invested * 5),
       supportBoost: Math.max(0, holding.supportBoost - dt * 0.002),
     };
   });
@@ -375,13 +398,48 @@ export function semiVcFundNav(state: Pick<SemiVcState, "dryPowder" | "holdings">
   return state.dryPowder + state.holdings.reduce((total, holding) => total + holding.mark, 0);
 }
 
-export function semiVcMoic(state: Pick<SemiVcState, "dryPowder" | "holdings">) {
-  return semiVcFundNav(state) / SEMI_VC_FUND_SIZE;
+export function semiVcTvpi(state: Pick<SemiVcState, "dryPowder" | "holdings" | "distributions">) {
+  return (semiVcFundNav(state) + state.distributions) / SEMI_VC_FUND_SIZE;
 }
 
-export function semiVcScore(state: Pick<SemiVcState, "dryPowder" | "holdings" | "reputation" | "staff" | "missedDeals" | "investments" | "passes">) {
-  const moic = semiVcMoic(state);
-  return Math.max(0, Math.round(800 + (moic - 1) * 1800 + state.reputation * 5 + state.staff * 70 + state.investments * 55 + state.passes * 18 - state.missedDeals * 110));
+export function semiVcDpi(state: Pick<SemiVcState, "distributions">) {
+  return state.distributions / SEMI_VC_FUND_SIZE;
+}
+
+export function semiVcMoic(state: Pick<SemiVcState, "dryPowder" | "holdings" | "distributions">) {
+  return semiVcTvpi(state);
+}
+
+export function semiVcQuarter(state: Pick<SemiVcState, "elapsed">) {
+  return Math.min(4, Math.floor(state.elapsed / (SEMI_VC_SESSION_SECONDS / 4)) + 1);
+}
+
+export function semiVcExitCandidate(state: Pick<SemiVcState, "holdings">) {
+  return state.holdings
+    .filter((holding) => holding.invested > 0 && holding.mark / holding.invested >= SEMI_VC_EXIT_MULTIPLE)
+    .sort((a, b) => (b.mark / b.invested) - (a.mark / a.invested))[0] ?? null;
+}
+
+export function semiVcPortfolioDecision(state: Pick<SemiVcState, "portfolioAlertKind" | "operatingBudget" | "dryPowder">) {
+  const kind = state.portfolioAlertKind;
+  if (!kind) return null;
+  const boardSupport = kind === "design_win" || kind === "customer_slip";
+  const amount = boardSupport ? SEMI_VC_BOARD_SUPPORT_COST : SEMI_VC_FOLLOW_ON_CHECK;
+  const source = boardSupport ? "operatingBudget" as const : "dryPowder" as const;
+  const available = source === "operatingBudget" ? state.operatingBudget >= amount : state.dryPowder >= amount;
+  return {
+    kind,
+    amount,
+    source,
+    available,
+    supportLabel: boardSupport ? `BOARD SUPPORT · $${Math.round(amount / 1000)}K OPS` : `FOLLOW-ON · $${Math.round(amount / 1000)}K`,
+  };
+}
+
+export function semiVcScore(state: Pick<SemiVcState, "dryPowder" | "holdings" | "distributions" | "reputation" | "staff" | "missedDeals" | "investments" | "passes" | "exits">) {
+  const tvpi = semiVcTvpi(state);
+  const dpi = semiVcDpi(state);
+  return Math.max(0, Math.round(800 + (tvpi - 1) * 1800 + dpi * 850 + state.reputation * 5 + state.staff * 70 + state.investments * 55 + state.exits * 100 + state.passes * 18 - state.missedDeals * 110));
 }
 
 export function createSemiVcState(seed = 271828): SemiVcState {
@@ -393,6 +451,8 @@ export function createSemiVcState(seed = 271828): SemiVcState {
     timeLeft: SEMI_VC_SESSION_SECONDS,
     elapsed: 0,
     dryPowder: SEMI_VC_FUND_SIZE,
+    distributions: 0,
+    reserveSpent: 0,
     operatingBudget: SEMI_VC_OPERATING_BUDGET,
     reputation: 100,
     staff: 1,
@@ -408,11 +468,14 @@ export function createSemiVcState(seed = 271828): SemiVcState {
     newsTheme: null,
     newsEffect: 0,
     newsTimeLeft: 0,
-    portfolioTimer: 48,
+    portfolioTimer: 38,
     portfolioAlertCompanyId: null,
+    portfolioAlertKind: null,
+    portfolioAlertHeadline: null,
     portfolioAlertTimeLeft: 0,
     seed: seed >>> 0,
     investments: 0,
+    exits: 0,
     passes: 0,
     missedDeals: 0,
     mode: "playing",
@@ -455,15 +518,89 @@ export function semiVcPrompt(state: SemiVcState) {
   }
 
   if (state.portfolioAlertCompanyId) {
+    const decision = semiVcPortfolioDecision(state);
     for (const pad of semiVcLayout.portfolioPads) {
       if (distance(state.playerX, state.playerY, pad.x, pad.y) <= 58) {
-        if (pad.id === "support" && state.dryPowder < 250_000) return "NOT ENOUGH DRY POWDER";
-        return pad.id === "support" ? "E · FOLLOW-ON $250K" : "E · DECLINE FOLLOW-ON";
+        if (pad.id === "support" && !decision?.available) return decision?.source === "operatingBudget" ? "OPERATING BUDGET TOO LOW" : "NOT ENOUGH DRY POWDER";
+        return pad.id === "support" ? `E · ${decision?.supportLabel ?? "SUPPORT"}` : "E · DECLINE / PRESERVE CAPITAL";
       }
     }
   }
 
+  if (!state.portfolioAlertCompanyId) {
+    const exit = semiVcExitCandidate(state);
+    if (exit && distance(state.playerX, state.playerY, semiVcLayout.exit.x, semiVcLayout.exit.y) <= 60) {
+      const company = companyById(exit.companyId);
+      return `E · REALIZE ${company?.name.toUpperCase() ?? "EXIT"} · ${(exit.mark / exit.invested).toFixed(2)}x`;
+    }
+  }
+
   return "MOVE · WORK THE OFFICE";
+}
+
+function declinePortfolioAlert(state: SemiVcState): SemiVcState {
+  const kind = state.portfolioAlertKind;
+  const companyId = state.portfolioAlertCompanyId;
+  if (!kind || !companyId) return { ...state, portfolioAlertCompanyId: null, portfolioAlertKind: null, portfolioAlertHeadline: null, portfolioAlertTimeLeft: 0 };
+
+  const holdings = state.holdings.map((holding) => {
+    if (holding.companyId !== companyId) return holding;
+    if (kind === "up_round") return { ...holding, mark: holding.mark * 1.08, ownershipPct: holding.ownershipPct * 0.82 };
+    if (kind === "bridge") return { ...holding, mark: holding.mark * 0.88, ownershipPct: holding.ownershipPct * 0.92 };
+    if (kind === "down_round") return { ...holding, mark: holding.mark * 0.72, ownershipPct: holding.ownershipPct * 0.78 };
+    if (kind === "design_win") return { ...holding, mark: holding.mark * 1.1 };
+    return { ...holding, mark: holding.mark * 0.78 };
+  });
+
+  const reputationHit = kind === "design_win" ? 0.5 : kind === "customer_slip" ? 1.5 : 2;
+  return {
+    ...state,
+    holdings,
+    portfolioAlertCompanyId: null,
+    portfolioAlertKind: null,
+    portfolioAlertHeadline: null,
+    portfolioAlertTimeLeft: 0,
+    reputation: Math.max(0, state.reputation - reputationHit),
+  };
+}
+
+function supportPortfolioAlert(state: SemiVcState): SemiVcState {
+  const kind = state.portfolioAlertKind;
+  const companyId = state.portfolioAlertCompanyId;
+  const decision = semiVcPortfolioDecision(state);
+  if (!kind || !companyId || !decision?.available) return state;
+
+  let dryPowder = state.dryPowder;
+  let operatingBudget = state.operatingBudget;
+  let reserveSpent = state.reserveSpent;
+  if (decision.source === "dryPowder") {
+    dryPowder -= decision.amount;
+    reserveSpent += decision.amount;
+  } else {
+    operatingBudget -= decision.amount;
+  }
+
+  const holdings = state.holdings.map((holding) => {
+    if (holding.companyId !== companyId) return holding;
+    if (kind === "design_win") return { ...holding, mark: holding.mark * 1.2, supportBoost: Math.min(1, holding.supportBoost + 0.3) };
+    if (kind === "customer_slip") return { ...holding, mark: holding.mark * 0.96, supportBoost: Math.min(1, holding.supportBoost + 0.35) };
+    if (kind === "up_round") return { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 1.08 + decision.amount, ownershipPct: Math.min(100, holding.ownershipPct * 1.01), supportBoost: Math.min(1, holding.supportBoost + 0.25) };
+    if (kind === "bridge") return { ...holding, invested: holding.invested + decision.amount, mark: holding.mark + decision.amount * 0.96, ownershipPct: Math.min(100, holding.ownershipPct * 1.03), supportBoost: Math.min(1, holding.supportBoost + 0.35) };
+    return { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 0.88 + decision.amount, ownershipPct: Math.min(100, holding.ownershipPct * 1.12), supportBoost: Math.min(1, holding.supportBoost + 0.4) };
+  });
+
+  return {
+    ...state,
+    holdings,
+    dryPowder,
+    operatingBudget,
+    reserveSpent,
+    portfolioAlertCompanyId: null,
+    portfolioAlertKind: null,
+    portfolioAlertHeadline: null,
+    portfolioAlertTimeLeft: 0,
+    reputation: Math.min(100, state.reputation + 1.5),
+  };
 }
 
 export function interactSemiVc(state: SemiVcState): { state: SemiVcState; event: SemiVcEvent } {
@@ -536,19 +673,27 @@ export function interactSemiVc(state: SemiVcState): { state: SemiVcState; event:
   if (state.portfolioAlertCompanyId) {
     const pad = semiVcLayout.portfolioPads.find((item) => distance(state.playerX, state.playerY, item.x, item.y) <= 58);
     if (pad?.id === "decline") {
-      const holdings = state.holdings.map((holding) => holding.companyId === state.portfolioAlertCompanyId ? { ...holding, mark: holding.mark * 0.96 } : holding);
-      return {
-        state: { ...state, holdings, portfolioAlertCompanyId: null, portfolioAlertTimeLeft: 0, reputation: Math.max(0, state.reputation - 1.5) },
-        event: "follow_on_declined",
-      };
+      return { state: declinePortfolioAlert(state), event: "follow_on_declined" };
     }
-    if (pad?.id === "support" && state.dryPowder >= 250_000) {
-      const holdings = state.holdings.map((holding) => holding.companyId === state.portfolioAlertCompanyId
-        ? { ...holding, invested: holding.invested + 250_000, mark: holding.mark + 265_000, supportBoost: Math.min(1, holding.supportBoost + 0.35) }
-        : holding);
+    if (pad?.id === "support") {
+      const next = supportPortfolioAlert(state);
+      if (next === state) return { state, event: "none" };
+      return { state: next, event: "follow_on" };
+    }
+  }
+
+  if (!state.portfolioAlertCompanyId && distance(state.playerX, state.playerY, semiVcLayout.exit.x, semiVcLayout.exit.y) <= 60) {
+    const candidate = semiVcExitCandidate(state);
+    if (candidate) {
       return {
-        state: { ...state, holdings, dryPowder: state.dryPowder - 250_000, portfolioAlertCompanyId: null, portfolioAlertTimeLeft: 0, reputation: Math.min(100, state.reputation + 2) },
-        event: "follow_on",
+        state: {
+          ...state,
+          holdings: state.holdings.filter((holding) => holding !== candidate),
+          distributions: state.distributions + candidate.mark,
+          exits: state.exits + 1,
+          reputation: Math.min(100, state.reputation + 2),
+        },
+        event: "exit_realized",
       };
     }
   }
@@ -639,27 +784,28 @@ export function advanceSemiVc(state: SemiVcState, input: SemiVcInput, deltaSecon
   next = markHoldings(next, dt);
 
   if (!next.portfolioAlertCompanyId && next.holdings.length > 0 && next.portfolioTimer <= 0) {
-    const roll = random(next.seed);
-    const holding = next.holdings[Math.floor(roll.value * next.holdings.length) % next.holdings.length];
-    const waitRoll = random(roll.seed);
+    const holdingRoll = random(next.seed);
+    const holding = next.holdings[Math.floor(holdingRoll.value * next.holdings.length) % next.holdings.length];
+    const kindRoll = random(holdingRoll.seed);
+    const kind = portfolioKinds[Math.floor(kindRoll.value * portfolioKinds.length) % portfolioKinds.length];
+    const waitRoll = random(kindRoll.seed);
+    const company = companyById(holding.companyId);
     next = {
       ...next,
       seed: waitRoll.seed,
       portfolioAlertCompanyId: holding.companyId,
-      portfolioAlertTimeLeft: 24,
-      portfolioTimer: 44 + waitRoll.value * 18,
+      portfolioAlertKind: kind,
+      portfolioAlertHeadline: company ? portfolioHeadline(kind, company) : "Portfolio company needs a decision",
+      portfolioAlertTimeLeft: 28,
+      portfolioTimer: 38 + waitRoll.value * 16,
     };
     if (event === "none") event = "portfolio_alert";
   }
 
   if (next.portfolioAlertCompanyId && next.portfolioAlertTimeLeft <= 0) {
-    const holdings = next.holdings.map((holding) => holding.companyId === next.portfolioAlertCompanyId ? { ...holding, mark: holding.mark * 0.93 } : holding);
     next = {
-      ...next,
-      holdings,
-      portfolioAlertCompanyId: null,
-      reputation: Math.max(0, next.reputation - 3),
-      portfolioTimer: Math.max(next.portfolioTimer, 20),
+      ...declinePortfolioAlert(next),
+      portfolioTimer: Math.max(next.portfolioTimer, 18),
     };
     if (event === "none") event = "follow_on_declined";
   }
