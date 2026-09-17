@@ -5,6 +5,16 @@ import type { GameMetadata } from "@/games/registry";
 import type { GameRuntimeController } from "@/games/_shared/types/runtime";
 import { loadGameRuntime } from "@/games/loaders";
 import { captureGameEvent } from "@/lib/analytics/client";
+import {
+  PLAYER_PROGRESSION_EVENT,
+  achievementLabel,
+  emptyProgression,
+  masteryLevel,
+  progressionLevel,
+  readProgression,
+  type ProgressionUpdateDetail,
+} from "@/lib/progression/playerProgression";
+import styles from "./GameHost.module.css";
 
 type Props = {
   game: GameMetadata;
@@ -18,6 +28,31 @@ export function GameHost({ game }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [progression, setProgression] = useState(emptyProgression);
+  const [unlockNotice, setUnlockNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setProgression(readProgression(window.localStorage)));
+    const onProgression = (event: Event) => {
+      const detail = (event as CustomEvent<ProgressionUpdateDetail>).detail;
+      if (!detail) return;
+      setProgression(detail.state);
+      if (detail.unlocked.length > 0) {
+        setUnlockNotice(`Badge unlocked · ${achievementLabel(detail.unlocked[0])}`);
+      }
+    };
+    window.addEventListener(PLAYER_PROGRESSION_EVENT, onProgression);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener(PLAYER_PROGRESSION_EVENT, onProgression);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!unlockNotice) return;
+    const timer = window.setTimeout(() => setUnlockNotice(null), 3200);
+    return () => window.clearTimeout(timer);
+  }, [unlockNotice]);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,12 +73,13 @@ export function GameHost({ game }: Props) {
           gameVersion: game.version,
           setStatus,
           emit: (event, properties) => {
+            const eventProperties = properties ?? {};
             mountElement.dataset.gameLastEvent = event;
-            mountElement.dataset.gameLastProperties = JSON.stringify(properties ?? {});
+            mountElement.dataset.gameLastProperties = JSON.stringify(eventProperties);
             captureGameEvent(event, {
               game_slug: game.slug,
               game_version: game.version,
-              ...properties,
+              ...eventProperties,
             });
           },
         });
@@ -92,6 +128,10 @@ export function GameHost({ game }: Props) {
     });
   }, []);
 
+  const gameMastery = progression.mastery[game.slug]?.xp ?? 0;
+  const exploredLabel = progression.playedGames.length === 1 ? "game explored" : "games explored";
+  const badgeLabel = progression.achievements.length === 1 ? "badge" : "badges";
+
   return (
     <section className="game-shell" aria-label={`${game.title} game`}>
       <div className="game-toolbar">
@@ -107,6 +147,17 @@ export function GameHost({ game }: Props) {
             Restart
           </button>
         </div>
+      </div>
+      <div
+        className={styles.progressionStrip}
+        data-player-level={progressionLevel(progression.xp)}
+        data-player-xp={progression.xp}
+        data-game-mastery={gameMastery}
+      >
+        <span className={styles.primary}>Network Lv {progressionLevel(progression.xp)} · {progression.xp} XP</span>
+        <span>{game.title} mastery Lv {masteryLevel(gameMastery)}</span>
+        <span>{progression.playedGames.length} {exploredLabel} · {progression.achievements.length} {badgeLabel}</span>
+        {unlockNotice ? <strong className={styles.unlock} aria-live="polite">{unlockNotice}</strong> : null}
       </div>
       {error ? <div className="game-error">{error}</div> : null}
       <div ref={mountRef} className="game-canvas-mount" />

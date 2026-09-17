@@ -28,6 +28,8 @@ jobs:
         run: npm run build
       - name: Browser smoke test
         run: bash scripts/browser-smoke.sh
+      - name: Player progression smoke test
+        run: bash scripts/player-progression-smoke.sh
       - name: Market Maker smoke test
         run: bash scripts/market-maker-smoke.sh
       - name: Hedge Fund HQ smoke test
