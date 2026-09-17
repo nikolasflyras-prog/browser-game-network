@@ -16,16 +16,16 @@ async function placeArchitectBlock(componentX, componentY, componentId, slotX, s
   await waitForExpression(`document.querySelector('[data-arch-carried]')?.dataset.archCarried === ''`, 9000, `release ${componentId}`);
 }
 
-async function packageViaCenter(componentX, componentY, componentId, slotX, slotY, expectedSlots) {
-  await moveTo("pkg", 320, 350, { order: "yx", tolerance: 16, maxPasses: 6 });
-  await moveTo("pkg", componentX, componentY, { order: "xy", tolerance: 14, maxPasses: 6 });
+async function packageComponent(componentX, componentY, componentId, slotX, slotY, expectedSlots, { viaCenter = false, pickupOrder = "xy", slotOrder = "xy" } = {}) {
+  if (viaCenter) await moveTo("pkg", 320, 350, { order: "yx", tolerance: 18, maxPasses: 5, fast: true });
+  await moveTo("pkg", componentX, componentY, { order: pickupOrder, tolerance: 16, maxPasses: 5, fast: true });
   await pressE();
-  await waitForExpression(`document.querySelector('[data-pkg-carried]')?.dataset.pkgCarried === ${JSON.stringify(componentId)}`, 9000, `pick up ${componentId}`);
-  await moveTo("pkg", 320, 350, { order: "yx", tolerance: 16, maxPasses: 6 });
-  await moveTo("pkg", slotX, slotY, { order: "xy", tolerance: 14, maxPasses: 6 });
+  await waitForExpression(`document.querySelector('[data-pkg-carried]')?.dataset.pkgCarried === ${JSON.stringify(componentId)}`, 6000, `pick up ${componentId}`);
+  if (viaCenter) await moveTo("pkg", 320, 350, { order: "yx", tolerance: 18, maxPasses: 5, fast: true });
+  await moveTo("pkg", slotX, slotY, { order: slotOrder, tolerance: 16, maxPasses: 5, fast: true });
   await pressE();
-  await waitForExpression(`document.querySelector('[data-pkg-slots]')?.dataset.pkgSlots === ${JSON.stringify(String(expectedSlots))}`, 9000, `place ${componentId}`);
-  await waitForExpression(`document.querySelector('[data-pkg-carried]')?.dataset.pkgCarried === ''`, 9000, `release ${componentId}`);
+  await waitForExpression(`document.querySelector('[data-pkg-slots]')?.dataset.pkgSlots === ${JSON.stringify(String(expectedSlots))}`, 6000, `place ${componentId}`);
+  await waitForExpression(`document.querySelector('[data-pkg-carried]')?.dataset.pkgCarried === ''`, 6000, `release ${componentId}`);
 }
 
 try {
@@ -48,7 +48,7 @@ try {
   await waitForExpression(`Number(document.querySelector('[data-arch-tapeouts]')?.dataset.archTapeouts ?? '0') >= 1`, 9000, "Chip Architect tapeout");
 
   await clickButton("Pause");
-  await waitForExpression(`document.querySelector('.game-status')?.textContent?.trim() === 'Paused'`, 6000, "Chip Architect pause");
+  await waitForExpression(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Resume')`, 6000, "Chip Architect pause control");
   await clickButton("Resume");
   await waitForExpression(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Pause')`, 6000, "Chip Architect resume control");
   await waitForExpression(`document.querySelector('[data-arch-mode]')?.dataset.archMode === 'playing'`, 6000, "Chip Architect running state");
@@ -63,17 +63,20 @@ try {
   await waitForExpression(`Boolean(document.querySelector('[data-pkg-x]'))`, 16000, "Packaging Lab player state");
   await waitForExpression(`document.querySelector('[data-pkg-mode]')?.dataset.pkgMode === 'playing'`, 12000, "Packaging Lab playing state");
 
-  await packageViaCenter(105, 150, "xpu-hot", 520, 285, 1);
-  await packageViaCenter(105, 555, "hbm4", 650, 285, 2);
-  await packageViaCenter(255, 455, "optical-engine", 780, 285, 3);
-  await packageViaCenter(255, 555, "heat-spreader", 520, 425, 4);
-  await packageViaCenter(105, 250, "xpu-efficient", 650, 425, 5);
-  await packageViaCenter(105, 455, "hbm3e", 780, 425, 6);
-  await waitForExpression(`document.querySelector('[data-pkg-meets-spec]')?.dataset.pkgMeetsSpec === 'true'`, 9000, "Packaging Lab specification compliance");
+  // The first customer window is intentionally 88 seconds. Use long real key holds in open corridors,
+  // then let the spatial helper tighten the final approach. This proves the package can be built under
+  // the actual game deadline instead of extending or pausing the clock for QA.
+  await packageComponent(105, 150, "xpu-hot", 520, 285, 1, { viaCenter: true });
+  await packageComponent(105, 555, "hbm4", 650, 285, 2, { viaCenter: true });
+  await packageComponent(255, 455, "optical-engine", 780, 285, 3);
+  await packageComponent(255, 555, "heat-spreader", 520, 425, 4, { viaCenter: true });
+  await packageComponent(105, 250, "xpu-efficient", 650, 425, 5);
+  await packageComponent(105, 455, "hbm3e", 780, 425, 6);
+  await waitForExpression(`document.querySelector('[data-pkg-meets-spec]')?.dataset.pkgMeetsSpec === 'true'`, 7000, "Packaging Lab specification compliance");
 
-  await moveTo("pkg", 955, 245, { order: "xy", tolerance: 15, maxPasses: 6 });
+  await moveTo("pkg", 955, 245, { order: "xy", tolerance: 16, maxPasses: 5, fast: true });
   await pressE();
-  await waitForExpression(`document.querySelector('[data-pkg-pending]')?.dataset.pkgPending === 'true'`, 7000, "Packaging Lab inspection start");
+  await waitForExpression(`document.querySelector('[data-pkg-pending]')?.dataset.pkgPending === 'true'`, 6000, "Packaging Lab inspection start");
   await waitForExpression(`document.querySelector('[data-pkg-pass]')?.dataset.pkgPass === 'true'`, 14000, "Packaging Lab inspection pass");
 
   await captureScreenshot(path.join(artifactDir, "packaging-lab-desktop.png"));
@@ -81,12 +84,12 @@ try {
   await captureScreenshot(path.join(artifactDir, "packaging-lab-mobile.png"));
   await clearMobile();
 
-  await moveTo("pkg", 1090, 350, { order: "xy", tolerance: 15, maxPasses: 6 });
+  await moveTo("pkg", 1090, 350, { order: "xy", tolerance: 16, maxPasses: 5, fast: true });
   await pressE();
-  await waitForExpression(`Number(document.querySelector('[data-pkg-shipped]')?.dataset.pkgShipped ?? '0') >= 1`, 9000, "Packaging Lab shipment");
+  await waitForExpression(`Number(document.querySelector('[data-pkg-shipped]')?.dataset.pkgShipped ?? '0') >= 1`, 7000, "Packaging Lab shipment");
 
   await clickButton("Pause");
-  await waitForExpression(`document.querySelector('.game-status')?.textContent?.trim() === 'Paused'`, 6000, "Packaging Lab pause");
+  await waitForExpression(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Resume')`, 6000, "Packaging Lab pause control");
   await clickButton("Resume");
   await waitForExpression(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Pause')`, 6000, "Packaging Lab resume control");
   await waitForExpression(`document.querySelector('[data-pkg-mode]')?.dataset.pkgMode === 'playing'`, 6000, "Packaging Lab running state");
@@ -97,7 +100,7 @@ try {
 
   console.log(JSON.stringify({
     chipArchitect: { fullFloorplan: true, verification: true, tapeout: true, pauseResume: true, desktopMobile: true },
-    packagingLab: { sixSitePackage: true, adjacencySpec: true, inspection: true, shipment: true, pauseResume: true, desktopMobile: true },
+    packagingLab: { sixSitePackage: true, adjacencySpec: true, inspection: true, shipment: true, pauseResume: true, desktopMobile: true, completedInsideLiveJobWindow: true },
     preciseMovementHarness: true,
   }));
 } finally {
