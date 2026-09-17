@@ -23,7 +23,6 @@ const SAVE_VERSION = 2;
 const BG = 0x071014;
 const HALL = 0x111c21;
 const WALL = 0x304149;
-const CARPET = 0x17262c;
 const WOOD = 0x47382f;
 const SCREEN = 0x081013;
 const PLAYER = 0xf4f7f8;
@@ -130,6 +129,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "12px",
         fontStyle: "bold",
+        align: "center",
         backgroundColor: "#071014f0",
         padding: { x: 8, y: 5 },
       }).setOrigin(0.5, 0).setDepth(31).setAlpha(0);
@@ -139,6 +139,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "12px",
         fontStyle: "bold",
+        align: "center",
         backgroundColor: "#071014f2",
         padding: { x: 9, y: 5 },
       }).setOrigin(0.5, 1).setDepth(31);
@@ -380,15 +381,29 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       }
 
       const stats = fundStats(this.state);
-      this.hudLeft?.setText([
-        `NAV ${money(stats.nav)}   P&L ${money(stats.pnl)}`,
-        `Gross ${(stats.grossExposure * 100).toFixed(0)}%   Net ${pct(stats.netExposure)}   Beta ${pct(stats.betaExposure)}`,
-      ]);
-      this.hudRight?.setText([
-        `${Math.ceil(this.state.timeLeft)}s   LP ${Math.round(this.state.reputation)}`,
-        `Ops ${money(this.state.operatingBudget)}   Team A/T/R ${this.state.staff.analyst}/${this.state.staff.trader}/${this.state.staff.risk}`,
-      ]);
-      this.prompt?.setText(fundPrompt(this.state));
+      const mobile = this.camera().mobile;
+      if (mobile) {
+        this.hudLeft?.setText([
+          `NAV ${money(stats.nav)} · P&L ${money(stats.pnl)} · ${Math.ceil(this.state.timeLeft)}s`,
+          `Gross ${(stats.grossExposure * 100).toFixed(0)}% · Net ${pct(stats.netExposure)} · Beta ${pct(stats.betaExposure)} · LP ${Math.round(this.state.reputation)}`,
+          `Ops ${money(this.state.operatingBudget)} · Team A/T/R ${this.state.staff.analyst}/${this.state.staff.trader}/${this.state.staff.risk}`,
+        ]).setPosition(8, 8).setFontSize(11);
+        this.hudRight?.setVisible(false);
+        this.news?.setPosition(this.scale.width / 2, 66).setFontSize(10).setWordWrapWidth(Math.max(220, this.scale.width - 28), true);
+        this.prompt?.setFontSize(10).setWordWrapWidth(Math.max(220, this.scale.width - 28), true);
+      } else {
+        this.hudLeft?.setText([
+          `NAV ${money(stats.nav)}   P&L ${money(stats.pnl)}`,
+          `Gross ${(stats.grossExposure * 100).toFixed(0)}%   Net ${pct(stats.netExposure)}   Beta ${pct(stats.betaExposure)}`,
+        ]).setPosition(14, 12).setFontSize(14);
+        this.hudRight?.setText([
+          `${Math.ceil(this.state.timeLeft)}s   LP ${Math.round(this.state.reputation)}`,
+          `Ops ${money(this.state.operatingBudget)}   Team A/T/R ${this.state.staff.analyst}/${this.state.staff.trader}/${this.state.staff.risk}`,
+        ]).setPosition(this.scale.width - 14, 12).setFontSize(13).setVisible(true);
+        this.news?.setPosition(this.scale.width / 2, 13).setFontSize(12).setWordWrapWidth(Math.min(520, Math.max(260, this.scale.width - 28)), true);
+        this.prompt?.setFontSize(12).setWordWrapWidth(Math.min(680, Math.max(300, this.scale.width - 28)), true);
+      }
+      this.prompt?.setPosition(this.scale.width / 2, this.scale.height - 12).setText(fundPrompt(this.state));
       this.news?.setText(this.state.newsLabel ?? "").setAlpha(this.state.newsTimeLeft > 0 ? 1 : 0);
 
       const idea = fundAssetById(this.state.activeIdeaId);
@@ -418,7 +433,6 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         this.state.hedgeActive ? `Index hedge ${money(stats.hedgeNotional)}` : "Index hedge off",
       ]);
 
-      const mobile = this.camera().mobile;
       this.ideaPanel?.setVisible(!mobile);
       this.bookPanel?.setVisible(!mobile);
       this.touchInteract?.setVisible(mobile);
@@ -513,8 +527,9 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     }
 
     private handleResize(gameSize: Phaser.Structs.Size) {
+      this.hudLeft?.setPosition(gameSize.width < 650 ? 8 : 14, gameSize.width < 650 ? 8 : 12);
       this.hudRight?.setPosition(gameSize.width - 14, 12);
-      this.news?.setPosition(gameSize.width / 2, 13);
+      this.news?.setPosition(gameSize.width / 2, gameSize.width < 650 ? 66 : 13);
       this.prompt?.setPosition(gameSize.width / 2, gameSize.height - 12);
       this.ideaPanel?.setPosition(12, gameSize.height - 12);
       this.bookPanel?.setPosition(gameSize.width - 12, gameSize.height - 12);
