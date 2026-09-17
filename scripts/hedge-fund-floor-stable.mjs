@@ -42,13 +42,24 @@ try {
   await moveTo("fund", 610, 255, { tolerance: 23, maxPasses: 5, fast: true });
   await pressE();
   await waitForExpression(lastEventIs("hedge_fund_trade_long"), 5000, "long thesis enters the portfolio");
-  await waitForExpression(`(() => { const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties; if(!raw) return false; const p=JSON.parse(raw); return Number(p.trades) >= 1 && Number(p.gross_exposure) > 0; })()`, 5000, "position changes gross exposure");
+  const unhedged = await waitForExpression(`(() => {
+    const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties;
+    if(!raw) return false;
+    const p=JSON.parse(raw);
+    return Number(p.trades) >= 1 && Number(p.gross_exposure) > 0 && Math.abs(Number(p.beta_exposure)) > 0.02 ? p : false;
+  })()`, 5000, "long position creates material beta exposure");
 
   // Move into the separate Risk Room and neutralize broad-market beta without closing the stock-specific idea.
+  // Verify the durable portfolio state rather than a transient last-event label, because live news/risk events can
+  // legitimately replace hedge_set as the most recent event before the browser poll observes it.
   await moveTo("fund", 885, 260, { tolerance: 23, maxPasses: 5, fast: true });
   await pressE();
-  await waitForExpression(lastEventIs("hedge_fund_hedge_set"), 5000, "beta hedge set from risk function");
-  await waitForExpression(`(() => { const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties; if(!raw) return false; const p=JSON.parse(raw); return Math.abs(Number(p.beta_exposure)) < 0.02; })()`, 5000, "beta exposure reduced by hedge");
+  const hedged = await waitForExpression(`(() => {
+    const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties;
+    if(!raw) return false;
+    const p=JSON.parse(raw);
+    return Number(p.trades) >= 1 && Math.abs(Number(p.beta_exposure)) < 0.02 ? p : false;
+  })()`, 7000, "beta exposure reduced by hedge");
 
   // Firm building happens in Team + Operations, not at an execution venue.
   await moveTo("fund", 720, 650, { tolerance: 24, maxPasses: 5, fast: true });
@@ -98,6 +109,8 @@ try {
     teamOperations: true,
     livePosition: true,
     betaHedge: true,
+    betaBefore: Number(unhedged.beta_exposure),
+    betaAfter: Number(hedged.beta_exposure),
     staffHire: true,
     desktopMobile: true,
     pauseResume: true,
