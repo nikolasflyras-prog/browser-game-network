@@ -5,12 +5,9 @@ const baseUrl = process.env.SEMI_BATCH3_BASE_URL ?? "http://127.0.0.1:3014";
 const artifactDir = process.env.SEMI_BATCH3_ARTIFACT_DIR ?? "artifacts/browser";
 const browser = await openSpatialBrowser({ url: `${baseUrl}/games/fab-floor`, port: 9234, profilePrefix: "semiconductor-campus-batch3" });
 const { waitForExpression, moveTo, pressE, clickButton, navigate, captureScreenshot, setMobile, clearMobile, runtimeErrors, close, sleep } = browser;
+let fabAlarmServiced = false;
 
 async function installRack(stagingY, rackId, slotX, slotY, expectedSlots) {
-  // Every trip to staging goes through the central service aisle. Several staging rows sit
-  // behind the left-side equipment blocks, so a direct horizontal move can correctly collide.
-  // The smoke should prove real navigation rather than asking the movement harness to phase
-  // through furniture.
   await moveTo("dc", 230, 350, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
   await moveTo("dc", 110, stagingY, { order: "xy", tolerance: 17, maxPasses: 6, fast: true });
   await pressE();
@@ -36,8 +33,6 @@ async function fabHasKit() {
 
 async function ensureFabMaintenanceKit() {
   if (await fabHasKit()) return;
-  // Tool interaction points are approached from y≈425. From there, moving to the maintenance
-  // bay through x≈1080 stays beneath the process-tool collision boxes.
   await moveTo("fab", 1080, 425, { order: "xy", tolerance: 18, maxPasses: 7, fast: true });
   await moveTo("fab", 1080, 620, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
   await pressE();
@@ -55,9 +50,6 @@ async function serviceFabAlarmIfNeeded() {
     { id: "metrology", x: 1005 },
   ];
 
-  // The public runtime exposes total active alarms, so the playtest checks each physical tool
-  // exactly as a player would. Pressing E on a healthy tool can move engineering focus but does
-  // not bypass any production rule; the alarmed tool consumes the carried kit and clears alarm state.
   for (const tool of toolApproaches) {
     await moveTo("fab", tool.x, 425, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
     const before = await fabAlarmCount();
@@ -66,6 +58,7 @@ async function serviceFabAlarmIfNeeded() {
     const after = await fabAlarmCount();
     if (after < before) {
       await waitForExpression(`Number(document.querySelector('[data-fab-alarms]')?.dataset.fabAlarms ?? '0') < ${before}`, 5000, `service ${tool.id} alarm`);
+      fabAlarmServiced = true;
       return true;
     }
     alarms = after;
@@ -76,8 +69,6 @@ async function serviceFabAlarmIfNeeded() {
 }
 
 async function waitForCustomerLots() {
-  // A normal run can generate a tool alarm while the customer lots are in flight. Do not freeze
-  // the simulation and simply wait: detect the downtime, physically service it, and let WIP resume.
   for (let attempt = 0; attempt < 18; attempt += 1) {
     if (await fabCompletedLots() >= 2) return;
     if (await fabAlarmCount() > 0) await serviceFabAlarmIfNeeded();
@@ -96,25 +87,27 @@ try {
   const initialContract = await browser.evaluate(`document.querySelector('[data-fab-contract]')?.dataset.fabContract ?? null`);
   const fabStart = await browser.position("fab");
 
-  // Start real WIP physically from FOUP release.
+  // Start both qualification lots immediately. The line keeps processing while the player later
+  // handles engineering, CapEx, staffing, and maintenance — the intended simultaneous-management loop.
   await moveTo("fab", 120, 370, { order: "yx", tolerance: 17, maxPasses: 6 });
   await pressE();
   await waitForExpression(`Number(document.querySelector('[data-fab-lots]')?.dataset.fabLots ?? '0') >= 1`, 7000, "release first wafer lot");
+  await sleep(2700);
+  await pressE();
+  await waitForExpression(`Number(document.querySelector('[data-fab-completed]')?.dataset.fabCompleted ?? '0') + Number(document.querySelector('[data-fab-lots]')?.dataset.fabLots ?? '0') >= 2`, 7000, "release second qualification lot");
 
-  // Use the open aisle beneath the process tools. Going straight across at y≈380 clips the
-  // lithography tool's collision radius; this route mirrors how a player actually navigates the fab.
+  // Move engineering focus to etch while both lots continue through the line.
   await moveTo("fab", 745, 425, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-focus]')?.dataset.fabFocus === 'etch'`, 7000, "assign etch focus");
 
-  // Convert a diagnosed bottleneck into structural capacity by buying CapEx for the focused etch group.
+  // Convert the focused bottleneck into structural capacity.
   await moveTo("fab", 185, 425, { order: "xy", tolerance: 18, maxPasses: 6, fast: true });
   await moveTo("fab", 125, 120, { order: "xy", tolerance: 18, maxPasses: 6, fast: true });
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-upgrade-etch]')?.dataset.fabUpgradeEtch === '1'`, 7000, "buy etch CapEx upgrade");
 
-  // Cross the lower service aisle, then use the far-right service lane to reach Operations.
-  // Staying at x≈1185 keeps the player's collision radius safely clear of the metrology tool.
+  // Cross the lower aisle and use the far-right service lane to reach Operations without clipping metrology.
   await moveTo("fab", 185, 460, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
   await moveTo("fab", 1185, 460, { order: "xy", tolerance: 18, maxPasses: 8, fast: true });
   await moveTo("fab", 1185, 120, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
@@ -122,19 +115,11 @@ try {
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-technicians]')?.dataset.fabTechnicians === '1'`, 7000, "hire equipment technician");
 
-  // Leave Operations through the same far-right service lane before crossing back to FOUP release.
-  // This avoids descending beside the metrology tool where the previous QA route clipped its edge.
+  // Stage a maintenance kit after staffing. If an alarm has appeared while WIP was running,
+  // the wait loop below physically services the failed tool before production can continue.
   await moveTo("fab", 1185, 120, { order: "xy", tolerance: 16, maxPasses: 6, fast: true });
   await moveTo("fab", 1185, 460, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
-  await moveTo("fab", 185, 460, { order: "xy", tolerance: 18, maxPasses: 8, fast: true });
-  await moveTo("fab", 120, 370, { order: "yx", tolerance: 17, maxPasses: 5, fast: true });
-  await pressE();
-  await waitForExpression(`Number(document.querySelector('[data-fab-completed]')?.dataset.fabCompleted ?? '0') + Number(document.querySelector('[data-fab-lots]')?.dataset.fabLots ?? '0') >= 2`, 7000, "release second wafer lot");
-
-  // Keep a maintenance kit on hand while the order runs. Route below the process tools first;
-  // a direct horizontal crossing from the release point would cut through tool collision bounds.
-  await moveTo("fab", 185, 460, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
-  await moveTo("fab", 1080, 460, { order: "xy", tolerance: 18, maxPasses: 8, fast: true });
+  await moveTo("fab", 1080, 460, { order: "xy", tolerance: 18, maxPasses: 6, fast: true });
   await moveTo("fab", 1080, 620, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-kit]')?.dataset.fabKit === 'true'`, 7000, "pick maintenance kit");
@@ -209,12 +194,13 @@ try {
       realMovement: true,
       start: fabStart,
       twoLotRelease: true,
+      parallelWipManagement: true,
       engineeringFocus: true,
       capexUpgrade: true,
       equipmentTechnician: true,
-      liveAlarmMaintenance: true,
-      customerContractWon: true,
       maintenanceKit: true,
+      alarmServicedIfTriggered: fabAlarmServiced,
+      customerContractWon: true,
       completedLots: true,
       node: fabBusinessState.node,
       desktopMobile: true,
