@@ -46,6 +46,8 @@ jobs:
         run: bash scripts/semiconductor-campus-batch-3-smoke.sh
       - name: Market Maker smoke test
         run: bash scripts/market-maker-smoke.sh
+      - name: Hedge Fund Floor smoke test
+        run: bash scripts/hedge-fund-floor-smoke.sh
       - name: Supply Chain Shock smoke test
         run: bash scripts/supply-chain-shock-smoke.sh
       - name: Chip Fab smoke test
