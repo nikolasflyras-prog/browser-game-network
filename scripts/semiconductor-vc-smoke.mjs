@@ -15,6 +15,7 @@ if (!response.ok) throw new Error(`Semiconductor VC route returned ${response.st
 const html = await response.text();
 if (!html.includes("Sand Hill VC")) throw new Error("Sand Hill VC title missing");
 if (!html.includes("Foundry concentration")) throw new Error("Semiconductor VC learning guide missing");
+if (!html.includes("TVPI") || !html.includes("DPI")) throw new Error("Semiconductor VC fund-lifecycle guide missing");
 
 async function waitForValue(fn, timeout = 16000) {
   const deadline = Date.now() + timeout;
@@ -118,20 +119,26 @@ try {
     })()`);
   }
 
-  async function moveToX(targetX, tolerance = 42, maxSteps = 26) {
+  async function moveAxis(axis, target, tolerance = 38, maxSteps = 30) {
     let previous = await getPosition();
     for (let step = 0; step < maxSteps; step += 1) {
-      if (Math.abs(previous.x - targetX) <= tolerance) return previous;
-      const left = previous.x > targetX;
-      await keyHold(left ? "ArrowLeft" : "ArrowRight", left ? "ArrowLeft" : "ArrowRight", 360);
+      if (Math.abs(previous[axis] - target) <= tolerance) return previous;
+      const negative = previous[axis] > target;
+      const key = axis === "x"
+        ? (negative ? "ArrowLeft" : "ArrowRight")
+        : (negative ? "ArrowUp" : "ArrowDown");
+      await keyHold(key, key, 300);
       const next = await getPosition();
-      if (Math.abs(next.x - previous.x) < 2) {
-        throw new Error(`Dealer stopped moving while routing to x=${targetX}: ${JSON.stringify({ previous, next })}`);
+      if (Math.abs(next[axis] - previous[axis]) < 2) {
+        throw new Error(`VC player stopped moving on ${axis} while routing to ${target}: ${JSON.stringify({ previous, next })}`);
       }
       previous = next;
     }
-    throw new Error(`Dealer failed to reach x=${targetX}; final position ${JSON.stringify(previous)}`);
+    throw new Error(`VC player failed to reach ${axis}=${target}; final position ${JSON.stringify(previous)}`);
   }
+
+  const moveToX = (target, tolerance = 38, maxSteps = 30) => moveAxis("x", target, tolerance, maxSteps);
+  const moveToY = (target, tolerance = 38, maxSteps = 30) => moveAxis("y", target, tolerance, maxSteps);
 
   async function pressE() {
     await send("Input.dispatchKeyEvent", { type: "keyDown", code: "KeyE", key: "e", windowsVirtualKeyCode: 69 });
@@ -145,16 +152,21 @@ try {
     await sleep(180);
   }
 
+  async function capture(name) {
+    const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+    await writeFile(path.join(artifactDir, name), Buffer.from(shot.data, "base64"));
+  }
+
   await send("Runtime.enable");
   await send("Page.enable");
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Sand Hill VC game"] canvas'))`);
-  await waitForExpression(`Boolean(document.querySelector('[aria-label="Sand Hill VC game"] .game-status')?.textContent?.includes('Semiconductor VC office'))`);
+  await waitForExpression(`Boolean(document.querySelector('[aria-label="Sand Hill VC game"] .game-status')?.textContent?.includes('Semiconductor VC'))`);
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Sand Hill VC game"] [data-semi-x]'))`);
 
   const startPosition = await getPosition();
   const founderPosition = await moveToX(180, 45);
   if (!(founderPosition.x < startPosition.x - 250)) {
-    throw new Error(`Dealer did not traverse the office to the founder: ${JSON.stringify({ startPosition, founderPosition })}`);
+    throw new Error(`VC player did not traverse the office to the founder: ${JSON.stringify({ startPosition, founderPosition })}`);
   }
 
   await pressE();
@@ -170,23 +182,40 @@ try {
   await waitForExpression(`Number(document.querySelector('[data-semi-holdings]')?.dataset.semiHoldings ?? '0') >= 1`);
   await waitForExpression(`document.querySelector('[data-semi-active]')?.dataset.semiActive === ''`);
 
+  await waitForExpression(`document.querySelector('[data-semi-portfolio-kind]')?.dataset.semiPortfolioKind === 'design_win'`, 22000);
+
+  await moveToY(500, 42);
+  await moveToX(915, 42);
+  const portfolioPosition = await moveToY(625, 42);
+  await pressE();
+  await waitForExpression(`document.querySelector('[data-semi-portfolio-kind]')?.dataset.semiPortfolioKind === ''`);
+
+  await capture("semiconductor-vc-lifecycle-desktop.png");
+
+  await moveToX(1035, 42);
+  const exitPosition = await moveToY(585, 42);
+  await pressE();
+  await waitForExpression(`document.querySelector('[data-semi-exits]')?.dataset.semiExits === '1'`);
+  await waitForExpression(`Number(document.querySelector('[data-semi-distributions]')?.dataset.semiDistributions ?? '0') > 0`);
+  await waitForExpression(`Number(document.querySelector('[data-semi-dpi]')?.dataset.semiDpi ?? '0') > 0`);
+
   await clickButton("Pause");
   await waitForExpression(`document.querySelector('.game-status')?.textContent?.trim() === 'Paused'`);
   await clickButton("Resume");
   await waitForExpression(`document.querySelector('.game-status')?.textContent?.includes('resumed')`);
 
-  const desktopShot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
-  await writeFile(path.join(artifactDir, "semiconductor-vc-desktop.png"), Buffer.from(desktopShot.data, "base64"));
+  await capture("semiconductor-vc-desktop.png");
 
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await sleep(500);
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Sand Hill VC game"] canvas'))`);
-  const mobileShot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
-  await writeFile(path.join(artifactDir, "semiconductor-vc-mobile.png"), Buffer.from(mobileShot.data, "base64"));
+  await capture("semiconductor-vc-mobile.png");
 
   await clickButton("Restart");
   await waitForExpression(`document.querySelector('[data-semi-active]')?.dataset.semiActive === ''`);
   await waitForExpression(`document.querySelector('[data-semi-investments]')?.dataset.semiInvestments === '0'`);
+  await waitForExpression(`document.querySelector('[data-semi-exits]')?.dataset.semiExits === '0'`);
+  await waitForExpression(`document.querySelector('[data-semi-dpi]')?.dataset.semiDpi === '0.000'`);
 
   const finalState = await evaluate(`(() => ({
     canvas: Boolean(document.querySelector('[aria-label="Sand Hill VC game"] canvas')),
@@ -202,7 +231,11 @@ try {
     founderMeetingVerified: true,
     diligenceRouteVerified: true,
     investmentCommitteeVerified: true,
-    movementPath: { startPosition, founderPosition, diligencePosition, icPosition },
+    firstPortfolioMilestoneVerified: true,
+    boardSupportVerified: true,
+    liquidityExitVerified: true,
+    dpiVerified: true,
+    movementPath: { startPosition, founderPosition, diligencePosition, icPosition, portfolioPosition, exitPosition },
     pauseResumeVerified: true,
     desktopMobileCaptured: true,
     restartVerified: true,
