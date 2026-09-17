@@ -6,14 +6,13 @@ import type { GameRuntimeController } from "@/games/_shared/types/runtime";
 import { loadGameRuntime } from "@/games/loaders";
 import { captureGameEvent } from "@/lib/analytics/client";
 import {
+  PLAYER_PROGRESSION_EVENT,
   achievementLabel,
-  applyProgressionEvent,
   emptyProgression,
   masteryLevel,
-  progressionAwardKey,
   progressionLevel,
   readProgression,
-  writeProgression,
+  type ProgressionUpdateDetail,
 } from "@/lib/progression/playerProgression";
 import styles from "./GameHost.module.css";
 
@@ -25,7 +24,6 @@ export function GameHost({ game }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const controllerRef = useRef<GameRuntimeController | null>(null);
   const mutedRef = useRef(false);
-  const awardedThisRunRef = useRef<Set<string>>(new Set());
   const [status, setStatus] = useState("Loading game runtime…");
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
@@ -35,7 +33,19 @@ export function GameHost({ game }: Props) {
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => setProgression(readProgression(window.localStorage)));
-    return () => window.cancelAnimationFrame(frame);
+    const onProgression = (event: Event) => {
+      const detail = (event as CustomEvent<ProgressionUpdateDetail>).detail;
+      if (!detail) return;
+      setProgression(detail.state);
+      if (detail.unlocked.length > 0) {
+        setUnlockNotice(`Badge unlocked · ${achievementLabel(detail.unlocked[0])}`);
+      }
+    };
+    window.addEventListener(PLAYER_PROGRESSION_EVENT, onProgression);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener(PLAYER_PROGRESSION_EVENT, onProgression);
+    };
   }, []);
 
   useEffect(() => {
@@ -49,7 +59,6 @@ export function GameHost({ game }: Props) {
     const mount = mountRef.current;
     if (!mount) return;
 
-    awardedThisRunRef.current.clear();
     captureGameEvent("game_viewed", {
       game_slug: game.slug,
       game_version: game.version,
@@ -72,28 +81,6 @@ export function GameHost({ game }: Props) {
               game_version: game.version,
               ...eventProperties,
             });
-
-            const awardKey = progressionAwardKey(event, eventProperties);
-            if (!awardedThisRunRef.current.has(awardKey)) {
-              awardedThisRunRef.current.add(awardKey);
-              setProgression(() => {
-                const persisted = readProgression(window.localStorage);
-                const result = applyProgressionEvent(persisted, {
-                  gameSlug: game.slug,
-                  event,
-                  properties: eventProperties,
-                });
-                if (result.state === persisted) return persisted;
-                writeProgression(window.localStorage, result.state);
-                mountElement.dataset.playerXp = String(result.state.xp);
-                mountElement.dataset.playerLevel = String(progressionLevel(result.state.xp));
-                mountElement.dataset.gameMasteryXp = String(result.state.mastery[game.slug]?.xp ?? 0);
-                if (result.unlocked.length > 0) {
-                  setUnlockNotice(`Badge unlocked · ${achievementLabel(result.unlocked[0])}`);
-                }
-                return result.state;
-              });
-            }
           },
         });
         controller.setMuted?.(mutedRef.current);
@@ -127,7 +114,6 @@ export function GameHost({ game }: Props) {
   }, [game.slug, game.version, paused]);
 
   const restart = useCallback(() => {
-    awardedThisRunRef.current.clear();
     controllerRef.current?.restart();
     setPaused(false);
     captureGameEvent("game_restarted", { game_slug: game.slug, game_version: game.version });
@@ -143,6 +129,8 @@ export function GameHost({ game }: Props) {
   }, []);
 
   const gameMastery = progression.mastery[game.slug]?.xp ?? 0;
+  const exploredLabel = progression.playedGames.length === 1 ? "game explored" : "games explored";
+  const badgeLabel = progression.achievements.length === 1 ? "badge" : "badges";
 
   return (
     <section className="game-shell" aria-label={`${game.title} game`}>
@@ -168,7 +156,7 @@ export function GameHost({ game }: Props) {
       >
         <span className={styles.primary}>Network Lv {progressionLevel(progression.xp)} · {progression.xp} XP</span>
         <span>{game.title} mastery Lv {masteryLevel(gameMastery)}</span>
-        <span>{progression.playedGames.length} games explored · {progression.achievements.length} badges</span>
+        <span>{progression.playedGames.length} {exploredLabel} · {progression.achievements.length} {badgeLabel}</span>
         {unlockNotice ? <strong className={styles.unlock} aria-live="polite">{unlockNotice}</strong> : null}
       </div>
       {error ? <div className="game-error">{error}</div> : null}
