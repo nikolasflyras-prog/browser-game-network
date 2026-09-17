@@ -91,6 +91,7 @@ export type SemiVcState = {
   seed: number;
   investments: number;
   exits: number;
+  portfolioEvents: number;
   passes: number;
   missedDeals: number;
   mode: SemiVcMode;
@@ -105,7 +106,7 @@ export const SEMI_VC_OPERATING_BUDGET = 1_000_000;
 export const SEMI_VC_PLAYER_RADIUS = 15;
 export const SEMI_VC_FOLLOW_ON_CHECK = 250_000;
 export const SEMI_VC_BOARD_SUPPORT_COST = 75_000;
-export const SEMI_VC_EXIT_MULTIPLE = 1.22;
+export const SEMI_VC_EXIT_MULTIPLE = 1.18;
 
 export const semiVcCompanies: readonly SemiCompany[] = [
   {
@@ -468,7 +469,7 @@ export function createSemiVcState(seed = 271828): SemiVcState {
     newsTheme: null,
     newsEffect: 0,
     newsTimeLeft: 0,
-    portfolioTimer: 38,
+    portfolioTimer: 16,
     portfolioAlertCompanyId: null,
     portfolioAlertKind: null,
     portfolioAlertHeadline: null,
@@ -476,6 +477,7 @@ export function createSemiVcState(seed = 271828): SemiVcState {
     seed: seed >>> 0,
     investments: 0,
     exits: 0,
+    portfolioEvents: 0,
     passes: 0,
     missedDeals: 0,
     mode: "playing",
@@ -787,7 +789,9 @@ export function advanceSemiVc(state: SemiVcState, input: SemiVcInput, deltaSecon
     const holdingRoll = random(next.seed);
     const holding = next.holdings[Math.floor(holdingRoll.value * next.holdings.length) % next.holdings.length];
     const kindRoll = random(holdingRoll.seed);
-    const kind = portfolioKinds[Math.floor(kindRoll.value * portfolioKinds.length) % portfolioKinds.length];
+    const kind = next.portfolioEvents === 0
+      ? "design_win"
+      : portfolioKinds[Math.floor(kindRoll.value * portfolioKinds.length) % portfolioKinds.length];
     const waitRoll = random(kindRoll.seed);
     const company = companyById(holding.companyId);
     next = {
@@ -798,6 +802,7 @@ export function advanceSemiVc(state: SemiVcState, input: SemiVcInput, deltaSecon
       portfolioAlertHeadline: company ? portfolioHeadline(kind, company) : "Portfolio company needs a decision",
       portfolioAlertTimeLeft: 28,
       portfolioTimer: 38 + waitRoll.value * 16,
+      portfolioEvents: next.portfolioEvents + 1,
     };
     if (event === "none") event = "portfolio_alert";
   }
