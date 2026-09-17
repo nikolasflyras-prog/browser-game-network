@@ -1,0 +1,7 @@
+import { describe, expect, it } from "vitest";
+import { createDataCenterState, dataCenterLayout, dataCenterReady, dataCenterStats, interactDataCenter, type DataCenterState } from "./model";
+describe("Data Center Architect model",()=>{
+ it("uses physical staging and rack bays",()=>{const s=createDataCenterState();expect(interactDataCenter(s).event).toBe("none");const staged=interactDataCenter({...s,playerX:dataCenterLayout.staging.compute.x,playerY:dataCenterLayout.staging.compute.y});expect(staged.event).toBe("rack_picked");const placed=interactDataCenter({...staged.state,playerX:dataCenterLayout.slots[0].x,playerY:dataCenterLayout.slots[0].y});expect(placed.event).toBe("rack_placed");expect(placed.state.slots[0]).toBe("compute");});
+ it("rewards network and cooling adjacency",()=>{const a=createDataCenterState();a.slots=["compute","network",null,"cooling",null,null,null,null];const b=createDataCenterState();b.slots=["compute",null,"network",null,null,"cooling",null,null];expect(dataCenterStats(a).network).toBeGreaterThan(dataCenterStats(b).network);expect(dataCenterStats(a).thermal).toBeLessThan(dataCenterStats(b).thermal);});
+ it("blocks workload deployment until infrastructure meets SLA",()=>{const s=createDataCenterState();const blocked=interactDataCenter({...s,playerX:dataCenterLayout.deploy.x,playerY:dataCenterLayout.deploy.y});expect(blocked.event).toBe("deploy_blocked");const ready:DataCenterState={...s,slots:["compute","network","compute","cooling","storage","power","power","network"]};expect(dataCenterReady(ready)).toBe(true);});
+});
