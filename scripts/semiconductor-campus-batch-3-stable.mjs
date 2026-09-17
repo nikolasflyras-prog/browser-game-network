@@ -27,7 +27,9 @@ try {
   await pressE();
   await waitForExpression(`Number(document.querySelector('[data-fab-lots]')?.dataset.fabLots ?? '0') >= 1`, 7000, "release wafer lot");
 
-  await moveTo("fab", 745, 400, { order: "xy", tolerance: 18, maxPasses: 6 });
+  // Use the open aisle beneath the process tools. Going straight across at y≈380 clips the
+  // lithography tool's collision radius; this route mirrors how a player actually navigates the fab.
+  await moveTo("fab", 745, 425, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-focus]')?.dataset.fabFocus === 'etch'`, 7000, "assign etch focus");
 
