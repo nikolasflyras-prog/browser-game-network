@@ -1,0 +1,64 @@
+.progressionStrip {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #cbc7bd;
+  background: #f5f3ed;
+  color: #69665f;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.primary {
+  color: #171717;
+  font-weight: 900;
+}
+
+.unlock {
+  margin-left: auto;
+  color: #a92720;
+  font-weight: 900;
+  animation: unlockPulse 700ms ease-out;
+}
+
+:global(.immersive-game-page) .progressionStrip {
+  border-bottom-color: #263337;
+  background: #081013;
+  color: #91a1a7;
+}
+
+:global(.immersive-game-page) .primary {
+  color: #e7edef;
+}
+
+:global(.immersive-game-page) .unlock {
+  color: #65e6b4;
+}
+
+@keyframes unlockPulse {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 720px) {
+  .progressionStrip {
+    min-height: 30px;
+    gap: 8px;
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+
+  .progressionStrip > span:nth-of-type(3) {
+    display: none;
+  }
+
+  .unlock {
+    max-width: 42%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
