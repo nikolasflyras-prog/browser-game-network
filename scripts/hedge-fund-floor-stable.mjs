@@ -24,11 +24,10 @@ const lastEventIs = (event) =>
   `document.querySelector('.game-canvas-mount')?.dataset.gameLastEvent === ${JSON.stringify(event)}`;
 
 try {
-  await waitForExpression(`Boolean(document.querySelector('[aria-label="Hedge Fund Floor game"] canvas'))`, 16000, "Hedge Fund Floor canvas");
+  await waitForExpression(`Boolean(document.querySelector('[aria-label="Hedge Fund HQ game"] canvas'))`, 16000, "Hedge Fund HQ canvas");
   await waitForExpression(lastEventIs("hedge_fund_started"), 12000, "fund runtime started");
 
-  // The player starts at 110,710. Route around the lower-left desk instead of walking through it,
-  // then physically enter the research interaction radius.
+  // The player starts at 110,710. Route into the research function and build a thesis.
   await keyHold("ArrowRight", 600, 80);
   await keyHold("ArrowUp", 1600, 80);
   await keyHold("ArrowLeft", 350, 120);
@@ -36,20 +35,20 @@ try {
   await waitForExpression(lastEventIs("hedge_fund_research_started"), 5000, "research starts after physical arrival");
   await waitForExpression(lastEventIs("hedge_fund_research_complete"), 12000, "research dossier completes");
 
-  // Carry the active idea across the floor and put $5M of real simulated NAV to work.
+  // Take the researched thesis into portfolio construction and put $5M of simulated NAV to work.
   await keyHold("ArrowUp", 220, 70);
   await keyHold("ArrowRight", 1750, 120);
   await pressE();
-  await waitForExpression(lastEventIs("hedge_fund_trade_long"), 5000, "long trade executes from trading pad");
-  await waitForExpression(`(() => { const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties; if(!raw) return false; const p=JSON.parse(raw); return Number(p.trades) >= 1 && Number(p.gross_exposure) > 0; })()`, 5000, "trade changes gross exposure");
+  await waitForExpression(lastEventIs("hedge_fund_trade_long"), 5000, "long thesis enters the portfolio");
+  await waitForExpression(`(() => { const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties; if(!raw) return false; const p=JSON.parse(raw); return Number(p.trades) >= 1 && Number(p.gross_exposure) > 0; })()`, 5000, "position changes gross exposure");
 
   // Move to risk and neutralize broad market beta without closing the stock-specific idea.
   await keyHold("ArrowRight", 1000, 120);
   await pressE();
-  await waitForExpression(lastEventIs("hedge_fund_hedge_set"), 5000, "beta hedge set from risk desk");
+  await waitForExpression(lastEventIs("hedge_fund_hedge_set"), 5000, "beta hedge set from risk function");
   await waitForExpression(`(() => { const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties; if(!raw) return false; const p=JSON.parse(raw); return Math.abs(Number(p.beta_exposure)) < 0.02; })()`, 5000, "beta exposure reduced by hedge");
 
-  // Hiring is also spatial: cross to the lower analyst station and spend operating budget.
+  // Firm building is spatial too: cross to recruiting and spend operating budget on an analyst.
   await keyHold("ArrowDown", 1550, 80);
   await keyHold("ArrowLeft", 2300, 120);
   await pressE();
@@ -69,14 +68,14 @@ try {
   await waitForExpression(lastEventIs("hedge_fund_started"), 7000, "fund restart");
 
   const finalState = await browser.evaluate(`(() => ({
-    canvas: Boolean(document.querySelector('[aria-label="Hedge Fund Floor game"] canvas')),
+    canvas: Boolean(document.querySelector('[aria-label="Hedge Fund HQ game"] canvas')),
     status: document.querySelector('.game-status')?.textContent ?? '',
     lastEvent: document.querySelector('.game-canvas-mount')?.dataset.gameLastEvent ?? null,
     frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error')
   }))()`);
 
   if (!finalState.canvas || finalState.frameworkError || finalState.lastEvent !== "hedge_fund_started") {
-    throw new Error(`Final Hedge Fund Floor runtime invalid: ${JSON.stringify(finalState)}`);
+    throw new Error(`Final Hedge Fund HQ runtime invalid: ${JSON.stringify(finalState)}`);
   }
   if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
 
@@ -84,7 +83,7 @@ try {
     targetUrl: `${baseUrl}/games/hedge-fund-floor`,
     realKeyboardMovement: true,
     researchRoute: true,
-    liveTrade: true,
+    livePosition: true,
     betaHedge: true,
     staffHire: true,
     desktopMobile: true,
