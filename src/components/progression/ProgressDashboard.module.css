@@ -1,0 +1,116 @@
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  margin: 28px 0 42px;
+}
+
+.metric {
+  min-height: 128px;
+  padding: 20px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.metric strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 32px;
+  letter-spacing: -.04em;
+}
+
+.metric span,
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.levelBar {
+  height: 8px;
+  margin-top: 12px;
+  background: #dedad0;
+  overflow: hidden;
+}
+
+.levelFill {
+  height: 100%;
+  background: var(--ink);
+}
+
+.section {
+  padding: 26px 0 42px;
+  border-top: 1px solid var(--ink);
+}
+
+.section h2 {
+  margin: 0 0 18px;
+  font-size: 30px;
+  letter-spacing: -.035em;
+}
+
+.challengeGrid,
+.badgeGrid,
+.masteryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.challenge,
+.badge,
+.mastery {
+  min-height: 132px;
+  padding: 18px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.challengeDone {
+  background: #eef5eb;
+}
+
+.challenge strong,
+.badge strong,
+.mastery strong {
+  display: block;
+  margin: 10px 0 6px;
+  font-size: 18px;
+}
+
+.challenge p,
+.badge p,
+.mastery p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.mastery:hover {
+  background: #faf7f0;
+}
+
+.masteryTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.empty {
+  padding: 24px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .summaryGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .challengeGrid, .badgeGrid, .masteryGrid { grid-template-columns: 1fr; }
+  .metric { min-height: 105px; }
+}
