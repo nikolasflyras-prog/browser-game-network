@@ -157,6 +157,23 @@ export function evaluateMandate(state: HedgeFundState, regime: FundRegime): Mand
   };
 }
 
+export function normalizeBaseRiskForMandate(previous: HedgeFundState, advanced: HedgeFundState, regime: FundRegime): HedgeFundState {
+  if (previous.mode !== "playing" || advanced.mode === "complete") return advanced;
+  const stats = fundStats(advanced);
+  const baseRiskHot = stats.grossExposure > 1.5 || Math.abs(stats.betaExposure) > 0.65 || stats.drawdown > 0.06;
+  if (!baseRiskHot) return advanced;
+
+  // advanceFund contains the original single-mandate risk policy. Regime runs replace that policy with
+  // their own mandate thresholds, so strip only the generic reputation/breach penalty and let the
+  // regime-specific pressure function below re-apply the correct consequences.
+  return {
+    ...advanced,
+    reputation: previous.reputation,
+    riskBreaches: previous.riskBreaches,
+    mode: advanced.mode === "gameover" ? "playing" : advanced.mode,
+  };
+}
+
 export function applyMandatePressure(state: HedgeFundState, regime: FundRegime, dt: number): HedgeFundState {
   if (state.mode !== "playing") return state;
   const check = evaluateMandate(state, regime);
