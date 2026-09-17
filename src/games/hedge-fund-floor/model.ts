@@ -539,7 +539,7 @@ export function interactFund(state: HedgeFundState): { state: HedgeFundState; ev
 
 function evolveMarket(state: HedgeFundState, dt: number) {
   let seed = state.seed;
-  let indexRoll = random(seed);
+  const indexRoll = random(seed);
   seed = indexRoll.seed;
   const indexReturn = ((indexRoll.value - 0.5) * 0.0032) * Math.sqrt(Math.max(dt, 0.001));
   let indexPrice = Math.max(10, state.indexPrice * (1 + indexReturn));
@@ -609,7 +609,7 @@ export function advanceFund(state: HedgeFundState, input: { x: number; y: number
   const market = evolveMarket(state, dt);
   if (market.event !== "none") event = market.event;
 
-  let researchTimer = Math.max(0, state.researchTimer - dt);
+  const researchTimer = Math.max(0, state.researchTimer - dt);
   let researchSignal = state.researchSignal;
   let researchConfidence = state.researchConfidence;
   let researchCount = state.researchCount;
