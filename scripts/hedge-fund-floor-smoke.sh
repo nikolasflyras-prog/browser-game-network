@@ -32,4 +32,4 @@ HEDGE_FUND_BASE_URL="$BASE_URL" \
 HEDGE_FUND_ARTIFACT_DIR="$ARTIFACT_DIR" \
   node scripts/hedge-fund-floor-stable.mjs | tee "$ARTIFACT_DIR/hedge-fund-floor-smoke.json"
 
-echo "Hedge Fund HQ smoke passed: movement, research, live position creation, beta hedging, staff hiring, responsive rendering, pause/resume, and restart are verified."
+echo "Hedge Fund HQ smoke passed: research, portfolio construction, beta hedging, staff hiring, responsive rendering, pause/resume, and restart are verified."
