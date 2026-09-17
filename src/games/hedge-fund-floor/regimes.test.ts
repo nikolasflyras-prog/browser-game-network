@@ -13,6 +13,8 @@ import {
 describe("hedge fund regimes", () => {
   it("rotates deterministically through four distinct mandates", () => {
     expect(FUND_REGIMES).toHaveLength(4);
+    expect(new Set(FUND_REGIMES.map((regime) => regime.id)).size).toBe(4);
+    expect(new Set(FUND_REGIMES.map((regime) => regime.objective)).size).toBe(4);
     expect(regimeForRun(0).id).toBe("risk-on-momentum");
     expect(regimeForRun(1).id).toBe("market-neutral");
     expect(regimeForRun(2).id).toBe("capital-preservation");
@@ -37,6 +39,18 @@ describe("hedge fund regimes", () => {
     expect(momentum.betaBreach).toBe(false);
     expect(neutral.betaBreach).toBe(true);
     expect(neutral.pressure).toBeGreaterThan(momentum.pressure);
+  });
+
+  it("market-neutral also rejects a highly directional net book", () => {
+    const state = createHedgeFundState(13);
+    const directional = {
+      ...state,
+      positions: [{ assetId: "gridline" as const, shares: 1_200_000, avgPrice: state.prices.gridline }],
+      cash: state.cash - 1_200_000 * state.prices.gridline,
+    };
+    const check = evaluateMandate(directional, regimeForRun(1));
+    expect(check.netBreach).toBe(true);
+    expect(check.compliant).toBe(false);
   });
 
   it("capital preservation penalizes excessive drawdown earlier", () => {
