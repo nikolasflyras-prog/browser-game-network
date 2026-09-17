@@ -120,15 +120,31 @@ try {
     return state?.playedGames?.includes('orbit-relay') && state?.daily?.uniqueGames?.length >= 2 && state.xp >= 10 ? state : null;
   });
 
+  await navigate(`${baseUrl}/games/chip-fab`);
+  await waitForExpression(`Boolean(document.querySelector('section[aria-label="Chip Fab simulation"]'))`);
+  const legacy = await waitForValue(async () => {
+    const state = await readProgression();
+    if (state?.playedGames?.includes('chip-fab') && state.xp >= 15) return state;
+    await evaluate(`(() => {
+      const section = document.querySelector('section[aria-label="Chip Fab simulation"]');
+      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.trim() === 'Start fab');
+      if (!button || button.disabled) return false;
+      button.click();
+      return true;
+    })()`);
+    await sleep(180);
+    return null;
+  });
+
   await navigate(`${baseUrl}/progress`);
   await waitForExpression(`document.body.innerText.includes('Daily goals') && document.body.innerText.includes('Mastery')`);
-  await waitForExpression(`document.body.innerText.includes('Market Maker') && document.body.innerText.includes('Orbit Relay')`);
+  await waitForExpression(`document.body.innerText.includes('Market Maker') && document.body.innerText.includes('Orbit Relay') && document.body.innerText.includes('Chip Fab')`);
   await waitForExpression(`document.body.innerText.includes('Play two different games')`);
 
   const progressState = await readProgression();
   if (!progressState) throw new Error("Progression storage missing on progress hub");
-  if (progressState.playedGames.length < 2) throw new Error(`Cross-game exploration did not persist: ${JSON.stringify(progressState)}`);
-  if (progressState.daily.uniqueGames.length < 2) throw new Error(`Daily cross-training goal did not update: ${JSON.stringify(progressState.daily)}`);
+  if (progressState.playedGames.length < 3) throw new Error(`Cross-game exploration did not persist: ${JSON.stringify(progressState)}`);
+  if (progressState.daily.uniqueGames.length < 3) throw new Error(`Daily cross-training goal did not update: ${JSON.stringify(progressState.daily)}`);
   if (!progressState.achievements.includes("first-run")) throw new Error("First Run badge did not unlock");
   if (progressState.streak < 1) throw new Error("Daily streak did not start");
 
@@ -148,12 +164,14 @@ try {
   console.log(JSON.stringify({
     firstGameXp: first.xp,
     secondGameXp: second.xp,
+    legacyGameXp: legacy.xp,
     gamesExplored: progressState.playedGames.length,
     dailyUniqueGames: progressState.daily.uniqueGames.length,
     streak: progressState.streak,
     badges: progressState.achievements,
     desktopMobileCaptured: true,
     persistenceVerified: true,
+    legacyReactVerified: true,
   }));
 } finally {
   socket?.close();
