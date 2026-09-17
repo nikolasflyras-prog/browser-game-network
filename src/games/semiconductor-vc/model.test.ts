@@ -3,6 +3,7 @@ import {
   SEMI_VC_BOARD_SUPPORT_COST,
   SEMI_VC_FOLLOW_ON_CHECK,
   SEMI_VC_FUND_SIZE,
+  SEMI_VC_OPERATING_BUDGET,
   advanceSemiVc,
   createSemiVcState,
   interactSemiVc,
