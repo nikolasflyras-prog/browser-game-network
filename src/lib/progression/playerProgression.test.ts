@@ -25,6 +25,16 @@ describe("player progression", () => {
     expect(completed.unlocked).toContain(ACHIEVEMENTS.finisher.id);
   });
 
+  it("treats legacy game_completed events as real finishes", () => {
+    const started = applyProgressionEvent(emptyProgression("2026-09-17"), { gameSlug: "chip-fab", event: "game_started", dateKey: "2026-09-17" });
+    const completed = applyProgressionEvent(started.state, { gameSlug: "chip-fab", event: "game_completed", dateKey: "2026-09-17" });
+    expect(completed.xpAward).toBe(25);
+    expect(completed.state.xp).toBe(30);
+    expect(completed.state.completions).toBe(1);
+    expect(completed.state.mastery["chip-fab"]?.completions).toBe(1);
+    expect(completed.unlocked).toContain(ACHIEVEMENTS.finisher.id);
+  });
+
   it("unlocks Explorer after five distinct games", () => {
     let state = emptyProgression("2026-09-17");
     for (const slug of ["a", "b", "c", "d", "e"]) {
@@ -89,6 +99,7 @@ describe("player progression", () => {
   it("provides stable award keys so a host can dedupe spam within a run", () => {
     expect(progressionAwardKey("game_action", { action: "research_started" })).toBe("action:research_started");
     expect(progressionAwardKey("level_completed", { action: "exit_realized" })).toBe("level:exit_realized");
+    expect(progressionAwardKey("game_completed")).toBe("game_completed");
     expect(progressionAwardKey("game_over")).toBe("game_over");
   });
 });
