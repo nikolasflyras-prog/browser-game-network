@@ -9,7 +9,7 @@ export const financeGameSeoContent: Record<string, GameSeoContent> = {
       "Each run operates under a fund mandate. Risk-On Momentum tolerates more directional beta, Market Neutral demands tight beta and net exposure, Capital Preservation imposes much stricter drawdown and gross limits, and Macro Whipsaw repeatedly reverses broad-market pressure.",
       "Use the risk room to set or rebalance an index hedge. The same stock book can be acceptable in one mandate and unacceptable in another, so risk management should respond to the current mandate instead of following one fixed recipe.",
       "Build the firm as well as the book. Analysts shorten research time and improve signal confidence, traders reduce implementation costs, and risk staff reduce the reputation damage from mandate breaches.",
-      "Watch live news, portfolio P&L, gross/net exposure, beta, drawdown, operating budget, reputation, and the mandate banner. Press M to rotate to the next mandate and start a different kind of fund run.",
+      "Watch live news, portfolio P&L, gross/net exposure, beta, drawdown, operating budget, reputation, and the mandate banner. Use Next mandate on desktop or mobile—or press M on a keyboard—to rotate into a different fund mandate and fresh run.",
     ],
     concepts: [
       "Long and short equity positions",
