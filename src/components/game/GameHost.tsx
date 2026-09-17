@@ -76,13 +76,14 @@ export function GameHost({ game }: Props) {
             const awardKey = progressionAwardKey(event, eventProperties);
             if (!awardedThisRunRef.current.has(awardKey)) {
               awardedThisRunRef.current.add(awardKey);
-              setProgression((current) => {
-                const result = applyProgressionEvent(current, {
+              setProgression(() => {
+                const persisted = readProgression(window.localStorage);
+                const result = applyProgressionEvent(persisted, {
                   gameSlug: game.slug,
                   event,
                   properties: eventProperties,
                 });
-                if (result.state === current) return current;
+                if (result.state === persisted) return persisted;
                 writeProgression(window.localStorage, result.state);
                 mountElement.dataset.playerXp = String(result.state.xp);
                 mountElement.dataset.playerLevel = String(progressionLevel(result.state.xp));
