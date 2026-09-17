@@ -16,21 +16,24 @@ export async function mountGame(mount: HTMLElement, bridge: GameBridge): Promise
   nextMandateButton.type = "button";
   nextMandateButton.textContent = "Next mandate";
   nextMandateButton.setAttribute("aria-label", "Start next hedge fund mandate");
+  nextMandateButton.dataset.fundMandateControl = "next";
   Object.assign(nextMandateButton.style, {
     position: "absolute",
     top: "8px",
     left: "50%",
     transform: "translateX(-50%)",
-    zIndex: "8",
-    border: "1px solid rgba(217, 228, 230, 0.45)",
+    zIndex: "80",
+    border: "1px solid rgba(217, 228, 230, 0.55)",
     borderRadius: "999px",
-    background: "rgba(7, 16, 20, 0.94)",
+    background: "rgba(7, 16, 20, 0.96)",
     color: "#d9e4e6",
     font: "700 10px Arial, Helvetica, sans-serif",
     letterSpacing: "0.04em",
-    padding: "6px 10px",
+    padding: "7px 11px",
+    minHeight: "32px",
     cursor: "pointer",
     touchAction: "manipulation",
+    whiteSpace: "nowrap",
   });
 
   async function rotateMandate() {
