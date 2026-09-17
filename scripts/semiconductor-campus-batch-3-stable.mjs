@@ -49,25 +49,29 @@ try {
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-upgrade-etch]')?.dataset.fabUpgradeEtch === '1'`, 7000, "buy etch CapEx upgrade");
 
-  // Cross the lower service aisle, then approach Operations from the right side so the player
-  // does not clip the metrology tool while hiring an equipment technician.
-  await moveTo("fab", 185, 425, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
-  await moveTo("fab", 1130, 425, { order: "xy", tolerance: 18, maxPasses: 7, fast: true });
-  await moveTo("fab", 1130, 120, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
+  // Cross the lower service aisle, then use the far-right service lane to reach Operations.
+  // Staying at x≈1185 keeps the player's collision radius safely clear of the metrology tool.
+  await moveTo("fab", 185, 460, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
+  await moveTo("fab", 1185, 460, { order: "xy", tolerance: 18, maxPasses: 8, fast: true });
+  await moveTo("fab", 1185, 120, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
   await moveTo("fab", 1090, 120, { order: "xy", tolerance: 18, maxPasses: 5, fast: true });
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-technicians]')?.dataset.fabTechnicians === '1'`, 7000, "hire equipment technician");
 
-  // Release the second lot required by the first customer qualification order.
-  await moveTo("fab", 1130, 425, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
-  await moveTo("fab", 185, 425, { order: "xy", tolerance: 18, maxPasses: 7, fast: true });
+  // Leave Operations through the same far-right service lane before crossing back to FOUP release.
+  // This avoids descending beside the metrology tool where the previous QA route clipped its edge.
+  await moveTo("fab", 1185, 120, { order: "xy", tolerance: 16, maxPasses: 6, fast: true });
+  await moveTo("fab", 1185, 460, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
+  await moveTo("fab", 185, 460, { order: "xy", tolerance: 18, maxPasses: 8, fast: true });
   await moveTo("fab", 120, 370, { order: "yx", tolerance: 17, maxPasses: 5, fast: true });
   await pressE();
   await waitForExpression(`Number(document.querySelector('[data-fab-completed]')?.dataset.fabCompleted ?? '0') + Number(document.querySelector('[data-fab-lots]')?.dataset.fabLots ?? '0') >= 2`, 7000, "release second wafer lot");
 
-  // Keep a maintenance kit on hand while the order runs. The customer deadline continues even
-  // while equipment is down, so this proves the original physical-maintenance loop still exists.
-  await moveTo("fab", 1080, 620, { order: "xy", tolerance: 18, maxPasses: 7, fast: true });
+  // Keep a maintenance kit on hand while the order runs. Route below the process tools first;
+  // a direct horizontal crossing from the release point would cut through tool collision bounds.
+  await moveTo("fab", 185, 460, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
+  await moveTo("fab", 1080, 460, { order: "xy", tolerance: 18, maxPasses: 8, fast: true });
+  await moveTo("fab", 1080, 620, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-kit]')?.dataset.fabKit === 'true'`, 7000, "pick maintenance kit");
 
