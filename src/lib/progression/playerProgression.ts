@@ -159,17 +159,17 @@ function unlockAchievements(state: PlayerProgression) {
 }
 
 function isSessionStart(event: string) {
-  return event === "game_started" || event === "hedge_fund_started";
+  return event === "game_started" || event === "daily_started" || event === "hedge_fund_started";
 }
 
 function isRunCompletion(event: string) {
-  return event === "game_completed" || event === "game_over" || event === "level_completed" || event === "hedge_fund_complete" || event === "hedge_fund_game_over";
+  return event === "game_completed" || event === "game_over" || event === "hedge_fund_complete" || event === "hedge_fund_game_over";
 }
 
 export function progressionXpForEvent(event: string, properties?: Record<string, unknown>) {
   if (isSessionStart(event)) return 5;
   if (event === "level_completed") return 20;
-  if (event === "game_completed" || event === "game_over" || event === "hedge_fund_complete" || event === "hedge_fund_game_over") return 25;
+  if (isRunCompletion(event)) return 25;
   if (event === "game_action" && typeof properties?.action === "string") return 3;
   return 0;
 }
