@@ -3,12 +3,14 @@ import { getExtraGameSeoContent } from "./gameSeoExtras";
 import { getBatch7GameSeoContent } from "./gameSeoBatch7";
 import { getSemiconductorGameSeoContent } from "./gameSeoSemiconductors";
 import { getSemiconductorVcDepthSeoContent } from "./gameSeoSemiconductorVcDepth";
+import { getFabFloorBusinessSeoContent } from "./gameSeoFabFloorBusiness";
 import { getFinanceGameSeoContent } from "./gameSeoFinance";
 import { getFinanceRebuildSeoContent } from "./gameSeoFinanceRebuild";
 
 export function getAnyGameSeoContent(slug: string): GameSeoContent | undefined {
   return getFinanceRebuildSeoContent(slug)
     ?? getSemiconductorVcDepthSeoContent(slug)
+    ?? getFabFloorBusinessSeoContent(slug)
     ?? getGameSeoContent(slug)
     ?? getExtraGameSeoContent(slug)
     ?? getBatch7GameSeoContent(slug)

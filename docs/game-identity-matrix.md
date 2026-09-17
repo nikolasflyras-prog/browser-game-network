@@ -50,7 +50,16 @@ The same rule applies to the semiconductor collection:
 - **Sand Hill VC:** founder meetings, diligence, IC, reserves, portfolio support.
 - **Chip Architect:** physical floorplanning, PPA/timing tradeoffs, verification, tapeout.
 - **Packaging Lab:** die/HBM/I/O placement, bonding, thermals, yield, inspection.
-- **Fab Floor:** WIP flow, bottlenecks, maintenance, yield and cycle time.
+- **Fab Floor:** continuous WIP flow plus customer contracts, bottleneck diagnosis, CapEx, maintenance staffing, yield, deadlines, and simplified node progression.
 - **Data Center Architect:** rack placement, fabric topology, power/cooling, workload SLA.
+
+### Fab Floor guardrails
+
+- Keep the physical wafer line running continuously. Customer/business decisions must sit on top of WIP, tool health, queues, and yield rather than replace them with menus.
+- Contracts should reward **usable output on time**, not raw wafer starts. Lot count, yield, and deadline must all matter.
+- Engineering focus is the short-term bottleneck tool; CapEx is the structural capacity tool. Spending should be meaningful because cash also funds maintenance and staff.
+- Equipment technicians should improve uptime across the fab rather than act like generic stat upgrades.
+- Node progression should tighten process/yield pressure while increasing contract value; it is a simplified teaching abstraction, not a literal foundry recipe or cost model.
+- Do not turn Fab Floor into Chip Fab with a walking avatar. Fab Floor's identity is spatial operations plus customer commitments and investment decisions; Chip Fab remains the control-room production simulator.
 
 They may all use a movable character, but the system being manipulated must remain fundamentally different.
