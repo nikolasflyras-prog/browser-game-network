@@ -33,12 +33,28 @@ describe("hedge fund regimes", () => {
 
   it("makes market-neutral beta discipline much tighter than momentum", () => {
     const state = createHedgeFundState(11);
-    const exposed = { ...state, hedgeShares: 900_000, hedgeActive: true };
+    const exposed = { ...state, hedgeShares: 900_000, cash: 10_000_000, hedgeActive: true };
     const momentum = evaluateMandate(exposed, regimeForRun(0));
     const neutral = evaluateMandate(exposed, regimeForRun(1));
     expect(momentum.betaBreach).toBe(false);
     expect(neutral.betaBreach).toBe(true);
     expect(neutral.pressure).toBeGreaterThan(momentum.pressure);
+  });
+
+  it("reverses the legacy generic risk penalty when the active mandate permits the exposure", () => {
+    const state = createHedgeFundState(12);
+    const afterGenericPenalty = {
+      ...state,
+      hedgeShares: 700_000,
+      cash: 30_000_000,
+      hedgeActive: true,
+      reputation: 99.964,
+      riskBreaches: 0.05,
+    };
+    expect(evaluateMandate(afterGenericPenalty, regimeForRun(0)).compliant).toBe(true);
+    const reconciled = applyRegimeFrame(afterGenericPenalty, regimeForRun(0), 0.05);
+    expect(reconciled.reputation).toBeCloseTo(100, 4);
+    expect(reconciled.riskBreaches).toBeCloseTo(0, 6);
   });
 
   it("market-neutral also rejects a highly directional net book", () => {
@@ -74,7 +90,7 @@ describe("hedge fund regimes", () => {
   it("regime scoring rewards behavior aligned with each mandate", () => {
     const neutral = regimeForRun(1);
     const clean = createHedgeFundState(31);
-    const betaHeavy = { ...clean, hedgeShares: 1_000_000, hedgeActive: true };
+    const betaHeavy = { ...clean, hedgeShares: 1_000_000, cash: 0, hedgeActive: true };
     expect(regimeScoreAdjustment(clean, neutral)).toBeGreaterThan(regimeScoreAdjustment(betaHeavy, neutral));
   });
 });
