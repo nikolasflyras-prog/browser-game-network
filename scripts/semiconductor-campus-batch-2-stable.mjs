@@ -63,16 +63,23 @@ try {
   await waitForExpression(`Boolean(document.querySelector('[data-pkg-x]'))`, 16000, "Packaging Lab player state");
   await waitForExpression(`document.querySelector('[data-pkg-mode]')?.dataset.pkgMode === 'playing'`, 12000, "Packaging Lab playing state");
 
-  // The first customer window is intentionally 88 seconds. Use long real key holds in open corridors,
-  // then let the spatial helper tighten the final approach. This proves the package can be built under
-  // the actual game deadline instead of extending or pausing the clock for QA.
+  // Build a five-die topology whose bandwidth and thermals are good enough but whose mechanical
+  // balance misses spec under the default bond profile. The player must visit the process station
+  // and choose GENTLE bonding to pull warpage into tolerance. This verifies that package topology
+  // and manufacturing process both matter; filling every slot is not the intended solution.
   await packageComponent(105, 150, "xpu-hot", 520, 285, 1, { viaCenter: true });
   await packageComponent(105, 555, "hbm4", 650, 285, 2, { viaCenter: true });
-  await packageComponent(255, 455, "optical-engine", 780, 285, 3);
-  await packageComponent(255, 555, "heat-spreader", 520, 425, 4, { viaCenter: true });
-  await packageComponent(105, 250, "xpu-efficient", 650, 425, 5);
-  await packageComponent(105, 455, "hbm3e", 780, 425, 6);
-  await waitForExpression(`document.querySelector('[data-pkg-meets-spec]')?.dataset.pkgMeetsSpec === 'true'`, 7000, "Packaging Lab specification compliance");
+  await packageComponent(105, 250, "xpu-efficient", 780, 285, 3, { viaCenter: true });
+  await packageComponent(105, 455, "hbm3e", 520, 425, 4, { viaCenter: true });
+  await packageComponent(255, 455, "optical-engine", 650, 425, 5);
+
+  await waitForExpression(`document.querySelector('[data-pkg-meets-spec]')?.dataset.pkgMeetsSpec === 'false'`, 5000, "Packaging Lab balanced profile remains out of spec");
+  await moveTo("pkg", 955, 455, { order: "xy", tolerance: 16, maxPasses: 5, fast: true });
+  await pressE();
+  await waitForExpression(`document.querySelector('[data-pkg-profile]')?.dataset.pkgProfile === 'fast'`, 5000, "Packaging Lab fast profile selection");
+  await pressE();
+  await waitForExpression(`document.querySelector('[data-pkg-profile]')?.dataset.pkgProfile === 'gentle'`, 5000, "Packaging Lab gentle profile selection");
+  await waitForExpression(`document.querySelector('[data-pkg-meets-spec]')?.dataset.pkgMeetsSpec === 'true'`, 7000, "Packaging Lab process-adjusted specification compliance");
 
   await moveTo("pkg", 955, 245, { order: "xy", tolerance: 16, maxPasses: 5, fast: true });
   await pressE();
@@ -100,7 +107,7 @@ try {
 
   console.log(JSON.stringify({
     chipArchitect: { fullFloorplan: true, verification: true, tapeout: true, pauseResume: true, desktopMobile: true },
-    packagingLab: { sixSitePackage: true, adjacencySpec: true, inspection: true, shipment: true, pauseResume: true, desktopMobile: true, completedInsideLiveJobWindow: true },
+    packagingLab: { fiveDieOptimizedPackage: true, topologyMatters: true, bondProfileMatters: true, inspection: true, shipment: true, pauseResume: true, desktopMobile: true, completedInsideLiveJobWindow: true },
     preciseMovementHarness: true,
   }));
 } finally {
