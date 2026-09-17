@@ -210,5 +210,5 @@ export async function openSpatialBrowser({ url, port, profilePrefix = "spatial-g
   await send("Runtime.enable");
   await send("Page.enable");
 
-  return { send, evaluate, waitForExpression, position, moveAxis, moveTo, pressE, clickButton, navigate, captureScreenshot, setMobile, clearMobile, runtimeErrors, close, sleep };
+  return { send, evaluate, waitForExpression, position, moveAxis, moveTo, keyHold, releaseMovementKeys, pressE, clickButton, navigate, captureScreenshot, setMobile, clearMobile, runtimeErrors, close, sleep };
 }
