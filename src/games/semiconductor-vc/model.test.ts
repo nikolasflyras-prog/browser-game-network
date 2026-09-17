@@ -8,6 +8,7 @@ import {
   interactSemiVc,
   semiVcCompanies,
   semiVcDpi,
+  semiVcExitCandidate,
   semiVcFundNav,
   semiVcLayout,
   semiVcTvpi,
@@ -20,6 +21,7 @@ describe("Semiconductor VC office model", () => {
     expect(state.dryPowder).toBe(SEMI_VC_FUND_SIZE);
     expect(state.distributions).toBe(0);
     expect(state.reserveSpent).toBe(0);
+    expect(state.portfolioEvents).toBe(0);
     expect(state.incoming).toHaveLength(1);
     expect(state.incoming[0]?.companyId).toBe("latchwave");
     expect(state.staff).toBe(1);
@@ -112,6 +114,37 @@ describe("Semiconductor VC office model", () => {
     expect(current.elapsed).toBeGreaterThan(1.9);
     expect(current.holdings[0]?.mark).not.toBe(1_000_000);
     expect(semiVcFundNav(current)).not.toBe(before);
+  });
+
+  it("gives the first owned company a milestone event that can progress into liquidity", () => {
+    const state: SemiVcState = {
+      ...createSemiVcState(15),
+      dryPowder: 9_500_000,
+      holdings: [{
+        companyId: "latchwave",
+        invested: 500_000,
+        ownershipPct: 3.33,
+        mark: 507_000,
+        supportBoost: 0,
+      }],
+      dealSpawnTimer: 99,
+      newsTimer: 99,
+      portfolioTimer: 0,
+    };
+
+    const alert = advanceSemiVc(state, { x: 0, y: 0 }, 0.05);
+    expect(alert.event).toBe("portfolio_alert");
+    expect(alert.state.portfolioAlertKind).toBe("design_win");
+    expect(alert.state.portfolioEvents).toBe(1);
+
+    const supported = interactSemiVc({
+      ...alert.state,
+      playerX: semiVcLayout.portfolioPads[1].x,
+      playerY: semiVcLayout.portfolioPads[1].y,
+    });
+    expect(supported.event).toBe("follow_on");
+    expect(supported.state.operatingBudget).toBe(SEMI_VC_OPERATING_BUDGET - SEMI_VC_BOARD_SUPPORT_COST);
+    expect(semiVcExitCandidate(supported.state)?.companyId).toBe("latchwave");
   });
 
   it("uses reserves to support a financing and preserve ownership", () => {
