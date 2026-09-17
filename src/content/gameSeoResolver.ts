@@ -6,10 +6,10 @@ import { getFinanceGameSeoContent } from "./gameSeoFinance";
 import { getFinanceRebuildSeoContent } from "./gameSeoFinanceRebuild";
 
 export function getAnyGameSeoContent(slug: string): GameSeoContent | undefined {
-  return getGameSeoContent(slug)
+  return getFinanceRebuildSeoContent(slug)
+    ?? getGameSeoContent(slug)
     ?? getExtraGameSeoContent(slug)
     ?? getBatch7GameSeoContent(slug)
     ?? getSemiconductorGameSeoContent(slug)
-    ?? getFinanceRebuildSeoContent(slug)
     ?? getFinanceGameSeoContent(slug);
 }
