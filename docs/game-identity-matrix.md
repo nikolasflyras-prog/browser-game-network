@@ -20,7 +20,7 @@ Movement is a control scheme, not a gameplay loop. A game fails this test if its
 | Game | Core verb | Pacing | Spatial structure | Primary resource | Failure pressure | Progression |
 | --- | --- | --- | --- | --- | --- | --- |
 | Market Maker | Pick up, route, execute, hedge client flow | Fast / reflexive | Dense trading floor with client desks and execution venues | Inventory + reputation | Expiring orders, adverse price moves, rejected fills | More client flow and harder market shocks until closing bell |
-| Hedge Fund Floor | Research, form a thesis, construct a portfolio, allocate staff, manage risk and LPs | Deliberate / managerial | Investment office with research, portfolio, risk and LP functions | NAV + research confidence + operating budget + staff | Drawdown, concentration/beta risk, poor research, LP confidence | Better research process, larger/cleaner book, stronger team and fund score |
+| Hedge Fund HQ | Research, form a thesis, construct a portfolio, allocate staff, adapt to the fund mandate | Deliberate / managerial | Investment office with research, portfolio, risk and LP functions | NAV + research confidence + operating budget + staff | Mandate-specific drawdown, gross/net/beta limits, poor research, LP confidence | Rotate among materially different fund mandates; build a stronger process and cleaner book within each regime |
 | Run the Fed | Set policy and absorb macro tradeoffs | Turn-based / strategic | Policy dashboard / timeline | Inflation-employment-growth balance | Macro instability | Eight-quarter policy path |
 
 ### Market Maker guardrails
@@ -31,13 +31,16 @@ Movement is a control scheme, not a gameplay loop. A game fails this test if its
 - Speed and routing skill should matter.
 - Do not add staff hiring, company diligence, LP management or long-form research.
 
-### Hedge Fund Floor guardrails
+### Hedge Fund HQ guardrails
 
 - Keep it about **investment process and portfolio management**, not order routing.
 - Research quality and thesis direction should matter more than reaction speed.
 - Staff should change the operating system of the fund: analysts improve research, traders lower implementation cost, risk staff reduce uncontrolled exposure.
 - LP updates, drawdown, portfolio beta and gross/net exposure should create medium-horizon pressure.
 - The office should visually read as distinct functional rooms/teams, not three execution venues on another trading floor.
+- Replayability should come from **different fund mandates and market regimes**, not from making the player run the same route faster.
+- A market-neutral run should reward low beta/net exposure; a capital-preservation run should punish drawdown earlier; a momentum run can tolerate more direction; macro-whipsaw should require active hedge adaptation.
+- Mandate rotation must remain available to touch/mobile players through a visible control; keyboard shortcuts are supplemental, not required.
 - Future iteration should replace simple long/short interaction pads with a richer portfolio-construction or investment-committee interaction rather than copying Market Maker's venue loop.
 
 ## Semiconductor Worlds
