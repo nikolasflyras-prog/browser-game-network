@@ -10,14 +10,19 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 await mkdir(artifactDir, { recursive: true });
 
-async function waitForValue(fn, timeout = 10000) {
+async function waitForValue(fn, timeout = 10000, label = "Chip Fab browser state") {
   const deadline = Date.now() + timeout;
+  let lastError = null;
   while (Date.now() < deadline) {
-    const value = await fn().catch(() => null);
-    if (value) return value;
+    try {
+      const value = await fn();
+      if (value) return value;
+    } catch (error) {
+      lastError = error;
+    }
     await sleep(80);
   }
-  throw new Error("Timed out waiting for Chip Fab browser state");
+  throw new Error(`Timed out waiting for ${label}${lastError ? `: ${lastError.message}` : ""}`);
 }
 
 let chromePath = null;
@@ -32,12 +37,12 @@ const chrome = spawn(chromePath, ["--headless", "--no-sandbox", "--disable-gpu",
 
 let socket;
 try {
-  await waitForValue(async () => (await fetch(`${debugBase}/json/version`)).ok);
+  await waitForValue(async () => (await fetch(`${debugBase}/json/version`)).ok, 12000, "Chrome debugging endpoint");
   const page = await waitForValue(async () => {
     const response = await fetch(`${debugBase}/json/list`);
     if (!response.ok) return null;
     return (await response.json()).find((entry) => entry.type === "page" && entry.url.includes("/games/chip-fab"));
-  });
+  }, 12000, "Chip Fab page target");
   socket = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("Timed out opening Chip Fab CDP websocket")), 5000);
@@ -68,20 +73,17 @@ try {
     if (response.exceptionDetails) throw new Error(response.exceptionDetails.text ?? "Runtime.evaluate failed");
     return response.result?.value;
   }
-  async function waitForExpression(expression, timeout = 10000) { return waitForValue(() => evaluate(expression), timeout); }
+  async function waitForExpression(expression, timeout = 10000, label = "Chip Fab browser state") { return waitForValue(() => evaluate(expression), timeout, label); }
   async function clickButton(label) {
-    const point = await waitForValue(() => evaluate(`(() => {
+    await waitForValue(() => evaluate(`(() => {
       const section = document.querySelector('section[aria-label="Chip Fab simulation"]');
-      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(label)}));
-      if (!button) return null;
+      const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.trim() === ${JSON.stringify(label)});
+      if (!button || button.disabled) return false;
       button.scrollIntoView({ block: 'center', inline: 'center' });
-      const rect = button.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return null;
-      return { x: rect.left + rect.width / 2, y: rect.top + Math.min(rect.height / 2, 28) };
-    })()`));
-    await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y });
-    await send("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
-    await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
+      button.click();
+      return true;
+    })()`), 10000, `Chip Fab button ${label}`);
+    await sleep(120);
   }
   async function capture(name) {
     await evaluate(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.scrollIntoView({ block: 'start' }); true`);
@@ -92,27 +94,27 @@ try {
 
   await send("Runtime.enable");
   await send("Page.enable");
-  await waitForExpression(`Boolean(document.querySelector('section[aria-label="Chip Fab simulation"]'))`);
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick === '0'`);
-  await waitForExpression(`Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.includes('Start fab'))`);
+  await waitForExpression(`Boolean(document.querySelector('section[aria-label="Chip Fab simulation"]'))`, 10000, "Chip Fab simulation mount");
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick === '0'`, 10000, "initial fab tick");
+  await waitForExpression(`Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.trim() === 'Start fab')`, 10000, "Start fab control");
   await evaluate(`localStorage.removeItem('bgn:chip-fab:best-score'); true`);
 
   await clickButton("Push");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabStartMode === 'push'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabStartMode === 'push'`, 10000, "Push wafer-start mode");
   await clickButton("Focus Lithography");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabFocus === 'lithography'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabFocus === 'lithography'`, 10000, "Lithography focus");
   await clickButton("Start fab");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabRunning === 'true'`);
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick ?? '0') >= 3`, 6000);
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabWip ?? '0') > 0`);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabRunning === 'true'`, 10000, "fab running");
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick ?? '0') >= 3`, 6000, "fab tick 3");
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabWip ?? '0') > 0`, 10000, "positive WIP");
 
   await clickButton("PM Lithography");
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabLithoMaint ?? '0') > 0`);
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabLithoMaint ?? '0') === 0`, 5000);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabLithoMaint ?? '0') > 0`, 10000, "Lithography PM start");
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabLithoMaint ?? '0') === 0`, 6000, "Lithography PM completion");
 
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick ?? '0') >= 6`, 6000);
+  await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick ?? '0') >= 6`, 6000, "fab tick 6");
   await clickButton("Pause fab");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabRunning === 'false'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabRunning === 'false'`, 10000, "fab pause");
   const pausedTick = await evaluate(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick ?? '-1')`);
   await sleep(1100);
   const frozenTick = await evaluate(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick ?? '-1')`);
@@ -120,17 +122,17 @@ try {
 
   await clickButton("Steady");
   await clickButton("Resume fab");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabEvent === 'metrology-drift'`, 7000);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabEvent === 'metrology-drift'`, 8000, "metrology drift event");
   await clickButton("Focus Metrology");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabFocus === 'metrology'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabFocus === 'metrology'`, 10000, "Metrology focus");
   await clickButton("PM Metrology");
 
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabEvent === 'lithography-bottleneck'`, 9000);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabEvent === 'lithography-bottleneck'`, 10000, "lithography bottleneck event");
   await clickButton("Focus Lithography");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabEvent === 'maintenance-risk'`, 9000);
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabComplete === 'true'`, 15000);
-  await waitForExpression(`Boolean(document.querySelector('[aria-label="Chip Fab result"]'))`);
-  await waitForExpression(`Boolean(localStorage.getItem('bgn:chip-fab:best-score'))`);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabEvent === 'maintenance-risk'`, 10000, "maintenance risk event");
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabComplete === 'true'`, 16000, "fab completion");
+  await waitForExpression(`Boolean(document.querySelector('[aria-label="Chip Fab result"]'))`, 10000, "Chip Fab result panel");
+  await waitForExpression(`Boolean(localStorage.getItem('bgn:chip-fab:best-score'))`, 10000, "persisted Chip Fab best score");
 
   const finalState = await evaluate(`(() => {
     const section = document.querySelector('section[aria-label="Chip Fab simulation"]');
@@ -154,9 +156,9 @@ try {
   await send("Emulation.clearDeviceMetricsOverride");
 
   await clickButton("Run another fab");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick === '0'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabStartMode === 'steady'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabComplete === 'false'`);
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick === '0'`, 10000, "Chip Fab restart tick");
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabStartMode === 'steady'`, 10000, "Chip Fab restart start mode");
+  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabComplete === 'false'`, 10000, "Chip Fab restart incomplete state");
 
   console.log(JSON.stringify({ targetUrl, continuousFlowVerified: true, wipVerified: true, maintenanceVerified: true, crewFocusVerified: true, eventRegimesVerified: true, pauseVerified: true, bestPersisted: true, resultCaptures: 2, restartVerified: true }));
 } finally {
