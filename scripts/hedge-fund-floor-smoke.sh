@@ -24,12 +24,12 @@ done
 curl -fsS "$BASE_URL/games/hedge-fund-floor" >"$ARTIFACT_DIR/hedge-fund-floor.initial.html"
 curl -fsS "$BASE_URL/learn" >"$ARTIFACT_DIR/learn-hedge-fund.html"
 
-grep -q "Hedge Fund Floor" "$ARTIFACT_DIR/hedge-fund-floor.initial.html"
+grep -q "Hedge Fund HQ" "$ARTIFACT_DIR/hedge-fund-floor.initial.html"
 grep -q "Gross versus net exposure" "$ARTIFACT_DIR/hedge-fund-floor.initial.html"
-grep -q "Hedge Fund Floor" "$ARTIFACT_DIR/learn-hedge-fund.html"
+grep -q "Hedge Fund HQ" "$ARTIFACT_DIR/learn-hedge-fund.html"
 
 HEDGE_FUND_BASE_URL="$BASE_URL" \
 HEDGE_FUND_ARTIFACT_DIR="$ARTIFACT_DIR" \
   node scripts/hedge-fund-floor-stable.mjs | tee "$ARTIFACT_DIR/hedge-fund-floor-smoke.json"
 
-echo "Hedge Fund Floor smoke passed: movement, research, live position creation, beta hedging, staff hiring, responsive rendering, pause/resume, and restart are verified."
+echo "Hedge Fund HQ smoke passed: movement, research, live position creation, beta hedging, staff hiring, responsive rendering, pause/resume, and restart are verified."
