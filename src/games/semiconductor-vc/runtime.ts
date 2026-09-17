@@ -10,16 +10,20 @@ import {
   interactSemiVc,
   semiVcActiveCompany,
   semiVcCompanies,
+  semiVcDpi,
+  semiVcExitCandidate,
   semiVcFundNav,
   semiVcLayout,
-  semiVcMoic,
+  semiVcPortfolioDecision,
   semiVcPrompt,
+  semiVcQuarter,
   semiVcScore,
+  semiVcTvpi,
   type SemiVcEvent,
   type SemiVcState,
 } from "./model";
 
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 const BACKGROUND = 0x05080b;
 const FLOOR = 0x0e171c;
 const GRID = 0x20323a;
@@ -33,6 +37,7 @@ const PARTNER = 0xffd166;
 const PORTFOLIO = 0xb794f6;
 const GREEN = 0x65e6b4;
 const RED = 0xff7185;
+const EXIT = 0x68e0b0;
 
 type Point = { x: number; y: number };
 type WorldLabel = { text: Phaser.GameObjects.Text; x: number; y: number };
@@ -77,6 +82,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     private prompt?: Phaser.GameObjects.Text;
     private news?: Phaser.GameObjects.Text;
     private dealPanel?: Phaser.GameObjects.Text;
+    private portfolioPanel?: Phaser.GameObjects.Text;
     private bestLabel?: Phaser.GameObjects.Text;
     private touchInteract?: Phaser.GameObjects.Text;
     private endTitle?: Phaser.GameObjects.Text;
@@ -95,7 +101,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.hudLeft = this.add.text(16, 13, "", {
         color: "#f7fafb",
         fontFamily: "Arial, Helvetica, sans-serif",
-        fontSize: "15px",
+        fontSize: "14px",
         fontStyle: "bold",
         backgroundColor: "#05080bd9",
         padding: { x: 8, y: 5 },
@@ -103,13 +109,13 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.hudRight = this.add.text(this.scale.width - 16, 13, "", {
         color: "#f7fafb",
         fontFamily: "Arial, Helvetica, sans-serif",
-        fontSize: "15px",
+        fontSize: "13px",
         fontStyle: "bold",
         align: "right",
         backgroundColor: "#05080bd9",
         padding: { x: 8, y: 5 },
       }).setOrigin(1, 0).setDepth(30);
-      this.bestLabel = this.add.text(this.scale.width - 16, 50, `Best ${bestScore}`, {
+      this.bestLabel = this.add.text(this.scale.width - 16, 55, `Best ${bestScore}`, {
         color: "#81969f",
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "10px",
@@ -118,7 +124,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.news = this.add.text(this.scale.width / 2, 13, "", {
         color: "#ffd166",
         fontFamily: "Arial, Helvetica, sans-serif",
-        fontSize: "13px",
+        fontSize: "12px",
         fontStyle: "bold",
         backgroundColor: "#05080be8",
         padding: { x: 8, y: 5 },
@@ -140,6 +146,15 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         backgroundColor: "#071014ed",
         padding: { x: 9, y: 7 },
       }).setOrigin(0, 1).setDepth(31).setAlpha(0);
+      this.portfolioPanel = this.add.text(this.scale.width - 14, this.scale.height - 96, "", {
+        color: "#c8d7db",
+        fontFamily: "Arial, Helvetica, sans-serif",
+        fontSize: "10px",
+        lineSpacing: 2,
+        align: "right",
+        backgroundColor: "#071014ed",
+        padding: { x: 8, y: 6 },
+      }).setOrigin(1, 1).setDepth(31).setAlpha(0);
       this.touchInteract = this.add.text(this.scale.width - 70, this.scale.height - 42, "INTERACT", {
         color: "#65e6b4",
         fontFamily: "Arial, Helvetica, sans-serif",
@@ -157,9 +172,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.input.keyboard?.on("keydown-R", () => this.resetRun());
 
       this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
-        if (pointer.x >= this.scale.width - 132 && pointer.y >= this.scale.height - 78) {
-          this.interact();
-        }
+        if (pointer.x >= this.scale.width - 132 && pointer.y >= this.scale.height - 78) this.interact();
       });
 
       this.scale.on("resize", this.handleResize, this);
@@ -192,7 +205,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.statusElapsed += delta;
       if (this.statusElapsed >= 700 && this.state.mode === "playing") {
         this.statusElapsed = 0;
-        bridge.setStatus(`Semiconductor VC office live · ${Math.ceil(this.state.timeLeft)}s · ${this.state.investments} investments · ${semiVcMoic(this.state).toFixed(2)}x fund`);
+        bridge.setStatus(`Semiconductor VC · Q${semiVcQuarter(this.state)} · TVPI ${semiVcTvpi(this.state).toFixed(2)}x · DPI ${semiVcDpi(this.state).toFixed(2)}x`);
       }
     }
 
@@ -316,7 +329,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         { label: "PITCH ROOMS", x: 175, y: 118, color: "#69d9ff" },
         { label: "DILIGENCE", x: semiVcLayout.diligence.x, y: semiVcLayout.diligence.y - 66, color: "#65e6b4" },
         { label: "INVESTMENT COMMITTEE", x: 760, y: 185, color: "#ffd166" },
-        { label: "PORTFOLIO", x: 935, y: 470, color: "#b794f6" },
+        { label: "PORTFOLIO / RESERVES", x: 915, y: 470, color: "#b794f6" },
+        { label: "LIQUIDITY / EXITS", x: semiVcLayout.exit.x, y: semiVcLayout.exit.y - 75, color: "#68e0b0" },
         { label: "RECRUITING", x: semiVcLayout.hire.x, y: semiVcLayout.hire.y - 62, color: "#a7b6bd" },
         { label: "NEWS WALL", x: semiVcLayout.news.x, y: semiVcLayout.news.y - 48, color: "#ff7185" },
       ];
@@ -343,9 +357,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
       for (const rect of semiVcLayout.obstacles) this.drawDesk(rect.x, rect.y, rect.width, rect.height);
 
-      for (let i = 0; i < this.state.staff; i += 1) {
-        this.drawPerson(375 + i * 55, 160, ANALYST, true);
-      }
+      for (let i = 0; i < this.state.staff; i += 1) this.drawPerson(375 + i * 55, 160, ANALYST, true);
       this.drawPerson(690, 145, PARTNER, true);
       this.drawPerson(745, 145, PARTNER, true);
       this.drawPerson(800, 145, PARTNER, true);
@@ -354,6 +366,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.drawZone(semiVcLayout.hire.x, semiVcLayout.hire.y, ANALYST);
       semiVcLayout.icPads.forEach((pad) => this.drawZone(pad.x, pad.y, pad.id === "pass" ? RED : PARTNER, 32));
       semiVcLayout.portfolioPads.forEach((pad) => this.drawZone(pad.x, pad.y, pad.id === "support" ? PORTFOLIO : RED, 32));
+      this.drawZone(semiVcLayout.exit.x, semiVcLayout.exit.y, EXIT, 34);
 
       for (const founder of this.state.incoming) {
         this.drawPerson(founder.x, founder.y, FOUNDER);
@@ -368,9 +381,16 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
       const alertCompany = companyById(this.state.portfolioAlertCompanyId);
       if (alertCompany) {
-        const p = this.project(935, 585);
+        const p = this.project(915, 585);
         const pulse = 1 + Math.sin(this.visualElapsed / 180) * 0.12;
         graphics.lineStyle(3, PORTFOLIO, 0.9).strokeCircle(p.x, p.y, 44 * this.projection().scale * pulse);
+      }
+
+      const exitCandidate = semiVcExitCandidate(this.state);
+      if (exitCandidate && !this.state.portfolioAlertCompanyId) {
+        const p = this.project(semiVcLayout.exit.x, semiVcLayout.exit.y);
+        const pulse = 1 + Math.sin(this.visualElapsed / 210) * 0.13;
+        graphics.lineStyle(3, EXIT, 0.95).strokeCircle(p.x, p.y, 47 * this.projection().scale * pulse);
       }
 
       this.drawPerson(this.state.playerX, this.state.playerY, PLAYER);
@@ -387,20 +407,22 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       }
 
       const nav = semiVcFundNav(this.state);
-      this.hudLeft?.setText(`Fund ${semiVcMoic(this.state).toFixed(2)}x · NAV ${moneyMillions(nav)}\nDry ${moneyMillions(this.state.dryPowder)} · Rep ${Math.round(this.state.reputation)}`);
+      const mobile = this.isMobileView();
+      this.hudLeft?.setText(mobile
+        ? [`Q${semiVcQuarter(this.state)} · TVPI ${semiVcTvpi(this.state).toFixed(2)}x · DPI ${semiVcDpi(this.state).toFixed(2)}x`, `NAV ${moneyMillions(nav)} · Dry ${moneyMillions(this.state.dryPowder)}`, `Rep ${Math.round(this.state.reputation)} · Ops ${moneyMillions(this.state.operatingBudget)}`]
+        : [`Q${semiVcQuarter(this.state)} · TVPI ${semiVcTvpi(this.state).toFixed(2)}x · DPI ${semiVcDpi(this.state).toFixed(2)}x`, `NAV ${moneyMillions(nav)} · Dry ${moneyMillions(this.state.dryPowder)} · Dist ${moneyMillions(this.state.distributions)}`]);
       const minutes = Math.floor(this.state.timeLeft / 60);
       const seconds = Math.ceil(this.state.timeLeft % 60).toString().padStart(2, "0");
-      this.hudRight?.setText(`${minutes}:${seconds}\nStaff ${this.state.staff} · Portfolio ${this.state.holdings.length}`);
-      this.bestLabel?.setText(`Best ${bestScore}`);
+      this.hudRight?.setText([`${minutes}:${seconds} · Staff ${this.state.staff}`, `Portfolio ${this.state.holdings.length} · Exits ${this.state.exits}`, `Reserves ${moneyMillions(this.state.reserveSpent)} · Ops ${moneyMillions(this.state.operatingBudget)}`]).setVisible(!mobile);
+      this.bestLabel?.setText(`Best ${bestScore}`).setVisible(!mobile);
       this.prompt?.setText(`${semiVcPrompt(this.state)}  ·  WASD/ARROWS + E`);
       this.news?.setText(this.state.newsLabel ? `NEWS · ${this.state.newsLabel}` : "");
       this.news?.setAlpha(this.state.newsLabel ? 1 : 0);
+      this.news?.setPosition(this.scale.width / 2, mobile ? 84 : 13);
 
       const active = semiVcActiveCompany(this.state);
       if (active) {
-        const diligence = this.state.activeDealDiligenced
-          ? `\nDILIGENCE: ${active.hiddenInsight}`
-          : "\nDILIGENCE: walk the file to the analyst station.";
+        const diligence = this.state.activeDealDiligenced ? `\nDILIGENCE: ${active.hiddenInsight}` : "\nDILIGENCE: walk the file to the analyst station.";
         const flags = active.redFlag ? `\nRISK: ${active.redFlag}` : active.greenFlag ? `\nSIGNAL: ${active.greenFlag}` : "";
         this.dealPanel?.setText(
           `${active.name} · ${active.round} · raising ${moneyMillions(active.raiseAmount)} at ${moneyMillions(active.preMoney)} pre\n` +
@@ -409,13 +431,34 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         );
         this.dealPanel?.setAlpha(1);
       } else if (alertCompany) {
+        const decision = semiVcPortfolioDecision(this.state);
+        const holding = this.state.holdings.find((item) => item.companyId === alertCompany.id);
         this.dealPanel?.setText(
-          `PORTFOLIO CALL · ${alertCompany.name}\n` +
-          `Needs follow-on support. Walk to PORTFOLIO and choose DECLINE or FOLLOW-ON $250K.`,
+          `PORTFOLIO DECISION · ${alertCompany.name}\n${this.state.portfolioAlertHeadline ?? "Company needs a decision."}\n` +
+          `Ownership ${holding?.ownershipPct.toFixed(1) ?? "—"}% · carrying value ${moneyMillions(holding?.mark ?? 0)}\n` +
+          `${decision?.supportLabel ?? "Support"} or decline and accept the dilution / operating consequence.`,
+        );
+        this.dealPanel?.setAlpha(1);
+      } else if (exitCandidate) {
+        const company = companyById(exitCandidate.companyId);
+        this.dealPanel?.setText(
+          `LIQUIDITY WINDOW · ${company?.name ?? exitCandidate.companyId}\n` +
+          `Carry ${moneyMillions(exitCandidate.mark)} on ${moneyMillions(exitCandidate.invested)} invested · ${(exitCandidate.mark / exitCandidate.invested).toFixed(2)}x\n` +
+          `Walk to LIQUIDITY / EXITS to turn unrealized value into distributions and DPI.`,
         );
         this.dealPanel?.setAlpha(1);
       } else {
         this.dealPanel?.setAlpha(0);
+      }
+
+      if (this.state.holdings.length && !mobile) {
+        const lines = this.state.holdings.slice(0, 5).map((holding) => {
+          const company = companyById(holding.companyId);
+          return `${company?.name ?? holding.companyId} · ${holding.ownershipPct.toFixed(1)}% · ${(holding.mark / holding.invested).toFixed(2)}x`;
+        });
+        this.portfolioPanel?.setText(["PORTFOLIO BOOK", ...lines]).setAlpha(1);
+      } else {
+        this.portfolioPanel?.setAlpha(0);
       }
 
       const buttonX = this.scale.width - 124;
@@ -431,7 +474,13 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       mount.dataset.semiStaff = String(this.state.staff);
       mount.dataset.semiHoldings = String(this.state.holdings.length);
       mount.dataset.semiMode = this.state.mode;
-      mount.dataset.semiMoic = semiVcMoic(this.state).toFixed(3);
+      mount.dataset.semiMoic = semiVcTvpi(this.state).toFixed(3);
+      mount.dataset.semiTvpi = semiVcTvpi(this.state).toFixed(3);
+      mount.dataset.semiDpi = semiVcDpi(this.state).toFixed(3);
+      mount.dataset.semiDistributions = String(Math.round(this.state.distributions));
+      mount.dataset.semiExits = String(this.state.exits);
+      mount.dataset.semiPortfolioKind = this.state.portfolioAlertKind ?? "";
+      mount.dataset.semiQuarter = String(semiVcQuarter(this.state));
     }
 
     private interact() {
@@ -455,30 +504,35 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       } else if (event === "diligence_complete") {
         tone(680, 0.1, 0.04);
         bridge.emit("game_action", { action: "diligence", company: this.state.activeDealId, staff: this.state.staff });
-        bridge.setStatus(`Diligence complete — hidden semiconductor risk/signal added to the deal file`);
+        bridge.setStatus("Diligence complete — hidden semiconductor risk/signal added to the deal file");
       } else if (event === "investment_made") {
         tone(820, 0.12, 0.045);
-        bridge.emit("level_completed", { action: "investment", investments: this.state.investments, dry_powder: this.state.dryPowder, fund_moic: semiVcMoic(this.state) });
+        bridge.emit("level_completed", { action: "investment", investments: this.state.investments, dry_powder: this.state.dryPowder, fund_tvpi: semiVcTvpi(this.state) });
         bridge.setStatus(`Investment approved — portfolio ${this.state.holdings.length} · dry powder ${moneyMillions(this.state.dryPowder)}`);
       } else if (event === "deal_passed") {
         tone(260);
         bridge.emit("game_action", { action: "pass", passes: this.state.passes });
-        bridge.setStatus(`Deal passed — keep moving; new founders continue arriving`);
+        bridge.setStatus("Deal passed — keep moving; new founders continue arriving");
       } else if (event === "staff_hired") {
         tone(610);
         bridge.emit("game_action", { action: "hire_analyst", staff: this.state.staff, operating_budget: this.state.operatingBudget });
-        bridge.setStatus(`Analyst hired — diligence cooldown is now shorter`);
+        bridge.setStatus("Analyst hired — diligence cooldown is now shorter");
       } else if (event === "portfolio_alert") {
         tone(390, 0.11, 0.04);
-        bridge.emit("game_action", { action: "portfolio_call", company: this.state.portfolioAlertCompanyId });
-        bridge.setStatus(`Portfolio company needs a follow-on decision — get to the portfolio room`);
+        bridge.emit("game_action", { action: "portfolio_event", company: this.state.portfolioAlertCompanyId, kind: this.state.portfolioAlertKind });
+        bridge.setStatus(this.state.portfolioAlertHeadline ?? "Portfolio company needs a reserve decision");
       } else if (event === "follow_on") {
         tone(760, 0.1, 0.04);
-        bridge.emit("game_action", { action: "follow_on", dry_powder: this.state.dryPowder });
-        bridge.setStatus(`Follow-on funded — ownership support costs dry powder but helps the portfolio company`);
+        bridge.emit("game_action", { action: "portfolio_support", dry_powder: this.state.dryPowder, operating_budget: this.state.operatingBudget, reserve_spent: this.state.reserveSpent });
+        bridge.setStatus("Portfolio support approved — check ownership, reserves, and carrying value");
       } else if (event === "follow_on_declined") {
         tone(190);
-        bridge.emit("game_action", { action: "decline_follow_on" });
+        bridge.emit("game_action", { action: "decline_portfolio_event" });
+        bridge.setStatus("Portfolio event declined — ownership / mark impact booked");
+      } else if (event === "exit_realized") {
+        tone(960, 0.15, 0.05);
+        bridge.emit("level_completed", { action: "exit_realized", distributions: this.state.distributions, dpi: semiVcDpi(this.state), tvpi: semiVcTvpi(this.state), exits: this.state.exits });
+        bridge.setStatus(`Exit realized — distributions ${moneyMillions(this.state.distributions)} · DPI ${semiVcDpi(this.state).toFixed(2)}x`);
       } else if (event === "news") {
         tone(470, 0.07, 0.025);
         bridge.emit("game_action", { action: "news_event", headline: this.state.newsLabel });
@@ -497,16 +551,19 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const nav = semiVcFundNav(this.state);
       bridge.emit("game_over", {
         score,
-        fund_moic: semiVcMoic(this.state),
+        fund_tvpi: semiVcTvpi(this.state),
+        fund_dpi: semiVcDpi(this.state),
         nav,
+        distributions: this.state.distributions,
         investments: this.state.investments,
+        exits: this.state.exits,
         passes: this.state.passes,
         missed_deals: this.state.missedDeals,
         staff: this.state.staff,
         reputation: this.state.reputation,
         fired,
       });
-      bridge.setStatus(`${fired ? "Partnership lost confidence" : "Fund cycle complete"} — ${semiVcMoic(this.state).toFixed(2)}x · score ${score}`);
+      bridge.setStatus(`${fired ? "Partnership lost confidence" : "Fund cycle complete"} — TVPI ${semiVcTvpi(this.state).toFixed(2)}x · DPI ${semiVcDpi(this.state).toFixed(2)}x · score ${score}`);
 
       this.endTitle?.destroy();
       this.endDetail?.destroy();
@@ -521,7 +578,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.endDetail = this.add.text(
         this.scale.width / 2,
         this.scale.height / 2 + 35,
-        `${semiVcMoic(this.state).toFixed(2)}x fund · NAV ${moneyMillions(nav)} · ${this.state.investments} investments\n` +
+        `TVPI ${semiVcTvpi(this.state).toFixed(2)}x · DPI ${semiVcDpi(this.state).toFixed(2)}x · NAV ${moneyMillions(nav)}\n` +
+        `${this.state.investments} investments · ${this.state.exits} exits · distributions ${moneyMillions(this.state.distributions)}\n` +
         `${this.state.staff} staff · reputation ${Math.round(this.state.reputation)} · score ${score}\nPress R or Restart to run another fund`,
         {
           color: "#b9c9cf",
@@ -546,16 +604,17 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.statusElapsed = 0;
       this.visualElapsed = 0;
       this.draw();
-      bridge.setStatus(`Semiconductor VC office live — move with WASD/arrows, interact with E/Space`);
-      bridge.emit("game_started", { mode: "walkable-vc-office", fund_size: SEMI_VC_FUND_SIZE, session_seconds: SEMI_VC_SESSION_SECONDS });
+      bridge.setStatus("Semiconductor VC · source → diligence → invest → reserve → exit");
+      bridge.emit("game_started", { mode: "walkable-vc-fund", fund_size: SEMI_VC_FUND_SIZE, session_seconds: SEMI_VC_SESSION_SECONDS });
     }
 
     private handleResize() {
       this.hudRight?.setPosition(this.scale.width - 16, 13);
-      this.bestLabel?.setPosition(this.scale.width - 16, 50);
-      this.news?.setPosition(this.scale.width / 2, 13);
+      this.bestLabel?.setPosition(this.scale.width - 16, 55);
+      this.news?.setPosition(this.scale.width / 2, this.isMobileView() ? 84 : 13);
       this.prompt?.setPosition(this.scale.width / 2, this.scale.height - 13);
       this.dealPanel?.setPosition(14, this.scale.height - 14);
+      this.portfolioPanel?.setPosition(this.scale.width - 14, this.scale.height - 96);
       this.touchInteract?.setPosition(this.scale.width - 70, this.scale.height - 42);
       this.endTitle?.setPosition(this.scale.width / 2, this.scale.height / 2 - 30);
       this.endDetail?.setPosition(this.scale.width / 2, this.scale.height / 2 + 35);
@@ -590,15 +649,9 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       muted = nextMuted;
     },
     destroy() {
-      delete mount.dataset.semiX;
-      delete mount.dataset.semiY;
-      delete mount.dataset.semiActive;
-      delete mount.dataset.semiDiligenced;
-      delete mount.dataset.semiInvestments;
-      delete mount.dataset.semiStaff;
-      delete mount.dataset.semiHoldings;
-      delete mount.dataset.semiMode;
-      delete mount.dataset.semiMoic;
+      for (const key of ["semiX", "semiY", "semiActive", "semiDiligenced", "semiInvestments", "semiStaff", "semiHoldings", "semiMode", "semiMoic", "semiTvpi", "semiDpi", "semiDistributions", "semiExits", "semiPortfolioKind", "semiQuarter"]) {
+        delete mount.dataset[key];
+      }
       game.destroy(true);
       void audioContext?.close();
       audioContext = null;
