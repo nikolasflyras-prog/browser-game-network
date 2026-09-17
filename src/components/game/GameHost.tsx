@@ -37,12 +37,15 @@ export function GameHost({ game }: Props) {
           gameSlug: game.slug,
           gameVersion: game.version,
           setStatus,
-          emit: (event, properties) =>
+          emit: (event, properties) => {
+            mountElement.dataset.gameLastEvent = event;
+            mountElement.dataset.gameLastProperties = JSON.stringify(properties ?? {});
             captureGameEvent(event, {
               game_slug: game.slug,
               game_version: game.version,
               ...properties,
-            }),
+            });
+          },
         });
         controller.setMuted?.(mutedRef.current);
         controllerRef.current = controller;
