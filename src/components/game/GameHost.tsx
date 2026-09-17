@@ -15,6 +15,7 @@ import {
   readProgression,
   writeProgression,
 } from "@/lib/progression/playerProgression";
+import styles from "./GameHost.module.css";
 
 type Props = {
   game: GameMetadata;
@@ -158,15 +159,15 @@ export function GameHost({ game }: Props) {
         </div>
       </div>
       <div
-        className="game-progression-strip"
+        className={styles.progressionStrip}
         data-player-level={progressionLevel(progression.xp)}
         data-player-xp={progression.xp}
         data-game-mastery={gameMastery}
       >
-        <span className="progression-primary">Network Lv {progressionLevel(progression.xp)} · {progression.xp} XP</span>
+        <span className={styles.primary}>Network Lv {progressionLevel(progression.xp)} · {progression.xp} XP</span>
         <span>{game.title} mastery Lv {masteryLevel(gameMastery)}</span>
         <span>{progression.playedGames.length} games explored · {progression.achievements.length} badges</span>
-        {unlockNotice ? <strong className="progression-unlock" aria-live="polite">{unlockNotice}</strong> : null}
+        {unlockNotice ? <strong className={styles.unlock} aria-live="polite">{unlockNotice}</strong> : null}
       </div>
       {error ? <div className="game-error">{error}</div> : null}
       <div ref={mountRef} className="game-canvas-mount" />
