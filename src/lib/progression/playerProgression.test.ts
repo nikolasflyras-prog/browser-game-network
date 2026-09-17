@@ -35,6 +35,20 @@ describe("player progression", () => {
     expect(completed.unlocked).toContain(ACHIEVEMENTS.finisher.id);
   });
 
+  it("counts Daily starts as sessions while the generic completion closes the run", () => {
+    const started = applyProgressionEvent(emptyProgression("2026-09-17"), { gameSlug: "linebreak-daily", event: "daily_started", dateKey: "2026-09-17" });
+    expect(started.xpAward).toBe(5);
+    expect(started.state.sessions).toBe(1);
+    expect(started.state.daily.uniqueGames).toEqual(["linebreak-daily"]);
+
+    const dailyMarker = applyProgressionEvent(started.state, { gameSlug: "linebreak-daily", event: "daily_completed", dateKey: "2026-09-17" });
+    expect(dailyMarker.xpAward).toBe(0);
+    expect(dailyMarker.state.completions).toBe(0);
+
+    const finished = applyProgressionEvent(dailyMarker.state, { gameSlug: "linebreak-daily", event: "game_completed", dateKey: "2026-09-17" });
+    expect(finished.state.completions).toBe(1);
+  });
+
   it("normalizes Hedge Fund HQ custom lifecycle without rewarding research-start spam as sessions", () => {
     const started = applyProgressionEvent(emptyProgression("2026-09-17"), { gameSlug: "hedge-fund-floor", event: "hedge_fund_started", dateKey: "2026-09-17" });
     expect(started.xpAward).toBe(5);
@@ -49,6 +63,15 @@ describe("player progression", () => {
     expect(completed.xpAward).toBe(25);
     expect(completed.state.completions).toBe(1);
     expect(completed.state.mastery["hedge-fund-floor"]?.completions).toBe(1);
+  });
+
+  it("awards milestone XP for level completion without pretending the whole run finished", () => {
+    const started = applyProgressionEvent(emptyProgression("2026-09-17"), { gameSlug: "semiconductor-vc", event: "game_started", dateKey: "2026-09-17" });
+    const milestone = applyProgressionEvent(started.state, { gameSlug: "semiconductor-vc", event: "level_completed", properties: { action: "investment" }, dateKey: "2026-09-17" });
+    expect(milestone.xpAward).toBe(20);
+    expect(milestone.state.completions).toBe(0);
+    expect(milestone.state.daily.completions).toBe(0);
+    expect(milestone.state.mastery["semiconductor-vc"]?.xp).toBe(25);
   });
 
   it("unlocks Explorer after five distinct games", () => {
