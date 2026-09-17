@@ -7,7 +7,12 @@ const browser = await openSpatialBrowser({ url: `${baseUrl}/games/fab-floor`, po
 const { waitForExpression, moveTo, pressE, clickButton, navigate, captureScreenshot, setMobile, clearMobile, runtimeErrors, close, sleep } = browser;
 
 async function installRack(stagingY, rackId, slotX, slotY, expectedSlots) {
-  await moveTo("dc", 110, stagingY, { order: "yx", tolerance: 17, maxPasses: 6, fast: true });
+  // Every trip to staging goes through the central service aisle. Several staging rows sit
+  // behind the left-side equipment blocks, so a direct horizontal move can correctly collide.
+  // The smoke should prove real navigation rather than asking the movement harness to phase
+  // through furniture.
+  await moveTo("dc", 230, 350, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
+  await moveTo("dc", 110, stagingY, { order: "xy", tolerance: 17, maxPasses: 6, fast: true });
   await pressE();
   await waitForExpression(`document.querySelector('[data-dc-carried]')?.dataset.dcCarried === ${JSON.stringify(rackId)}`, 7000, `pick up ${rackId}`);
   await moveTo("dc", 230, 350, { order: "yx", tolerance: 18, maxPasses: 5, fast: true });
