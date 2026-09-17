@@ -105,11 +105,11 @@ export async function openSpatialBrowser({ url, port, profilePrefix = "spatial-g
     }
   }
 
-  async function keyHold(key, ms = 140) {
+  async function keyHold(key, ms = 140, settleMs = 95) {
     await send("Input.dispatchKeyEvent", { type: "keyDown", code: key, key, windowsVirtualKeyCode: virtualKeys[key] });
     await sleep(ms);
     await send("Input.dispatchKeyEvent", { type: "keyUp", code: key, key, windowsVirtualKeyCode: virtualKeys[key] });
-    await sleep(95);
+    await sleep(settleMs);
   }
 
   async function pressE() {
@@ -122,7 +122,7 @@ export async function openSpatialBrowser({ url, port, profilePrefix = "spatial-g
     return evaluate(`(() => { const n=document.querySelector('[data-${prefix}-x]'); return { x:Number(n?.getAttribute('data-${prefix}-x') ?? '0'), y:Number(n?.getAttribute('data-${prefix}-y') ?? '0') }; })()`);
   }
 
-  async function moveAxis(prefix, axis, target, { tolerance = 16, maxSteps = 70 } = {}) {
+  async function moveAxis(prefix, axis, target, { tolerance = 16, maxSteps = 70, fast = false } = {}) {
     let stagnant = 0;
     for (let step = 0; step < maxSteps; step += 1) {
       let current = await position(prefix);
@@ -130,7 +130,7 @@ export async function openSpatialBrowser({ url, port, profilePrefix = "spatial-g
       let diff = target - value;
       if (Math.abs(diff) <= tolerance) {
         await releaseMovementKeys();
-        await sleep(170);
+        await sleep(fast ? 75 : 170);
         current = await position(prefix);
         value = axis === "x" ? current.x : current.y;
         diff = target - value;
@@ -140,8 +140,10 @@ export async function openSpatialBrowser({ url, port, profilePrefix = "spatial-g
       const positive = diff > 0;
       const key = axis === "x" ? (positive ? "ArrowRight" : "ArrowLeft") : (positive ? "ArrowDown" : "ArrowUp");
       const magnitude = Math.abs(diff);
-      const holdMs = magnitude > 170 ? 180 : magnitude > 85 ? 125 : 70;
-      await keyHold(key, holdMs);
+      const holdMs = fast
+        ? (magnitude > 220 ? 520 : magnitude > 115 ? 300 : magnitude > 55 ? 120 : 55)
+        : (magnitude > 170 ? 180 : magnitude > 85 ? 125 : 70);
+      await keyHold(key, holdMs, fast ? 28 : 95);
       const next = await position(prefix);
       const nextValue = axis === "x" ? next.x : next.y;
       stagnant = Math.abs(nextValue - value) < 1.2 ? stagnant + 1 : 0;
@@ -150,18 +152,18 @@ export async function openSpatialBrowser({ url, port, profilePrefix = "spatial-g
     throw new Error(`${prefix} failed to reach ${axis}=${target}: ${JSON.stringify(await position(prefix))}`);
   }
 
-  async function moveTo(prefix, x, y, { order = "xy", tolerance = 16, maxPasses = 5 } = {}) {
+  async function moveTo(prefix, x, y, { order = "xy", tolerance = 16, maxPasses = 5, fast = false } = {}) {
     let nextOrder = order;
     for (let pass = 0; pass < maxPasses; pass += 1) {
       if (nextOrder === "xy") {
-        await moveAxis(prefix, "x", x, { tolerance });
-        await moveAxis(prefix, "y", y, { tolerance });
+        await moveAxis(prefix, "x", x, { tolerance, fast });
+        await moveAxis(prefix, "y", y, { tolerance, fast });
       } else {
-        await moveAxis(prefix, "y", y, { tolerance });
-        await moveAxis(prefix, "x", x, { tolerance });
+        await moveAxis(prefix, "y", y, { tolerance, fast });
+        await moveAxis(prefix, "x", x, { tolerance, fast });
       }
       await releaseMovementKeys();
-      await sleep(170);
+      await sleep(fast ? 75 : 170);
       const current = await position(prefix);
       if (Math.hypot(current.x - x, current.y - y) <= tolerance * 1.45) return current;
       nextOrder = nextOrder === "xy" ? "yx" : "xy";
