@@ -19,7 +19,8 @@ curl -fsS "$BASE_URL/games/data-center-architect" >"$ARTIFACT_DIR/data-center-ar
 curl -fsS "$BASE_URL/semiconductors" >"$ARTIFACT_DIR/semiconductor-campus-batch-3.html"
 
 grep -q "Fab Floor" "$ARTIFACT_DIR/fab-floor.initial.html"
-grep -q "Work in process" "$ARTIFACT_DIR/fab-floor.initial.html"
+grep -q "customer contracts" "$ARTIFACT_DIR/fab-floor.initial.html"
+grep -q "CapEx" "$ARTIFACT_DIR/fab-floor.initial.html"
 grep -q "Data Center Architect" "$ARTIFACT_DIR/data-center-architect.initial.html"
 grep -q "800G fabrics" "$ARTIFACT_DIR/data-center-architect.initial.html"
 grep -q "Fab Floor" "$ARTIFACT_DIR/semiconductor-campus-batch-3.html"
@@ -27,4 +28,4 @@ grep -q "Data Center Architect" "$ARTIFACT_DIR/semiconductor-campus-batch-3.html
 
 SEMI_BATCH3_BASE_URL="$BASE_URL" SEMI_BATCH3_ARTIFACT_DIR="$ARTIFACT_DIR" node scripts/semiconductor-campus-batch-3-stable.mjs | tee "$ARTIFACT_DIR/semiconductor-campus-batch-3-smoke.json"
 
-echo "Semiconductor campus batch 3 smoke passed: Fab Floor and Data Center Architect render desktop/mobile, accept real movement, complete physical workflow gates, and use bounded mobile cameras."
+echo "Semiconductor campus batch 3 smoke passed: Fab Floor business operations and Data Center Architect render desktop/mobile, accept real movement, complete physical workflow gates, and use bounded mobile cameras."
