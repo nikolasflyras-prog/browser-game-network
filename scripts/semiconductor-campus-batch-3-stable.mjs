@@ -22,6 +22,70 @@ async function installRack(stagingY, rackId, slotX, slotY, expectedSlots) {
   await waitForExpression(`document.querySelector('[data-dc-carried]')?.dataset.dcCarried === ''`, 7000, `release ${rackId}`);
 }
 
+async function fabAlarmCount() {
+  return Number(await browser.evaluate(`Number(document.querySelector('[data-fab-alarms]')?.dataset.fabAlarms ?? '0')`));
+}
+
+async function fabCompletedLots() {
+  return Number(await browser.evaluate(`Number(document.querySelector('[data-fab-completed]')?.dataset.fabCompleted ?? '0')`));
+}
+
+async function fabHasKit() {
+  return Boolean(await browser.evaluate(`document.querySelector('[data-fab-kit]')?.dataset.fabKit === 'true'`));
+}
+
+async function ensureFabMaintenanceKit() {
+  if (await fabHasKit()) return;
+  // Tool interaction points are approached from y≈425. From there, moving to the maintenance
+  // bay through x≈1080 stays beneath the process-tool collision boxes.
+  await moveTo("fab", 1080, 425, { order: "xy", tolerance: 18, maxPasses: 7, fast: true });
+  await moveTo("fab", 1080, 620, { order: "yx", tolerance: 18, maxPasses: 6, fast: true });
+  await pressE();
+  await waitForExpression(`document.querySelector('[data-fab-kit]')?.dataset.fabKit === 'true'`, 7000, "pick replacement maintenance kit");
+}
+
+async function serviceFabAlarmIfNeeded() {
+  let alarms = await fabAlarmCount();
+  if (alarms <= 0) return false;
+
+  await ensureFabMaintenanceKit();
+  const toolApproaches = [
+    { id: "lithography", x: 485 },
+    { id: "etch", x: 745 },
+    { id: "metrology", x: 1005 },
+  ];
+
+  // The public runtime exposes total active alarms, so the playtest checks each physical tool
+  // exactly as a player would. Pressing E on a healthy tool can move engineering focus but does
+  // not bypass any production rule; the alarmed tool consumes the carried kit and clears alarm state.
+  for (const tool of toolApproaches) {
+    await moveTo("fab", tool.x, 425, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
+    const before = await fabAlarmCount();
+    await pressE();
+    await sleep(300);
+    const after = await fabAlarmCount();
+    if (after < before) {
+      await waitForExpression(`Number(document.querySelector('[data-fab-alarms]')?.dataset.fabAlarms ?? '0') < ${before}`, 5000, `service ${tool.id} alarm`);
+      return true;
+    }
+    alarms = after;
+    if (alarms <= 0) return true;
+  }
+
+  throw new Error(`Fab alarm remained active after checking all three tools: ${alarms}`);
+}
+
+async function waitForCustomerLots() {
+  // A normal run can generate a tool alarm while the customer lots are in flight. Do not freeze
+  // the simulation and simply wait: detect the downtime, physically service it, and let WIP resume.
+  for (let attempt = 0; attempt < 18; attempt += 1) {
+    if (await fabCompletedLots() >= 2) return;
+    if (await fabAlarmCount() > 0) await serviceFabAlarmIfNeeded();
+    await sleep(1800);
+  }
+  await waitForExpression(`Number(document.querySelector('[data-fab-completed]')?.dataset.fabCompleted ?? '0') >= 2`, 3000, "two wafer lots clear fab line after maintenance response");
+}
+
 try {
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Fab Floor game"] canvas'))`, 16000, "Fab Floor canvas");
   await waitForExpression(`Boolean(document.querySelector('[data-fab-x]'))`, 16000, "Fab Floor player state");
@@ -75,7 +139,7 @@ try {
   await pressE();
   await waitForExpression(`document.querySelector('[data-fab-kit]')?.dataset.fabKit === 'true'`, 7000, "pick maintenance kit");
 
-  await waitForExpression(`Number(document.querySelector('[data-fab-completed]')?.dataset.fabCompleted ?? '0') >= 2`, 26000, "two wafer lots clear fab line");
+  await waitForCustomerLots();
   await waitForExpression(`Number(document.querySelector('[data-fab-contracts-won]')?.dataset.fabContractsWon ?? '0') >= 1`, 10000, "win first customer contract");
   await waitForExpression(`document.querySelector('[data-fab-contract]')?.dataset.fabContract !== ${JSON.stringify(initialContract)}`, 7000, "advance to next customer contract");
 
@@ -148,6 +212,7 @@ try {
       engineeringFocus: true,
       capexUpgrade: true,
       equipmentTechnician: true,
+      liveAlarmMaintenance: true,
       customerContractWon: true,
       maintenanceKit: true,
       completedLots: true,
