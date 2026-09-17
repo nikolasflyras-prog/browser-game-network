@@ -53,7 +53,7 @@ export function advanceFabFloor(state: FabFloorState, input: { x: number; y: num
   const dt = clamp(dtRaw, 0, 0.05); const mag = Math.hypot(input.x, input.y); const nx = mag > 1 ? input.x / mag : input.x; const ny = mag > 1 ? input.y / mag : input.y; const speed = 255; const blend = Math.min(1, dt * 10);
   let vx = state.vx + (nx * speed - state.vx) * blend; let vy = state.vy + (ny * speed - state.vy) * blend; let playerX = clamp(state.playerX + vx * dt, 24, FAB_FLOOR_WORLD.width - 24); let playerY = clamp(state.playerY + vy * dt, 24, FAB_FLOOR_WORLD.height - 24); let event: FabFloorEvent = "none";
   const blockers = [...Object.values(fabFloorLayout.tools), ...fabFloorLayout.corridors]; if (blockers.some((rect) => circleRect(playerX, playerY, FAB_PLAYER_RADIUS, rect))) { playerX = state.playerX; playerY = state.playerY; vx *= -0.08; vy *= -0.08; event = "collision"; }
-  let tools: FabFloorState["tools"] = { lithography: { ...state.tools.lithography }, etch: { ...state.tools.etch }, metrology: { ...state.tools.metrology } };
+  const tools: FabFloorState["tools"] = { lithography: { ...state.tools.lithography }, etch: { ...state.tools.etch }, metrology: { ...state.tools.metrology } };
   for (const id of toolOrder) { const tool = tools[id]; if (tool.maintenance > 0) { const maintenance = Math.max(0, tool.maintenance - dt); tools[id] = maintenance <= 0 ? { ...tool, maintenance: 0, health: 99, alarm: false } : { ...tool, maintenance }; } }
   let lots = state.lots.map((lot) => ({ ...lot, age: lot.age + dt })); let completedLots = state.completedLots; let goodDie = state.goodDie; let scrap = state.scrap; let cash = state.cash; let reputation = state.reputation;
   for (const id of toolOrder) {
