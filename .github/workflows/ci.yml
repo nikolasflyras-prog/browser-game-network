@@ -42,6 +42,8 @@ jobs:
         run: bash scripts/semiconductor-vc-smoke.sh
       - name: Semiconductor campus batch 2 smoke test
         run: bash scripts/semiconductor-campus-batch-2-smoke.sh
+      - name: Semiconductor campus batch 3 smoke test
+        run: bash scripts/semiconductor-campus-batch-3-smoke.sh
       - name: Market Maker smoke test
         run: bash scripts/market-maker-smoke.sh
       - name: Supply Chain Shock smoke test

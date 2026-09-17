@@ -31,7 +31,7 @@ export default async function GamePage({ params }: PageProps) {
   if (!game) notFound();
   const seo = getAnyGameSeoContent(game.slug);
   const isPublic = game.status !== "diagnostic";
-  const immersive = ["semiconductor-vc", "chip-architect", "packaging-lab"].includes(game.slug);
+  const immersive = ["semiconductor-vc", "chip-architect", "packaging-lab", "fab-floor", "data-center-architect"].includes(game.slug);
   const structuredData = isPublic ? { "@context": "https://schema.org", "@type": "SoftwareApplication", name: game.title, description: game.description, url: absoluteUrl(`/games/${game.slug}`), applicationCategory: game.lane === "Learn" ? "EducationalApplication" : "GameApplication", operatingSystem: "Any modern web browser", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } } : null;
 
   return (

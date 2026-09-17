@@ -16,6 +16,8 @@ const runtimeLoaders: Record<string, () => Promise<GameRuntimeModule>> = {
   "semiconductor-vc": () => import("@/games/semiconductor-vc/runtime"),
   "chip-architect": () => import("@/games/chip-architect/runtime"),
   "packaging-lab": () => import("@/games/packaging-lab/runtime"),
+  "fab-floor": () => import("@/games/fab-floor/runtime"),
+  "data-center-architect": () => import("@/games/data-center-architect/runtime"),
   "system-check": () => import("@/games/system-check/runtime"),
 };
 
