@@ -62,7 +62,7 @@ try {
   await clickButton("Pause");
   await waitForExpression(`document.querySelector('section[aria-label="Market Maker game"] .game-status')?.textContent === 'Paused'`, 6000, "Market Maker pause");
   await clickButton("Resume");
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker game"] .game-status')?.textContent?.includes('resumed')`, 6000, "Market Maker resume");
+  await waitForExpression(`Array.from(document.querySelectorAll('section[aria-label="Market Maker game"] button')).some((button) => button.textContent?.trim() === 'Pause')`, 6000, "Market Maker resume");
 
   await captureScreenshot(path.join(artifactDir, "market-maker-arcade-desktop.png"));
   await setMobile();
