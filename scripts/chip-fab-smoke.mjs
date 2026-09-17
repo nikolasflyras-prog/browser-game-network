@@ -85,6 +85,22 @@ try {
     })()`), 10000, `Chip Fab button ${label}`);
     await sleep(120);
   }
+  async function clickButtonUntil(label, expression, timeout = 10000, stateLabel = label) {
+    await waitForValue(async () => {
+      if (await evaluate(expression)) return true;
+      const clicked = await evaluate(`(() => {
+        const section = document.querySelector('section[aria-label="Chip Fab simulation"]');
+        const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.trim() === ${JSON.stringify(label)});
+        if (!button || button.disabled) return false;
+        button.scrollIntoView({ block: 'center', inline: 'center' });
+        button.click();
+        return true;
+      })()`);
+      if (!clicked) return false;
+      await sleep(140);
+      return evaluate(expression);
+    }, timeout, stateLabel);
+  }
   async function capture(name) {
     await evaluate(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.scrollIntoView({ block: 'start' }); true`);
     await sleep(100);
@@ -99,12 +115,9 @@ try {
   await waitForExpression(`Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.trim() === 'Start fab')`, 10000, "Start fab control");
   await evaluate(`localStorage.removeItem('bgn:chip-fab:best-score'); true`);
 
-  await clickButton("Push");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabStartMode === 'push'`, 10000, "Push wafer-start mode");
-  await clickButton("Focus Lithography");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabFocus === 'lithography'`, 10000, "Lithography focus");
-  await clickButton("Start fab");
-  await waitForExpression(`document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabRunning === 'true'`, 10000, "fab running");
+  await clickButtonUntil("Push", `document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabStartMode === 'push'`, 10000, "Push wafer-start mode");
+  await clickButtonUntil("Focus Lithography", `document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabFocus === 'lithography'`, 10000, "Lithography focus");
+  await clickButtonUntil("Start fab", `document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabRunning === 'true'`, 10000, "fab running");
   await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabTick ?? '0') >= 3`, 6000, "fab tick 3");
   await waitForExpression(`Number(document.querySelector('section[aria-label="Chip Fab simulation"]')?.dataset.fabWip ?? '0') > 0`, 10000, "positive WIP");
 
