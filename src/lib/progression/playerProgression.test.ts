@@ -35,6 +35,22 @@ describe("player progression", () => {
     expect(completed.unlocked).toContain(ACHIEVEMENTS.finisher.id);
   });
 
+  it("normalizes Hedge Fund HQ custom lifecycle without rewarding research-start spam as sessions", () => {
+    const started = applyProgressionEvent(emptyProgression("2026-09-17"), { gameSlug: "hedge-fund-floor", event: "hedge_fund_started", dateKey: "2026-09-17" });
+    expect(started.xpAward).toBe(5);
+    expect(started.state.sessions).toBe(1);
+    expect(started.state.mastery["hedge-fund-floor"]?.sessions).toBe(1);
+
+    const research = applyProgressionEvent(started.state, { gameSlug: "hedge-fund-floor", event: "hedge_fund_research_started", dateKey: "2026-09-17" });
+    expect(research.xpAward).toBe(0);
+    expect(research.state.sessions).toBe(1);
+
+    const completed = applyProgressionEvent(research.state, { gameSlug: "hedge-fund-floor", event: "hedge_fund_complete", dateKey: "2026-09-17" });
+    expect(completed.xpAward).toBe(25);
+    expect(completed.state.completions).toBe(1);
+    expect(completed.state.mastery["hedge-fund-floor"]?.completions).toBe(1);
+  });
+
   it("unlocks Explorer after five distinct games", () => {
     let state = emptyProgression("2026-09-17");
     for (const slug of ["a", "b", "c", "d", "e"]) {
@@ -101,5 +117,6 @@ describe("player progression", () => {
     expect(progressionAwardKey("level_completed", { action: "exit_realized" })).toBe("level:exit_realized");
     expect(progressionAwardKey("game_completed")).toBe("game_completed");
     expect(progressionAwardKey("game_over")).toBe("game_over");
+    expect(progressionAwardKey("hedge_fund_started")).toBe("hedge_fund_started");
   });
 });
