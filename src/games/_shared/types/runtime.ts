@@ -12,7 +12,8 @@ export type GameEventName =
   | "daily_started"
   | "daily_completed"
   | "share_clicked"
-  | "related_game_clicked";
+  | "related_game_clicked"
+  | `hedge_fund_${string}`;
 
 export type GameEventProperties = Record<string, string | number | boolean | null | undefined>;
 
