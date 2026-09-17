@@ -39,7 +39,15 @@ export type DailyChallenge = {
   completed: boolean;
 };
 
+export type ProgressionUpdateDetail = {
+  state: PlayerProgression;
+  unlocked: string[];
+  gameSlug: string;
+  event: string;
+};
+
 export const PLAYER_PROGRESSION_KEY = "bgn:player-progression:v1";
+export const PLAYER_PROGRESSION_EVENT = "bgn:player-progression-updated";
 
 export const ACHIEVEMENTS = {
   firstRun: { id: "first-run", label: "First Run" },
@@ -153,7 +161,7 @@ function unlockAchievements(state: PlayerProgression) {
 export function progressionXpForEvent(event: string, properties?: Record<string, unknown>) {
   if (event === "game_started") return 5;
   if (event === "level_completed") return 20;
-  if (event === "game_over") return 25;
+  if (event === "game_completed" || event === "game_over") return 25;
   if (event === "game_action" && typeof properties?.action === "string") return 3;
   return 0;
 }
@@ -194,7 +202,7 @@ export function applyProgressionEvent(state: PlayerProgression, input: Progressi
 
   const currentMastery = state.mastery[input.gameSlug] ?? { xp: 0, sessions: 0, completions: 0 };
   const isStarted = input.event === "game_started";
-  const isCompletion = input.event === "game_over" || input.event === "level_completed";
+  const isCompletion = input.event === "game_completed" || input.event === "game_over" || input.event === "level_completed";
   const dailyUpdate = updateDaily(state, input, isStarted, isCompletion);
   const next: PlayerProgression = {
     ...state,
