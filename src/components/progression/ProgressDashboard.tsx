@@ -28,7 +28,8 @@ export function ProgressDashboard() {
   const [progression, setProgression] = useState(emptyProgression);
 
   useEffect(() => {
-    setProgression(readProgression(window.localStorage));
+    const frame = window.requestAnimationFrame(() => setProgression(readProgression(window.localStorage)));
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   const challenges = dailyChallenges(progression);
