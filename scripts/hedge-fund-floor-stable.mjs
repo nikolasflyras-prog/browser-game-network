@@ -10,7 +10,7 @@ const browser = await openSpatialBrowser({
 });
 const {
   waitForExpression,
-  moveTo,
+  keyHold,
   pressE,
   clickButton,
   captureScreenshot,
@@ -20,34 +20,40 @@ const {
   close,
 } = browser;
 
+const lastEventIs = (event) =>
+  `document.querySelector('.game-canvas-mount')?.dataset.gameLastEvent === ${JSON.stringify(event)}`;
+
 try {
   await waitForExpression(`Boolean(document.querySelector('[aria-label="Hedge Fund Floor game"] canvas'))`, 16000, "Hedge Fund Floor canvas");
-  await waitForExpression(`Boolean(document.querySelector('[data-fund-x]'))`, 12000, "fund player state");
-  await waitForExpression(`document.querySelector('[data-fund-mode]')?.dataset.fundMode === 'playing'`, 12000, "fund playing state");
+  await waitForExpression(lastEventIs("hedge_fund_started"), 12000, "fund runtime started");
 
-  const start = await browser.position("fund");
-
-  // Research a company by physically walking to the research pod.
-  await moveTo("fund", 170, 315, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
+  // The player starts at 110,710. Route around the lower-left desk instead of walking through it,
+  // then physically enter the research interaction radius.
+  await keyHold("ArrowRight", 600, 80);
+  await keyHold("ArrowUp", 1600, 80);
+  await keyHold("ArrowLeft", 350, 120);
   await pressE();
-  await waitForExpression(`document.querySelector('[data-fund-idea]')?.dataset.fundIdea !== ''`, 7000, "research dossier opened");
-  await waitForExpression(`Number(document.querySelector('[data-fund-research]')?.dataset.fundResearch ?? '99') <= 0`, 12000, "research dossier completes");
+  await waitForExpression(lastEventIs("hedge_fund_research_started"), 5000, "research starts after physical arrival");
+  await waitForExpression(lastEventIs("hedge_fund_research_complete"), 12000, "research dossier completes");
 
-  // Carry the researched idea to the long pad and put real capital to work.
-  await moveTo("fund", 610, 255, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
+  // Carry the active idea across the floor and put $5M of real simulated NAV to work.
+  await keyHold("ArrowUp", 220, 70);
+  await keyHold("ArrowRight", 1750, 120);
   await pressE();
-  await waitForExpression(`Number(document.querySelector('[data-fund-trades]')?.dataset.fundTrades ?? '0') >= 1`, 7000, "long position executed");
-  await waitForExpression(`Number(document.querySelector('[data-fund-gross]')?.dataset.fundGross ?? '0') > 0`, 7000, "gross exposure rises");
+  await waitForExpression(lastEventIs("hedge_fund_trade_long"), 5000, "long trade executes from trading pad");
+  await waitForExpression(`(() => { const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties; if(!raw) return false; const p=JSON.parse(raw); return Number(p.trades) >= 1 && Number(p.gross_exposure) > 0; })()`, 5000, "trade changes gross exposure");
 
-  // Walk to risk and neutralize the stock book's broad market beta.
-  await moveTo("fund", 885, 260, { order: "yx", tolerance: 18, maxPasses: 7, fast: true });
+  // Move to risk and neutralize broad market beta without closing the stock-specific idea.
+  await keyHold("ArrowRight", 1000, 120);
   await pressE();
-  await waitForExpression(`document.querySelector('[data-fund-hedge]')?.dataset.fundHedge === 'true'`, 7000, "beta hedge set");
+  await waitForExpression(lastEventIs("hedge_fund_hedge_set"), 5000, "beta hedge set from risk desk");
+  await waitForExpression(`(() => { const raw=document.querySelector('.game-canvas-mount')?.dataset.gameLastProperties; if(!raw) return false; const p=JSON.parse(raw); return Math.abs(Number(p.beta_exposure)) < 0.02; })()`, 5000, "beta exposure reduced by hedge");
 
-  // Spend operating budget on an analyst and prove staffing is a physical decision.
-  await moveTo("fund", 280, 650, { order: "xy", tolerance: 18, maxPasses: 8, fast: true });
+  // Hiring is also spatial: cross to the lower analyst station and spend operating budget.
+  await keyHold("ArrowDown", 1550, 80);
+  await keyHold("ArrowLeft", 2300, 120);
   await pressE();
-  await waitForExpression(`Number(document.querySelector('[data-fund-analysts]')?.dataset.fundAnalysts ?? '0') >= 1`, 7000, "analyst hired");
+  await waitForExpression(lastEventIs("hedge_fund_staff_hired"), 5000, "analyst hired after physical route");
 
   await captureScreenshot(path.join(artifactDir, "hedge-fund-floor-desktop.png"));
   await setMobile();
@@ -60,26 +66,23 @@ try {
   await waitForExpression(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent?.trim() === 'Pause')`, 6000, "fund resume");
 
   await clickButton("Restart");
-  await waitForExpression(`Number(document.querySelector('[data-fund-trades]')?.dataset.fundTrades ?? '-1') === 0`, 7000, "fund restart");
-  await waitForExpression(`document.querySelector('[data-fund-hedge]')?.dataset.fundHedge === 'false'`, 7000, "hedge cleared on restart");
+  await waitForExpression(lastEventIs("hedge_fund_started"), 7000, "fund restart");
 
   const finalState = await browser.evaluate(`(() => ({
     canvas: Boolean(document.querySelector('[aria-label="Hedge Fund Floor game"] canvas')),
-    mode: document.querySelector('[data-fund-mode]')?.dataset.fundMode ?? null,
-    x: Number(document.querySelector('[data-fund-x]')?.dataset.fundX ?? 'NaN'),
-    y: Number(document.querySelector('[data-fund-y]')?.dataset.fundY ?? 'NaN'),
+    status: document.querySelector('.game-status')?.textContent ?? '',
+    lastEvent: document.querySelector('.game-canvas-mount')?.dataset.gameLastEvent ?? null,
     frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error')
   }))()`);
 
-  if (!finalState.canvas || finalState.frameworkError || !Number.isFinite(finalState.x) || !Number.isFinite(finalState.y)) {
+  if (!finalState.canvas || finalState.frameworkError || finalState.lastEvent !== "hedge_fund_started") {
     throw new Error(`Final Hedge Fund Floor runtime invalid: ${JSON.stringify(finalState)}`);
   }
   if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
 
   console.log(JSON.stringify({
     targetUrl: `${baseUrl}/games/hedge-fund-floor`,
-    start,
-    realMovement: true,
+    realKeyboardMovement: true,
     researchRoute: true,
     liveTrade: true,
     betaHedge: true,
