@@ -28,6 +28,10 @@ jobs:
         run: npm run build
       - name: Browser smoke test
         run: bash scripts/browser-smoke.sh
+      - name: Market Maker smoke test
+        run: bash scripts/market-maker-smoke.sh
+      - name: Hedge Fund HQ smoke test
+        run: bash scripts/hedge-fund-floor-smoke.sh
       - name: Play batch smoke test
         run: bash scripts/play-batch-smoke.sh
       - name: Play batch 4 smoke test
@@ -44,8 +48,6 @@ jobs:
         run: bash scripts/semiconductor-campus-batch-2-smoke.sh
       - name: Semiconductor campus batch 3 smoke test
         run: bash scripts/semiconductor-campus-batch-3-smoke.sh
-      - name: Market Maker smoke test
-        run: bash scripts/market-maker-smoke.sh
       - name: Supply Chain Shock smoke test
         run: bash scripts/supply-chain-shock-smoke.sh
       - name: Chip Fab smoke test

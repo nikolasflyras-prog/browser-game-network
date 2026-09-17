@@ -1,216 +1,98 @@
-import { spawn, spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
+import { openSpatialBrowser } from "./spatial-cdp.mjs";
 
 const targetUrl = process.env.MARKET_MAKER_URL ?? "http://127.0.0.1:3000/games/market-maker";
 const artifactDir = process.env.MARKET_MAKER_ARTIFACT_DIR ?? "artifacts/browser";
-const debugBase = "http://127.0.0.1:9228";
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const browser = await openSpatialBrowser({
+  url: targetUrl,
+  port: 9228,
+  profilePrefix: "market-maker-arcade",
+});
 
-await mkdir(artifactDir, { recursive: true });
+const {
+  evaluate,
+  waitForExpression,
+  moveTo,
+  pressE,
+  clickButton,
+  captureScreenshot,
+  setMobile,
+  clearMobile,
+  runtimeErrors,
+  close,
+} = browser;
 
-const response = await fetch(targetUrl);
-if (!response.ok) throw new Error(`Market Maker route returned ${response.status}`);
-const html = await response.text();
-if (!html.includes("Market Maker")) throw new Error("Market Maker title missing");
-if (!html.includes("Bid-ask spread")) throw new Error("Market Maker learning content missing");
+const mount = `document.querySelector('section[aria-label="Market Maker game"] .game-canvas-mount')`;
 
-async function waitForValue(fn, timeout = 15000) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    const value = await fn().catch(() => null);
-    if (value) return value;
-    await sleep(80);
-  }
-  throw new Error("Timed out waiting for Market Maker browser state");
-}
-
-let chromePath = null;
-for (const candidate of ["google-chrome", "google-chrome-stable", "chromium", "chromium-browser"]) {
-  const found = spawnSync("which", [candidate], { encoding: "utf8" });
-  if (found.status === 0 && found.stdout.trim()) {
-    chromePath = found.stdout.trim();
-    break;
-  }
-}
-if (!chromePath) throw new Error("No Chrome/Chromium binary found on runner");
-
-const profileDir = await mkdtemp(path.join(os.tmpdir(), "market-maker-smoke-"));
-const chrome = spawn(chromePath, [
-  "--headless",
-  "--no-sandbox",
-  "--disable-gpu",
-  "--disable-dev-shm-usage",
-  "--hide-scrollbars",
-  "--window-size=1280,960",
-  "--remote-debugging-port=9228",
-  `--user-data-dir=${profileDir}`,
-  targetUrl,
-], { stdio: "ignore" });
-
-let socket;
 try {
-  await waitForValue(async () => (await fetch(`${debugBase}/json/version`)).ok);
-  const page = await waitForValue(async () => {
-    const result = await fetch(`${debugBase}/json/list`);
-    if (!result.ok) return null;
-    return (await result.json()).find((entry) => entry.type === "page" && entry.url.includes("/games/market-maker"));
-  });
+  await waitForExpression(`Boolean(document.querySelector('section[aria-label="Market Maker game"] .game-canvas-mount canvas'))`, 16000, "Market Maker canvas");
+  await waitForExpression(`${mount}?.dataset.marketArcade === 'true'`, 12000, "Market Maker spatial runtime");
 
-  socket = new WebSocket(page.webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Timed out opening Market Maker CDP websocket")), 5000);
-    socket.addEventListener("open", () => { clearTimeout(timer); resolve(); }, { once: true });
-    socket.addEventListener("error", () => { clearTimeout(timer); reject(new Error("Failed to open Market Maker CDP websocket")); }, { once: true });
-  });
-
-  let sequence = 0;
-  const pending = new Map();
-  const runtimeErrors = [];
-  socket.addEventListener("message", (event) => {
-    const message = JSON.parse(event.data);
-    if (message.id && pending.has(message.id)) {
-      const { resolve, reject } = pending.get(message.id);
-      pending.delete(message.id);
-      if (message.error) reject(new Error(message.error.message));
-      else resolve(message.result ?? {});
-      return;
-    }
-    if (message.method === "Runtime.exceptionThrown") {
-      runtimeErrors.push(message.params?.exceptionDetails?.text ?? "Runtime exception");
-    }
-  });
-
-  function send(method, params = {}) {
-    const id = ++sequence;
-    return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      socket.send(JSON.stringify({ id, method, params }));
-    });
+  const initial = await evaluate(`(() => ({
+    x: Number(${mount}?.dataset.marketPlayerX ?? '0'),
+    y: Number(${mount}?.dataset.marketPlayerY ?? '0'),
+    completed: Number(${mount}?.dataset.marketCompleted ?? '-1')
+  }))()`);
+  if (initial.x < 450 || initial.x > 550 || initial.completed !== 0) {
+    throw new Error(`Unexpected Market Maker initial state: ${JSON.stringify(initial)}`);
   }
 
-  async function evaluate(expression) {
-    const result = await send("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true, userGesture: true });
-    if (result.exceptionDetails) throw new Error(result.exceptionDetails.text ?? "Runtime.evaluate failed");
-    return result.result?.value;
+  // Pick up the seeded client ticket at the middle client desk. This uses real arrow-key movement.
+  await moveTo("market-player", 185, 320, { tolerance: 25, maxPasses: 4, fast: true });
+  await pressE();
+  await waitForExpression(`Boolean(${mount}?.dataset.marketCarried)`, 6000, "client ticket pickup");
+
+  // Route around the central desk islands to ALPHA rather than trying to cut through furniture.
+  await moveTo("market-player", 185, 70, { tolerance: 24, maxPasses: 4, fast: true });
+  await moveTo("market-player", 805, 70, { tolerance: 24, maxPasses: 4, fast: true });
+  await moveTo("market-player", 805, 145, { tolerance: 24, maxPasses: 4, fast: true });
+  await pressE();
+  await waitForExpression(`!${mount}?.dataset.marketCarried && Number(${mount}?.dataset.marketCompleted ?? '0') >= 1`, 7000, "venue execution");
+
+  const afterFill = await evaluate(`(() => ({
+    completed: Number(${mount}?.dataset.marketCompleted ?? '0'),
+    inventory: Number(${mount}?.dataset.marketInventory ?? '0'),
+    x: Number(${mount}?.dataset.marketPlayerX ?? '0'),
+    y: Number(${mount}?.dataset.marketPlayerY ?? '0')
+  }))()`);
+  if (afterFill.completed < 1 || Math.abs(afterFill.inventory) < 1) {
+    throw new Error(`Market Maker fill did not change dealer state: ${JSON.stringify(afterFill)}`);
   }
 
-  async function waitForExpression(expression, timeout = 10000) {
-    return waitForValue(() => evaluate(expression), timeout);
+  await clickButton("Pause");
+  await waitForExpression(`document.querySelector('section[aria-label="Market Maker game"] .game-status')?.textContent === 'Paused'`, 6000, "Market Maker pause");
+  await clickButton("Resume");
+  await waitForExpression(`Array.from(document.querySelectorAll('section[aria-label="Market Maker game"] button')).some((button) => button.textContent?.trim() === 'Pause')`, 6000, "Market Maker resume");
+
+  await captureScreenshot(path.join(artifactDir, "market-maker-arcade-desktop.png"));
+  await setMobile();
+  await captureScreenshot(path.join(artifactDir, "market-maker-arcade-mobile.png"));
+  await clearMobile();
+
+  await clickButton("Restart");
+  await waitForExpression(`Number(${mount}?.dataset.marketCompleted ?? '-1') === 0 && Number(${mount}?.dataset.marketPlayerX ?? '0') > 450`, 7000, "Market Maker restart");
+
+  const finalState = await evaluate(`(() => ({
+    arcade: ${mount}?.dataset.marketArcade,
+    completed: ${mount}?.dataset.marketCompleted,
+    frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error')
+  }))()`);
+  if (finalState.arcade !== "true" || finalState.completed !== "0" || finalState.frameworkError) {
+    throw new Error(`Market Maker final state invalid: ${JSON.stringify(finalState)}`);
   }
-
-  async function clickButtonUntil(text, untilExpression, timeout = 10000) {
-    const deadline = Date.now() + timeout;
-    while (Date.now() < deadline) {
-      const clicked = await evaluate(`(() => {
-        const section = document.querySelector('section[aria-label="Market Maker simulation"]');
-        const button = Array.from(section?.querySelectorAll('button') ?? []).find((node) => node.textContent?.includes(${JSON.stringify(text)}));
-        if (!button) return false;
-        button.scrollIntoView({ block: 'center', inline: 'center' });
-        button.click();
-        return true;
-      })()`);
-      if (clicked) {
-        await sleep(250);
-        if (await evaluate(untilExpression).catch(() => false)) return;
-      }
-      await sleep(250);
-    }
-    throw new Error(`Timed out activating Market Maker control: ${text}`);
-  }
-
-  await send("Runtime.enable");
-  await send("Page.enable");
-  await waitForExpression(`Boolean(document.querySelector('section[aria-label="Market Maker simulation"]'))`);
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0'`);
-  await waitForExpression(`Array.from(document.querySelectorAll('button')).some((node) => node.textContent?.includes('Open live market'))`);
-  await sleep(350);
-
-  await evaluate(`localStorage.removeItem('bgn:market-maker:best-score'); true`);
-
-  await clickButtonUntil("Open live market", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'true'`);
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '0') >= 2`, 10000);
-
-  await clickButtonUntil("Lean short", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketPosture === 'lean-short'`);
-
-  await waitForExpression(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '0') >= 4`, 10000);
-  await clickButtonUntil("Pause flow", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'false'`);
-
-  const pausedRound = await evaluate(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '-1')`);
-  await sleep(1800);
-  const stillPausedRound = await evaluate(`Number(document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound ?? '-1')`);
-  if (stillPausedRound !== pausedRound) {
-    throw new Error(`Market Maker advanced while paused: ${pausedRound} -> ${stillPausedRound}`);
-  }
-
-  await clickButtonUntil("Resume live market", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRunning === 'true'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'true'`, 35000);
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '16'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketLastRound === '16'`);
-  await waitForExpression(`document.querySelector('[aria-label="Market Maker result"]')?.textContent?.includes('Final score')`);
-  await waitForExpression(`Boolean(localStorage.getItem('bgn:market-maker:best-score'))`);
-
-  const finalState = await evaluate(`(() => {
-    const section = document.querySelector('section[aria-label="Market Maker simulation"]');
-    const result = document.querySelector('[aria-label="Market Maker result"]');
-    return {
-      text: result?.textContent ?? '',
-      round: section?.dataset.marketRound ?? null,
-      lastRound: section?.dataset.marketLastRound ?? null,
-      complete: section?.dataset.marketComplete ?? null,
-      running: section?.dataset.marketRunning ?? null,
-      posture: section?.dataset.marketPosture ?? null,
-      bestStorage: localStorage.getItem('bgn:market-maker:best-score'),
-      liveControlVisible: Array.from(section?.querySelectorAll('button') ?? []).some((node) =>
-        node.textContent?.includes('Open live market') ||
-        node.textContent?.includes('Resume live market') ||
-        node.textContent?.includes('Pause flow')
-      ),
-      frameworkError: Boolean(document.querySelector('[data-nextjs-dialog], .nextjs-toast-errors-parent')) || document.body.innerText.includes('Application error'),
-    };
-  })()`);
-
-  for (const label of ["customer fills", "peak inventory", "risk penalty"]) {
-    if (!finalState.text.toLowerCase().includes(label)) throw new Error(`Market Maker result missing ${label}`);
-  }
-  if (finalState.round !== "16" || finalState.lastRound !== "16" || finalState.complete !== "true" || finalState.running !== "false") {
-    throw new Error(`Market Maker completion state invalid: ${JSON.stringify(finalState)}`);
-  }
-  if (finalState.posture !== "lean-short") throw new Error(`Market Maker posture change did not persist: ${finalState.posture}`);
-  if (!finalState.bestStorage) throw new Error("Market Maker best score was not persisted");
-  if (finalState.liveControlVisible) throw new Error("Market Maker still showed live controls after completion");
-  if (finalState.frameworkError) throw new Error("Framework error UI detected on Market Maker");
   if (runtimeErrors.length) throw new Error(`Runtime errors detected: ${runtimeErrors.join(" | ")}`);
-
-  const desktopShot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
-  await writeFile(path.join(artifactDir, "market-maker-result-desktop.png"), Buffer.from(desktopShot.data, "base64"));
-
-  await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-  await evaluate(`document.querySelector('[aria-label="Market Maker result"]')?.scrollIntoView({ block: 'start' }); true`);
-  await sleep(100);
-  const mobileShot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
-  await writeFile(path.join(artifactDir, "market-maker-result-mobile.png"), Buffer.from(mobileShot.data, "base64"));
-
-  await clickButtonUntil("Deal another market", `document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketRound === '0' && document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketComplete === 'false'`);
-  await waitForExpression(`document.querySelector('section[aria-label="Market Maker simulation"]')?.dataset.marketPosture === 'balanced'`);
-  await waitForExpression(`!document.querySelector('[aria-label="Market Maker result"]')`);
 
   console.log(JSON.stringify({
     targetUrl,
-    roundsCompleted: 16,
-    continuousFlowVerified: true,
-    pauseVerified: true,
-    postureSwitchVerified: true,
-    bestPersisted: true,
-    resultCaptures: 2,
-    restartVerified: true,
+    realKeyboardMovement: true,
+    clientPickup: true,
+    obstacleSafeVenueRoute: true,
+    venueExecution: true,
+    inventoryChanged: true,
+    desktopMobile: true,
+    pauseResume: true,
+    restart: true,
   }));
 } finally {
-  socket?.close();
-  if (chrome.exitCode === null) {
-    chrome.kill("SIGTERM");
-    await Promise.race([new Promise((resolve) => chrome.once("exit", resolve)), sleep(1500)]);
-  }
-  await rm(profileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  await close();
 }

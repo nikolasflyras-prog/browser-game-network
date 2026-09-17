@@ -6,6 +6,7 @@ describe("game registry", () => {
   it("resolves registered games", () => {
     expect(getGameMetadata("system-check")?.status).toBe("diagnostic");
     expect(getGameMetadata("market-maker")?.lane).toBe("Learn");
+    expect(getGameMetadata("hedge-fund-floor")?.category).toBe("Portfolio Management");
     expect(getGameMetadata("semiconductor-vc")?.collection).toBe("Semiconductors");
     expect(getGameMetadata("chip-architect")?.category).toBe("Chip Design Lab");
     expect(getGameMetadata("packaging-lab")?.category).toBe("Advanced Packaging Lab");
@@ -20,9 +21,10 @@ describe("game registry", () => {
     expect(getGameMetadata("skybound")?.category).toBe("Vertical Platformer");
     expect(getGameMetadata("circuit-coil")?.category).toBe("Growing Trail");
   });
-  it("marks the twenty-two public games live", () => {
-    expect(publicGameRegistry).toHaveLength(22);
+  it("marks the twenty-three public games live", () => {
+    expect(publicGameRegistry).toHaveLength(23);
     expect(publicGameRegistry.every((game) => game.status === "live")).toBe(true);
+    expect(publicGameRegistry.map((game) => game.slug)).toContain("hedge-fund-floor");
     expect(publicGameRegistry.map((game) => game.slug)).toContain("semiconductor-vc");
     expect(publicGameRegistry.map((game) => game.slug)).toContain("chip-architect");
     expect(publicGameRegistry.map((game) => game.slug)).toContain("packaging-lab");

@@ -34,4 +34,4 @@ MARKET_MAKER_URL="$BASE_URL/games/market-maker" \
 MARKET_MAKER_ARTIFACT_DIR="$ARTIFACT_DIR" \
   node scripts/market-maker-smoke.mjs | tee "$ARTIFACT_DIR/market-maker-smoke.json"
 
-echo "Market Maker smoke test passed: public discovery, 16-round completion, result explanation, local best-score persistence, responsive result capture, and restart are verified."
+echo "Market Maker smoke test passed: spatial movement, client pickup, venue execution, shared controls, responsive rendering, and restart are verified."
