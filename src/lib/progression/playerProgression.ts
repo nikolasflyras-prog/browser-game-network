@@ -158,10 +158,18 @@ function unlockAchievements(state: PlayerProgression) {
   return [...unlocked];
 }
 
+function isSessionStart(event: string) {
+  return event === "game_started" || event === "hedge_fund_started";
+}
+
+function isRunCompletion(event: string) {
+  return event === "game_completed" || event === "game_over" || event === "level_completed" || event === "hedge_fund_complete" || event === "hedge_fund_game_over";
+}
+
 export function progressionXpForEvent(event: string, properties?: Record<string, unknown>) {
-  if (event === "game_started") return 5;
+  if (isSessionStart(event)) return 5;
   if (event === "level_completed") return 20;
-  if (event === "game_completed" || event === "game_over") return 25;
+  if (event === "game_completed" || event === "game_over" || event === "hedge_fund_complete" || event === "hedge_fund_game_over") return 25;
   if (event === "game_action" && typeof properties?.action === "string") return 3;
   return 0;
 }
@@ -201,8 +209,8 @@ export function applyProgressionEvent(state: PlayerProgression, input: Progressi
   if (xpAward <= 0) return { state, xpAward: 0, unlocked: [] as string[] };
 
   const currentMastery = state.mastery[input.gameSlug] ?? { xp: 0, sessions: 0, completions: 0 };
-  const isStarted = input.event === "game_started";
-  const isCompletion = input.event === "game_completed" || input.event === "game_over" || input.event === "level_completed";
+  const isStarted = isSessionStart(input.event);
+  const isCompletion = isRunCompletion(input.event);
   const dailyUpdate = updateDaily(state, input, isStarted, isCompletion);
   const next: PlayerProgression = {
     ...state,
