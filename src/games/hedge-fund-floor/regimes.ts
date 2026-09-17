@@ -121,7 +121,17 @@ export function applyRegimeFrame(state: HedgeFundState, regime: FundRegime, dt: 
   }
 
   const indexPrice = Math.max(10, state.indexPrice * (1 + wave.indexDrift * clampedDt));
-  return { ...state, prices, indexPrice };
+
+  // advanceFund still contains the original one-size-fits-all live-risk penalty. Regime play replaces
+  // that penalty with mandate-specific limits, so reverse only the generic frame penalty here. The
+  // active mandate is evaluated immediately afterward by applyMandatePressure.
+  const baseStats = fundStats(state);
+  const baseRiskHot = baseStats.grossExposure > 1.5 || Math.abs(baseStats.betaExposure) > 0.65 || baseStats.drawdown > 0.06;
+  const baseRiskPenalty = Math.max(0.18, 0.72 - state.staff.risk * 0.18);
+  const reputation = baseRiskHot ? Math.min(100, state.reputation + baseRiskPenalty * clampedDt) : state.reputation;
+  const riskBreaches = baseRiskHot ? Math.max(0, state.riskBreaches - clampedDt) : state.riskBreaches;
+
+  return { ...state, prices, indexPrice, reputation, riskBreaches };
 }
 
 export type MandateCheck = {
@@ -154,23 +164,6 @@ export function evaluateMandate(state: HedgeFundState, regime: FundRegime): Mand
     drawdownBreach,
     pressure,
     summary: breaches.length ? `Mandate breach: ${breaches.join(" / ")}` : "Mandate compliant",
-  };
-}
-
-export function normalizeBaseRiskForMandate(previous: HedgeFundState, advanced: HedgeFundState, regime: FundRegime): HedgeFundState {
-  if (previous.mode !== "playing" || advanced.mode === "complete") return advanced;
-  const stats = fundStats(advanced);
-  const baseRiskHot = stats.grossExposure > 1.5 || Math.abs(stats.betaExposure) > 0.65 || stats.drawdown > 0.06;
-  if (!baseRiskHot) return advanced;
-
-  // advanceFund contains the original single-mandate risk policy. Regime runs replace that policy with
-  // their own mandate thresholds, so strip only the generic reputation/breach penalty and let the
-  // regime-specific pressure function below re-apply the correct consequences.
-  return {
-    ...advanced,
-    reputation: previous.reputation,
-    riskBreaches: previous.riskBreaches,
-    mode: advanced.mode === "gameover" ? "playing" : advanced.mode,
   };
 }
 
