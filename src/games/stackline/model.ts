@@ -56,3 +56,9 @@ export function stackSpawnX(direction: 1 | -1, blockWidth: number, playfieldWidt
   const inset = blockWidth / 2 + 12;
   return direction === 1 ? inset : Math.max(inset, playfieldWidth - inset);
 }
+
+export function stackRecoveryWidth(currentWidth: number, maxWidth: number, perfectStreak: number) {
+  if (perfectStreak < 3) return Math.min(maxWidth, currentWidth);
+  const recovery = Math.min(22, 4 + (perfectStreak - 3) * 2.5);
+  return Math.min(maxWidth, currentWidth + recovery);
+}
