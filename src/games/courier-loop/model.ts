@@ -1,6 +1,7 @@
 export type CourierVec = { x: number; y: number };
 export type CourierRect = { x: number; y: number; width: number; height: number };
 export type CourierPhase = "delivery" | "pickup" | "gameover";
+export type CourierCargo = "standard" | "express" | "fragile";
 export type CourierEvent = "none" | "collision" | "delivered" | "picked_up" | "game_over";
 
 export type CourierState = {
@@ -14,6 +15,7 @@ export type CourierState = {
   score: number;
   timeLeft: number;
   collisionCooldown: number;
+  cargoType: CourierCargo;
 };
 
 export type CourierInput = { x: number; y: number };
@@ -60,11 +62,22 @@ export function courierMap(width: number, height: number): CourierMap {
   };
 }
 
-export function courierDifficulty(deliveries: number) {
+export function cargoForDelivery(deliveriesCompleted: number): CourierCargo {
+  const packageNumber = Math.max(1, deliveriesCompleted + 1);
+  if (packageNumber % 4 === 0) return "fragile";
+  if (packageNumber % 3 === 0) return "express";
+  return "standard";
+}
+
+export function courierDifficulty(deliveries: number, cargoType: CourierCargo = "standard") {
   const safe = Math.max(0, deliveries);
+  const speedFactor = cargoType === "fragile" ? 0.9 : cargoType === "express" ? 1.08 : 1;
+  const bonusFactor = cargoType === "express" ? 0.72 : cargoType === "fragile" ? 1.08 : 1;
   return {
-    speed: 220 + Math.min(130, safe * 9),
-    deliveryBonusSeconds: Math.max(4.5, 8 - safe * 0.28),
+    speed: (220 + Math.min(130, safe * 9)) * speedFactor,
+    deliveryBonusSeconds: Math.max(4, (8 - safe * 0.28) * bonusFactor),
+    collisionPenaltySeconds: cargoType === "fragile" ? 2.4 : cargoType === "express" ? 1.6 : 1.25,
+    scoreMultiplier: cargoType === "fragile" ? 1.35 : cargoType === "express" ? 1.55 : 1,
   };
 }
 
@@ -87,6 +100,7 @@ export function createCourierState(width: number, height: number): CourierState 
     score: 0,
     timeLeft: 45,
     collisionCooldown: 0,
+    cargoType: "standard",
   };
 }
 
@@ -99,7 +113,7 @@ export function advanceCourier(
 ): { state: CourierState; event: CourierEvent } {
   if (state.phase === "gameover") return { state, event: "none" };
   const dt = clamp(deltaSeconds, 0, 0.05);
-  const difficulty = courierDifficulty(state.deliveries);
+  const difficulty = courierDifficulty(state.deliveries, state.cargoType);
   const magnitude = Math.hypot(input.x, input.y);
   const nx = magnitude > 1 ? input.x / magnitude : input.x;
   const ny = magnitude > 1 ? input.y / magnitude : input.y;
@@ -123,7 +137,7 @@ export function advanceCourier(
     vx *= -0.2;
     vy *= -0.2;
     if (collisionCooldown <= 0) {
-      timeLeft = Math.max(0, timeLeft - 1.25);
+      timeLeft = Math.max(0, timeLeft - difficulty.collisionPenaltySeconds);
       collisionCooldown = 0.6;
       event = "collision";
     }
@@ -148,12 +162,14 @@ export function advanceCourier(
   if (distance({ x: next.x, y: next.y }, target) <= 30) {
     if (next.phase === "delivery") {
       const deliveries = next.deliveries + 1;
-      const bonus = courierDifficulty(deliveries).deliveryBonusSeconds;
+      const deliveredCargo = courierDifficulty(deliveries, next.cargoType);
+      const bonus = deliveredCargo.deliveryBonusSeconds;
+      const baseScore = 250 + deliveries * 30 + Math.floor(next.timeLeft * 3);
       next = {
         ...next,
         phase: "pickup",
         deliveries,
-        score: next.score + 250 + deliveries * 30 + Math.floor(next.timeLeft * 3),
+        score: next.score + Math.round(baseScore * deliveredCargo.scoreMultiplier),
         timeLeft: Math.min(60, next.timeLeft + bonus),
         vx: 0,
         vy: 0,
@@ -164,6 +180,7 @@ export function advanceCourier(
         ...next,
         phase: "delivery",
         destinationIndex: (next.destinationIndex + 1) % map.destinations.length,
+        cargoType: cargoForDelivery(next.deliveries),
         score: next.score + 40,
         vx: 0,
         vy: 0,
