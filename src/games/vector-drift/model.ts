@@ -1,7 +1,10 @@
+export type DriftGateKind = "standard" | "weave" | "precision";
+
 export type DriftDifficulty = {
   gateSpeed: number;
   spawnMs: number;
   gapWidth: number;
+  kind: DriftGateKind;
 };
 
 export type DriftGateSpec = {
@@ -27,15 +30,26 @@ export function difficultyForScore(gatesCleared: number): DriftDifficulty {
   };
 }
 
+export function driftGateProfile(kind: DriftGateKind) {
+  if (kind === "weave") return { widthFactor: 0.94, scoreBonus: 6, moveAmplitude: 46 };
+  if (kind === "precision") return { widthFactor: 0.76, scoreBonus: 12, moveAmplitude: 0 };
+  return { widthFactor: 1, scoreBonus: 0, moveAmplitude: 0 };
+}
+
 export function nextGate(seed: number, playfieldWidth: number, gatesCleared: number): DriftGateSpec {
   const difficulty = difficultyForScore(gatesCleared);
-  const random = nextRandom(seed);
-  const margin = difficulty.gapWidth / 2 + 34;
+  const centerRoll = nextRandom(seed);
+  const kindRoll = nextRandom(centerRoll.seed);
+  const kind: DriftGateKind = gatesCleared >= 4 && kindRoll.value < 0.24 ? "weave" : gatesCleared >= 6 && kindRoll.value > 0.8 ? "precision" : "standard";
+  const profile = driftGateProfile(kind);
+  const gapWidth = Math.max(68, difficulty.gapWidth * profile.widthFactor);
+  const margin = gapWidth / 2 + 34 + (kind === "weave" ? profile.moveAmplitude : 0);
   const usable = Math.max(1, playfieldWidth - margin * 2);
   return {
-    seed: random.seed,
-    gapCenter: margin + random.value * usable,
-    gapWidth: difficulty.gapWidth,
+    seed: kindRoll.seed,
+    gapCenter: margin + centerRoll.value * usable,
+    gapWidth,
+    kind,
   };
 }
 
@@ -55,10 +69,10 @@ export function circleHitsGate(
   return playerX - playerRadius < gapLeft || playerX + playerRadius > gapRight;
 }
 
-export function gateClearScore(currentScore: number, playerX: number, gapCenter: number, gapWidth: number) {
+export function gateClearScore(currentScore: number, playerX: number, gapCenter: number, gapWidth: number, kind: DriftGateKind = "standard") {
   const edgeDistance = gapWidth / 2 - Math.abs(playerX - gapCenter);
   const nearMissBonus = edgeDistance >= 0 && edgeDistance < 18 ? 5 : 0;
-  return currentScore + 10 + nearMissBonus;
+  return currentScore + 10 + nearMissBonus + driftGateProfile(kind).scoreBonus;
 }
 
 export function clampPlayerX(x: number, playfieldWidth: number, radius = 12) {
