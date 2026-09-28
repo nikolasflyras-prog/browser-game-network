@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { readLocalGameValue, writeLocalGameValue } from "@/games/_shared/storage/localGameStorage";
+import { listLocalGameValues, readLocalGameValue, writeLocalGameValue } from "@/games/_shared/storage/localGameStorage";
 import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/runtime";
 import {
   cellKey,
@@ -12,6 +12,7 @@ import {
   type Cell,
   type RouteState,
 } from "./model";
+import { activeDailyStreak, dailyMastery } from "./progress";
 
 const SAVE_VERSION = 1;
 const BACKGROUND = 0x101114;
@@ -21,6 +22,8 @@ const MUTED = 0xaaa69c;
 const ACCENT = 0xd93a2f;
 const PATH = 0xf1c75b;
 const KEY = 0xf1c75b;
+const STREAK_TIERS = ["DAILY START", "ROUTE STREAK", "INK RUNNER", "LINE MASTER"] as const;
+function streakTier(streak: number) { return streak >= 14 ? 3 : streak >= 7 ? 2 : streak >= 3 ? 1 : 0; }
 
 type DailyResult = {
   puzzleId: string;
@@ -41,6 +44,12 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
   let savedResult = readLocalGameValue<DailyResult>(bridge.gameSlug, storageName, SAVE_VERSION);
   let muted = false;
   let audioContext: AudioContext | null = null;
+
+  const currentStreak = () => {
+    const records = listLocalGameValues<DailyResult>(bridge.gameSlug, "daily-", SAVE_VERSION);
+    const dates = records.map((record) => record.name.slice("daily-".length)).filter((key) => /^\d{4}-\d{2}-\d{2}$/.test(key));
+    return activeDailyStreak(dates, dateKey);
+  };
 
   const tone = (frequency: number, duration = 0.06, volume = 0.035) => {
     if (muted || typeof window === "undefined") return;
@@ -82,7 +91,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.cameras.main.setBackgroundColor(BACKGROUND);
       this.board = this.add.graphics();
       this.routeGraphics = this.add.graphics();
-      this.dateLabel = this.add.text(22, 18, `DAILY · ${dateKey}`, {
+      this.dateLabel = this.add.text(22, 18, "", {
         color: "#aaa69c",
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "13px",
@@ -127,8 +136,14 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.completionTitle = undefined;
       this.completionDetail = undefined;
       this.computeLayout();
+      this.refreshProgressLabel();
       this.renderBoard();
       this.updateStatus();
+    }
+
+    private refreshProgressLabel() {
+      const streak = currentStreak();
+      this.dateLabel?.setText(`DAILY · ${dateKey} · ${STREAK_TIERS[streakTier(streak)]}${streak ? ` · ${streak}D` : ""}`);
     }
 
     private computeLayout() {
@@ -214,7 +229,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     }
 
     private completePuzzle() {
-      const segments = routeSegments(this.route);
+      const segments = routeSegments(this.route); const mastery = dailyMastery(segments, puzzle.inkLimit);
       const shouldWrite = !savedResult || segments < savedResult.segments;
       if (shouldWrite) {
         savedResult = {
@@ -225,13 +240,17 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         writeLocalGameValue(bridge.gameSlug, storageName, SAVE_VERSION, savedResult);
       }
 
-      bridge.setStatus(`Daily complete — ${segments} ink · ${puzzle.inkLimit - segments} spare`);
+      this.refreshProgressLabel(); const streak = currentStreak();
+      bridge.setStatus(`${mastery.rank.toUpperCase()} route — ${segments} ink · ${mastery.spare} spare · ${streak}-day streak`);
       bridge.emit("daily_completed", {
         date_key: dateKey,
         puzzle_id: puzzle.id,
         segments,
         ink_limit: puzzle.inkLimit,
         personal_best: savedResult?.segments ?? segments,
+        mastery_rank: mastery.rank,
+        mastery_stars: mastery.stars,
+        streak,
       });
       bridge.emit("game_completed", {
         mode: "daily",
@@ -242,13 +261,13 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
       this.completionTitle?.destroy();
       this.completionDetail?.destroy();
-      this.completionTitle = this.add.text(0, 0, "LINE COMPLETE", {
+      this.completionTitle = this.add.text(0, 0, `${mastery.rank.toUpperCase()} ROUTE`, {
         color: "#fffdf8",
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "28px",
         fontStyle: "bold",
       }).setOrigin(0.5);
-      this.completionDetail = this.add.text(0, 0, `${segments} ink used · ${puzzle.inkLimit - segments} spare\nRestart to solve it again`, {
+      this.completionDetail = this.add.text(0, 0, `${"★".repeat(mastery.stars)}${"☆".repeat(3 - mastery.stars)} · ${segments} ink · ${mastery.spare} spare\n${streak}-day streak · Restart to refine`, {
         color: "#aaa69c",
         fontFamily: "Arial, Helvetica, sans-serif",
         fontSize: "14px",
@@ -275,7 +294,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         ? this.route.passedGate ? "Reach the exit" : "Key found — cross the gate"
         : "Find the key, then cross the gate";
       const prior = savedResult ? ` · Best ${savedResult.segments}` : "";
-      bridge.setStatus(`${objective} · Ink ${segments}/${puzzle.inkLimit}${prior}`);
+      const streak = currentStreak(); bridge.setStatus(`${objective} · Ink ${segments}/${puzzle.inkLimit}${prior}${streak ? ` · ${streak}D streak` : ""}`);
     }
 
     private renderBoard() {
@@ -288,7 +307,9 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.labels = [];
 
       const { cellSize, originX, originY } = this.layout;
-      const hazardKeys = new Set(puzzle.hazards.map(cellKey));
+      const hazardKeys = new Set(puzzle.hazards.map(cellKey)); const streak = currentStreak(); const tier = streakTier(streak); const boardWidth = cellSize * puzzle.width; const boardHeight = cellSize * puzzle.height;
+      board.fillStyle(0x16171b, 0.96).fillRoundedRect(originX - 10, originY - 10, boardWidth + 20, boardHeight + 20, 12);
+      board.lineStyle(2, tier >= 2 ? PATH : GRID, 0.28 + tier * 0.08).strokeRoundedRect(originX - 10, originY - 10, boardWidth + 20, boardHeight + 20, 12);
 
       for (let y = 0; y < puzzle.height; y += 1) {
         for (let x = 0; x < puzzle.width; x += 1) {
@@ -305,6 +326,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
           if (hazardKeys.has(key)) {
             board.fillStyle(ACCENT, 0.16);
             board.fillRect(left + 4, top + 4, cellSize - 8, cellSize - 8);
+            board.lineStyle(1, ACCENT, 0.18); for (let h = 8; h < cellSize - 4; h += 12) board.lineBetween(left + 5, top + h, left + h, top + 5);
             this.addCellLabel("×", centerX, centerY, "#d93a2f", Math.max(20, cellSize * 0.34));
           } else if (sameCell(value, puzzle.start)) {
             board.fillStyle(PAPER, 1);
@@ -315,18 +337,21 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
             board.strokeCircle(centerX, centerY, Math.max(14, cellSize * 0.2));
             this.addCellLabel("E", centerX, centerY, "#f5f3ed", Math.max(12, cellSize * 0.16));
           } else if (sameCell(value, puzzle.key)) {
+            board.fillStyle(KEY, 0.16).fillCircle(centerX, centerY, Math.max(18, cellSize * 0.25));
             board.fillStyle(KEY, 1);
             board.fillCircle(centerX, centerY, Math.max(11, cellSize * 0.15));
             this.addCellLabel("K", centerX, centerY, "#171717", Math.max(10, cellSize * 0.14));
           } else if (sameCell(value, puzzle.gate)) {
             board.lineStyle(3, ACCENT, 0.95);
             board.strokeRect(left + 9, top + 9, cellSize - 18, cellSize - 18);
+            for (let gx = left + 17; gx < left + cellSize - 12; gx += 12) board.lineBetween(gx, top + 13, gx, top + cellSize - 13);
             this.addCellLabel("G", centerX, centerY, "#d93a2f", Math.max(12, cellSize * 0.16));
           }
         }
       }
 
       if (this.route.path.length > 1) {
+        routeGraphics.lineStyle(Math.max(9, cellSize * 0.14), PATH, 0.12 + tier * 0.04); routeGraphics.beginPath(); this.route.path.forEach((value, index) => { const x = originX + value.x * cellSize + cellSize / 2; const y = originY + value.y * cellSize + cellSize / 2; if (index === 0) routeGraphics.moveTo(x, y); else routeGraphics.lineTo(x, y); }); routeGraphics.strokePath();
         routeGraphics.lineStyle(Math.max(5, cellSize * 0.09), PATH, 0.95);
         routeGraphics.beginPath();
         this.route.path.forEach((value, index) => {
@@ -346,7 +371,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       });
 
       const used = routeSegments(this.route);
-      this.inkLabel?.setText(`INK ${used}/${puzzle.inkLimit}`);
+      this.inkLabel?.setText(`INK ${used}/${puzzle.inkLimit}${streak ? ` · ${streak}D` : ""}`);
     }
 
     private addCellLabel(text: string, x: number, y: number, color: string, size: number) {
