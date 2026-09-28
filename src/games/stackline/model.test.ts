@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveStackDrop, stackDifficulty, stackSpawnX } from "./model";
+import { resolveStackDrop, stackDifficulty, stackRecoveryWidth, stackSpawnX } from "./model";
 
 describe("Stackline model", () => {
   it("ramps horizontal speed as the tower grows", () => {
@@ -21,6 +21,12 @@ describe("Stackline model", () => {
 
   it("ends the run when there is no overlap", () => {
     expect(resolveStackDrop(400, 120, 540, 120, 8).hit).toBe(false);
+  });
+
+  it("recovers some width after a sustained perfect streak", () => {
+    expect(stackRecoveryWidth(110, 190, 2)).toBe(110);
+    expect(stackRecoveryWidth(110, 190, 3)).toBeGreaterThan(110);
+    expect(stackRecoveryWidth(186, 190, 8)).toBeLessThanOrEqual(190);
   });
 
   it("spawns moving blocks from alternating playfield edges", () => {
