@@ -22,6 +22,17 @@ describe("Rebound Rush model", () => {
     expect(brickPattern(5).length).toBeGreaterThan(brickPattern(1).length);
   });
 
+  it("introduces armored and charge bricks in later waves", () => {
+    const late = brickPattern(8);
+    expect(late.some((brick) => brick.kind === "armored")).toBe(true);
+    expect(late.some((brick) => brick.kind === "charge")).toBe(true);
+    expect(late.find((brick) => brick.kind === "armored")?.strength).toBe(2);
+  });
+
+  it("keeps opening waves mostly straightforward", () => {
+    expect(brickPattern(1).every((brick) => brick.kind === "normal")).toBe(true);
+  });
+
   it("rewards sustained hit combos", () => {
     expect(reboundHitScore(8)).toBeGreaterThan(reboundHitScore(0));
   });
