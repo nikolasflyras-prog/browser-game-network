@@ -8,8 +8,10 @@ import {
   chipArchitectLayout,
   chipArchitectScore,
   chipDesignStats,
+  contractMastery,
   createChipArchitectState,
   designComplete,
+  designReview,
   getArchitectWorkload,
   getModuleVariant,
   interactChipArchitect,
@@ -265,11 +267,12 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const stats = chipDesignStats(this.state);
       const spec = getArchitectWorkload(this.state);
       this.hudLeft?.setText(`P ${stats.performance}/${spec.minPerformance}   W ${stats.power}/${spec.maxPower}\nA ${stats.area}/${spec.maxArea}   T ${stats.timing >= 0 ? "+" : ""}${stats.timing}/${spec.minTiming >= 0 ? "+" : ""}${spec.minTiming}`);
-      this.hudRight?.setText(`${formatClock(this.state.jobTimeLeft)} SPEC · ${formatClock(this.state.timeLeft)} RUN\nTapeouts ${this.state.tapeouts} · Rep ${this.state.reputation} · Best ${bestScore}`);
-      this.specText?.setText(`${spec.customer.toUpperCase()} · ${spec.name.toUpperCase()} · ${this.state.frequency.toUpperCase()}`);
+      this.hudRight?.setText(`${formatClock(this.state.jobTimeLeft)} SPEC · ${formatClock(this.state.timeLeft)} RUN\nContract ${this.state.jobIndex + 1}/4 · Mastery ${this.state.mastery}/12 · Rep ${this.state.reputation}`);
+      this.specText?.setText(`${spec.customer.toUpperCase()} · ${spec.name.toUpperCase()} · ${this.state.frequency.toUpperCase()} · YIELD ${(stats.reliability * 100).toFixed(1)}/${(spec.minReliability * 100).toFixed(0)}%`);
       this.prompt?.setText(`${architectPrompt(this.state)} · WASD/ARROWS + E`);
       const carried = getModuleVariant(this.state.carriedVariantId);
-      this.carriedText?.setText(carried ? `CARRYING ${carried.name}\nP${carried.performance} W${carried.power} A${carried.area} T${carried.timing >= 0 ? "+" : ""}${carried.timing}` : `BUILD 4 BLOCKS → VERIFY → TAPEOUT\n${designComplete(this.state) ? (tapeoutReady(this.state) ? "READY FOR TAPEOUT" : this.state.verified ? "PPA TARGET NOT MET" : "RUN VERIFICATION") : "COLLECT IP FROM THE LIBRARY"}`);
+      this.carriedText?.setText(carried ? `CARRYING ${carried.name}\nP${carried.performance} W${carried.power} A${carried.area} T${carried.timing >= 0 ? "+" : ""}${carried.timing}` : `BUILD → VERIFY → TAPEOUT · ${tapeoutReady(this.state) ? `${contractMastery(this.state)}/3 MASTERY` : designComplete(this.state) ? "RUN DESIGN REVIEW" : "COLLECT IP"}\n${this.state.verified ? this.state.review : designReview(this.state)}`);
+      this.carriedText?.setWordWrapWidth(Math.max(130, Math.min(520, this.scale.width - 155)));
 
       const buttonX = this.scale.width - 119;
       const buttonY = this.scale.height - 61;
@@ -371,14 +374,14 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       } else if (event === "verification_passed") {
         tone(820, 0.11, 0.045);
         bridge.emit("level_completed", { action: "verification_pass", workload: getArchitectWorkload(this.state).id });
-        bridge.setStatus("Verification clean — check customer PPA targets and take the design to tapeout");
+        bridge.setStatus(`Verification clean — ${this.state.review}`);
       } else if (event === "verification_failed") {
         tone(170, 0.14, 0.045);
         bridge.emit("game_action", { action: "verification_fail", timing: chipDesignStats(this.state).timing });
-        bridge.setStatus("Verification failed — timing or implementation risk is too high; change the floorplan or clock mode");
+        bridge.setStatus(`Verification failed — ${this.state.review}`);
       } else if (event === "tapeout_blocked") {
         tone(210);
-        bridge.setStatus("Tapeout blocked — the verified design does not meet all customer PPA targets");
+        bridge.setStatus(`Tapeout blocked — ${designReview(this.state)}`);
       } else if (event === "tapeout") {
         tone(920, 0.14, 0.05);
         bridge.emit("level_completed", { action: "tapeout", tapeouts: this.state.tapeouts, score: chipArchitectScore(this.state) });
@@ -396,13 +399,13 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const score = chipArchitectScore(this.state);
       bestScore = Math.max(bestScore, score);
       writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
-      bridge.emit("game_over", { score, tapeouts: this.state.tapeouts, missed_specs: this.state.missedJobs, reputation: this.state.reputation, failed });
+      bridge.emit("game_over", { score, tapeouts: this.state.tapeouts, mastery: this.state.mastery, missed_specs: this.state.missedJobs, reputation: this.state.reputation, failed });
       bridge.setStatus(`${failed ? "Architecture program cancelled" : "Architecture sprint complete"} — ${this.state.tapeouts} tapeouts · score ${score}`);
       this.endTitle?.destroy(); this.endDetail?.destroy();
       this.endTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 32, failed ? "PROGRAM CANCELLED" : "DESIGN REVIEW", {
         color: "#eaf5f8", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "28px", fontStyle: "bold", backgroundColor: "#061016f2", padding: { x: 18, y: 11 },
       }).setOrigin(0.5).setDepth(40);
-      this.endDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 32, `${this.state.tapeouts} tapeouts · ${this.state.missedJobs} misses · rep ${this.state.reputation}\nScore ${score} · Best ${bestScore}\nPress R or Restart for a new architecture sprint`, {
+      this.endDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 32, `${this.state.tapeouts} tapeouts · ${this.state.mastery}/12 mastery · ${this.state.missedJobs} misses\n${this.state.review}\nScore ${score} · Best ${bestScore}\nPress R or Restart for a new architecture sprint`, {
         color: "#9fb2ba", align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", lineSpacing: 6, backgroundColor: "#061016f2", padding: { x: 18, y: 11 },
       }).setOrigin(0.5).setDepth(40);
     }
