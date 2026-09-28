@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { circleHitsGate, clampPlayerX, difficultyForScore, gateClearScore, nextGate } from "./model";
+import { circleHitsGate, clampPlayerX, difficultyForScore, driftGateProfile, gateClearScore, nextGate } from "./model";
 
 describe("Vector Drift model", () => {
   it("tightens the course as gates are cleared", () => {
@@ -16,6 +16,18 @@ describe("Vector Drift model", () => {
     expect(a).toEqual(b);
     expect(a.gapCenter - a.gapWidth / 2).toBeGreaterThan(20);
     expect(a.gapCenter + a.gapWidth / 2).toBeLessThan(880);
+  });
+
+  it("adds special gate classes after the opening section", () => {
+    const kinds = new Set(Array.from({ length: 40 }, (_, index) => nextGate(42 + index * 913, 900, 12).kind));
+    expect(kinds.has("weave") || kinds.has("precision")).toBe(true);
+    expect(driftGateProfile("weave").moveAmplitude).toBeGreaterThan(0);
+    expect(driftGateProfile("precision").widthFactor).toBeLessThan(1);
+  });
+
+  it("rewards harder special gates", () => {
+    expect(gateClearScore(0, 450, 450, 120, "precision")).toBeGreaterThan(gateClearScore(0, 450, 450, 120, "standard"));
+    expect(gateClearScore(0, 450, 450, 120, "weave")).toBeGreaterThan(gateClearScore(0, 450, 450, 120, "standard"));
   });
 
   it("distinguishes a clean pass from a collision", () => {
