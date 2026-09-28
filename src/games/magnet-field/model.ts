@@ -1,7 +1,7 @@
-export type MagnetParticleKind = "scrap" | "bomb";
+export type MagnetParticleKind = "scrap" | "bomb" | "cell";
 export type MagnetParticle = { id: number; kind: MagnetParticleKind; x: number; y: number; vx: number; vy: number };
 export type MagnetInput = { x: number; y: number; active: boolean };
-export type MagnetEvent = "scrap" | "bomb" | "game_over" | "spawn";
+export type MagnetEvent = "scrap" | "cell" | "bomb" | "game_over" | "spawn";
 
 export type MagnetState = {
   magnetX: number;
@@ -27,7 +27,8 @@ function random(seed: number) { const next = (seed * 1664525 + 1013904223) >>> 0
 function spawnParticle(seed: number, id: number, width: number, height: number, elapsed: number): { seed: number; particle: MagnetParticle } {
   let r = random(seed); const edge = Math.floor(r.value * 4); r = random(r.seed); const position = 0.12 + r.value * 0.76; r = random(r.seed);
   const bombChance = Math.min(0.3, 0.14 + elapsed * 0.0025);
-  const kind: MagnetParticleKind = r.value < bombChance ? "bomb" : "scrap";
+  const cellChance = Math.max(0.05, 0.1 - elapsed * 0.00035);
+  const kind: MagnetParticleKind = r.value < bombChance ? "bomb" : r.value < bombChance + cellChance ? "cell" : "scrap";
   r = random(r.seed); const speed = 34 + r.value * 48 + Math.min(50, elapsed * 0.5);
   let x = width * position; let y = height * position; let vx = 0; let vy = 0;
   if (edge === 0) { x = 10; y = height * position; vx = speed; vy = (r.value - 0.5) * speed * 0.7; }
@@ -64,7 +65,7 @@ export function advanceMagnet(state: MagnetState, input: MagnetInput, deltaSecon
   const magnetX = clamp(state.magnetX + nx * difficulty.moveSpeed * dt, CORE_RADIUS + 8, width - CORE_RADIUS - 8);
   const magnetY = clamp(state.magnetY + ny * difficulty.moveSpeed * dt, CORE_RADIUS + 8, height - CORE_RADIUS - 8);
   const fieldActive = input.active && state.energy > 0.5;
-  const energy = clamp(state.energy + (fieldActive ? -25 : 15) * dt, 0, 100);
+  let energy = clamp(state.energy + (fieldActive ? -25 : 15) * dt, 0, 100);
   const elapsed = state.elapsed + dt;
   const events: MagnetEvent[] = [];
   let score = state.score;
@@ -89,6 +90,7 @@ export function advanceMagnet(state: MagnetState, input: MagnetInput, deltaSecon
     if (y < 8) { y = 8; vy = Math.abs(vy); } else if (y > height - 8) { y = height - 8; vy = -Math.abs(vy); }
     if (Math.hypot(x - magnetX, y - magnetY) <= CORE_RADIUS + 5) {
       if (source.kind === "scrap") { combo += 1; score += 20 + Math.min(80, combo * 4); events.push("scrap"); }
+      else if (source.kind === "cell") { energy = clamp(energy + 34, 0, 100); combo += 1; score += 45 + Math.min(55, combo * 3); events.push("cell"); }
       else { lives = Math.max(0, lives - 1); combo = 0; events.push(lives <= 0 ? "game_over" : "bomb"); }
       continue;
     }
