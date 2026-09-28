@@ -1,4 +1,5 @@
-export type SkyPlatform = { id: number; x: number; y: number; width: number };
+export type SkyPlatformKind = "normal" | "boost" | "fragile";
+export type SkyPlatform = { id: number; x: number; y: number; width: number; kind: SkyPlatformKind };
 export type SkyboundState = {
   playerX: number;
   playerY: number;
@@ -10,6 +11,7 @@ export type SkyboundState = {
   heightClimbed: number;
   score: number;
   landings: number;
+  lastLandingKind: SkyPlatformKind | null;
   mode: "playing" | "gameover";
 };
 export type SkyboundEvent = "none" | "landed" | "game_over";
@@ -26,7 +28,8 @@ function nextPlatform(seed: number, id: number, y: number, width: number, height
   const platformWidth = Math.max(76, 150 - heightClimbed * 0.018);
   const margin = 24;
   const x = margin + r.value * Math.max(1, width - platformWidth - margin * 2);
-  return { seed: r.seed, platform: { id, x, y, width: platformWidth } };
+  const kind: SkyPlatformKind = id > 0 && id % 7 === 0 ? "boost" : id > 0 && id % 5 === 0 ? "fragile" : "normal";
+  return { seed: r.seed, platform: { id, x, y, width: platformWidth, kind } };
 }
 
 export function skyboundDifficulty(heightClimbed: number) {
@@ -39,7 +42,7 @@ export function skyboundDifficulty(heightClimbed: number) {
 
 export function createSkyboundState(width: number, height: number, seed = 71): SkyboundState {
   const baseY = height * 0.82;
-  const platforms: SkyPlatform[] = [{ id: 0, x: width * 0.5 - 95, y: baseY, width: 190 }];
+  const platforms: SkyPlatform[] = [{ id: 0, x: width * 0.5 - 95, y: baseY, width: 190, kind: "normal" }];
   let currentSeed = seed >>> 0;
   let nextId = 1;
   let y = baseY;
@@ -61,6 +64,7 @@ export function createSkyboundState(width: number, height: number, seed = 71): S
     heightClimbed: 0,
     score: 0,
     landings: 0,
+    lastLandingKind: null,
     mode: "playing",
   };
 }
@@ -94,25 +98,28 @@ export function advanceSkybound(state: SkyboundState, horizontalInput: number, d
   let landings = state.landings;
   let score = state.score;
   let event: SkyboundEvent = "none";
+  let platforms = state.platforms;
+  let lastLandingKind: SkyPlatformKind | null = null;
 
   if (vy > 0) {
     const previousBottom = previousY + PLAYER_RADIUS;
     const nextBottom = playerY + PLAYER_RADIUS;
-    const candidates = state.platforms
+    const candidates = platforms
       .filter((platform) => previousBottom <= platform.y + 2 && nextBottom >= platform.y && playerX >= platform.x - PLAYER_RADIUS * 0.55 && playerX <= platform.x + platform.width + PLAYER_RADIUS * 0.55)
       .sort((a, b) => a.y - b.y);
     const platform = candidates[0];
     if (platform) {
       playerY = platform.y - PLAYER_RADIUS;
-      vy = -BOUNCE_SPEED;
+      lastLandingKind = platform.kind;
+      vy = -BOUNCE_SPEED * (platform.kind === "boost" ? 1.24 : 1);
       landings += 1;
-      score += 18 + Math.min(52, landings * 2);
+      score += 18 + Math.min(52, landings * 2) + (platform.kind === "boost" ? 32 : platform.kind === "fragile" ? 14 : 0);
+      if (platform.kind === "fragile") platforms = platforms.filter((candidate) => candidate.id !== platform.id);
       event = "landed";
     }
   }
 
   let heightClimbed = state.heightClimbed;
-  let platforms = state.platforms;
   let seed = state.seed;
   let nextId = state.nextId;
   const ceiling = height * 0.38;
@@ -128,10 +135,10 @@ export function advanceSkybound(state: SkyboundState, horizontalInput: number, d
   platforms = refilled.platforms; seed = refilled.seed; nextId = refilled.nextId;
 
   if (playerY > height + 55) {
-    return { state: { ...state, playerX, playerY, vx: 0, vy: 0, platforms, seed, nextId, heightClimbed, score, landings, mode: "gameover" }, event: "game_over" };
+    return { state: { ...state, playerX, playerY, vx: 0, vy: 0, platforms, seed, nextId, heightClimbed, score, landings, lastLandingKind, mode: "gameover" }, event: "game_over" };
   }
 
-  return { state: { ...state, playerX, playerY, vx, vy, platforms, seed, nextId, heightClimbed, score, landings }, event };
+  return { state: { ...state, playerX, playerY, vx, vy, platforms, seed, nextId, heightClimbed, score, landings, lastLandingKind }, event };
 }
 
 export const skyboundPlayerRadius = PLAYER_RADIUS;
