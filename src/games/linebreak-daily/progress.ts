@@ -34,3 +34,12 @@ export function formatDailyShare(
   lines.push(url);
   return lines.join("\n");
 }
+
+export type DailyMastery = { spare: number; stars: 1 | 2 | 3; rank: "complete" | "clean" | "perfect" };
+
+export function dailyMastery(segments: number, inkLimit: number): DailyMastery {
+  const spare = Math.max(0, inkLimit - segments);
+  if (spare >= 3) return { spare, stars: 3, rank: "perfect" };
+  if (spare >= 1) return { spare, stars: 2, rank: "clean" };
+  return { spare, stars: 1, rank: "complete" };
+}
