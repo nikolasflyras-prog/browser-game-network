@@ -250,6 +250,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         g.lineBetween(left.x, left.y, right.x, right.y);
       }
 
+      this.drawLabDetails();
+
       this.drawBench(350, 105, 190, 92);
       this.drawBench(350, 545, 190, 92);
       this.drawBench(855, 535, 180, 92);
@@ -292,14 +294,52 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
     private drawBench(x: number, y: number, width: number, height: number) {
       const p = this.project(x, y); const q = this.project(x + width, y + height);
+      const s = this.projection().scale;
+      this.graphics?.fillStyle(0x02090d, 0.8).fillRoundedRect(p.x + 5 * s, p.y + 9 * s, q.x - p.x, q.y - p.y, 5);
       this.graphics?.fillStyle(0x172b34, 1).fillRoundedRect(p.x, p.y, q.x - p.x, q.y - p.y, 5);
       this.graphics?.lineStyle(1, GRID, 0.9).strokeRoundedRect(p.x, p.y, q.x - p.x, q.y - p.y, 5);
       const screen = this.project(x + width * 0.62, y + height * 0.42);
-      this.graphics?.fillStyle(0x020607, 1).fillRoundedRect(screen.x - 16 * this.projection().scale, screen.y - 9 * this.projection().scale, 32 * this.projection().scale, 18 * this.projection().scale, 2);
-      this.graphics?.fillStyle(0x4f8797, 0.75).fillRect(screen.x - 11 * this.projection().scale, screen.y - 3 * this.projection().scale, 22 * this.projection().scale, 2 * this.projection().scale);
+      this.graphics?.fillStyle(0x020607, 1).fillRoundedRect(screen.x - 27 * s, screen.y - 20 * s, 54 * s, 34 * s, 2);
+      this.graphics?.lineStyle(Math.max(1, s), 0x5da7b7, 0.8).strokeRoundedRect(screen.x - 27 * s, screen.y - 20 * s, 54 * s, 34 * s, 2);
+      for (let i = 0; i < 4; i += 1) {
+        this.graphics?.fillStyle(i === 3 ? GREEN : 0x4f8797, 0.8).fillRect(screen.x - 19 * s, screen.y - 12 * s + i * 6 * s, (14 + i * 7) * s, 2 * s);
+      }
+      this.graphics?.fillStyle(0x536b74, 1).fillRect(screen.x - 4 * s, screen.y + 14 * s, 8 * s, 8 * s);
+      this.graphics?.fillStyle(0x354d56, 1).fillRoundedRect(screen.x - 20 * s, screen.y + 22 * s, 40 * s, 5 * s, 2);
+      for (let i = 0; i < 7; i += 1) this.graphics?.fillStyle(0x5a7a83, 0.75).fillRect(p.x + (12 + i * 12) * s, q.y - 17 * s, 7 * s, 2 * s);
+    }
+
+    private drawLabDetails() {
+      const g = this.graphics; if (!g) return;
+      const s = this.projection().scale;
+      for (const [x, y, color] of [[42, 45, BLUE], [1150, 50, GREEN], [42, 710, GREEN], [1145, 700, BLUE]] as const) {
+        const p = this.project(x, y);
+        g.fillStyle(color, 0.12).fillCircle(p.x, p.y, 32 * s);
+        g.fillStyle(color, 0.8).fillRoundedRect(p.x - 14 * s, p.y - 3 * s, 28 * s, 6 * s, 2);
+      }
+      // Dedicated walkways make the four library aisles and central design bay legible.
+      for (const [x, y, w, h] of [[32, 48, 280, 362], [32, 430, 280, 315], [420, 195, 420, 355], [885, 165, 255, 355]] as const) {
+        const a = this.project(x, y); const b = this.project(x + w, y + h);
+        g.fillStyle(0x142a33, 0.23).fillRoundedRect(a.x, a.y, b.x - a.x, b.y - a.y, 12 * s);
+        g.lineStyle(Math.max(0.5, s), 0x4b7783, 0.27).strokeRoundedRect(a.x, a.y, b.x - a.x, b.y - a.y, 12 * s);
+      }
+      for (let i = 0; i < 12; i += 1) {
+        const p = this.project(335 + i * 70, 365);
+        g.fillStyle(YELLOW, 0.25).fillRoundedRect(p.x, p.y, 18 * s, 2 * s, s);
+      }
     }
 
     private drawLibrary() {
+      const g = this.graphics; const s = this.projection().scale;
+      for (const [x, y, color] of [[105, 150, MODULE_COLORS.compute], [245, 150, MODULE_COLORS.memory], [105, 520, MODULE_COLORS.noc], [245, 520, MODULE_COLORS.io]] as const) {
+        const a = this.project(x - 48, y - 37); const b = this.project(x + 48, y + 224);
+        g?.fillStyle(0x07141b, 0.8).fillRoundedRect(a.x, a.y, b.x - a.x, b.y - a.y, 6 * s);
+        g?.lineStyle(Math.max(0.8, s), color, 0.5).strokeRoundedRect(a.x, a.y, b.x - a.x, b.y - a.y, 6 * s);
+        for (let shelf = 0; shelf < 3; shelf += 1) {
+          const p = this.project(x - 39, y + 34 + shelf * 95);
+          g?.fillStyle(color, 0.3).fillRect(p.x, p.y, 78 * s, 3 * s);
+        }
+      }
       for (const variant of moduleVariants) {
         const point = this.project(variant.x, variant.y);
         const s = this.projection().scale;
@@ -310,32 +350,100 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
     private drawFloorplan() {
       const topLeft = this.project(455, 215); const bottomRight = this.project(805, 515);
-      this.graphics?.fillStyle(0x0a151a, 1).fillRoundedRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
-      this.graphics?.lineStyle(2, 0x6f8790, 0.85).strokeRoundedRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
+      const g = this.graphics; if (!g) return;
+      const s = this.projection().scale;
+      g.fillStyle(0x020607, 0.8).fillRoundedRect(topLeft.x + 10 * s, topLeft.y + 13 * s, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
+      g.fillStyle(0x0b2029, 1).fillRoundedRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
+      g.lineStyle(2, 0x90acb4, 0.9).strokeRoundedRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
+      // Package pads, die outline, and routed buses change as blocks are installed.
+      for (let i = 0; i < 18; i += 1) {
+        for (const [x, y] of [[468 + i * 18, 220], [468 + i * 18, 502], [460, 228 + i * 16], [795, 228 + i * 16]] as const) {
+          const pad = this.project(x, y);
+          g.fillStyle(0x89b2bd, 0.58).fillRoundedRect(pad.x, pad.y, 5 * s, 7 * s, s);
+        }
+      }
+      const routes: [ModuleType, ModuleType][] = [["compute", "memory"], ["compute", "noc"], ["memory", "io"], ["noc", "io"]];
+      for (const [from, to] of routes) {
+        const a = chipArchitectLayout.slots[from]; const b = chipArchitectLayout.slots[to];
+        const live = Boolean(this.state.slots[from] && this.state.slots[to]);
+        for (let lane = -1; lane <= 1; lane += 1) {
+          const p = this.project(a.x + (a.x === b.x ? lane * 9 : 0), a.y + (a.y === b.y ? lane * 9 : 0));
+          const q = this.project(b.x + (a.x === b.x ? lane * 9 : 0), b.y + (a.y === b.y ? lane * 9 : 0));
+          g.lineStyle(Math.max(1, 2.2 * s), live ? GREEN : 0x496773, live ? 0.8 : 0.4).lineBetween(p.x, p.y, q.x, q.y);
+          if (live) {
+            const phase = (this.visualElapsed / 1050 + (lane + 1) / 3) % 1;
+            g.fillStyle(0xc8fff0, 0.9).fillCircle(p.x + (q.x - p.x) * phase, p.y + (q.y - p.y) * phase, Math.max(1.3, 2.7 * s));
+          }
+        }
+      }
       for (const type of Object.keys(chipArchitectLayout.slots) as ModuleType[]) {
         const slot = chipArchitectLayout.slots[type];
         const point = this.project(slot.x, slot.y);
-        const s = this.projection().scale;
         const variant = getModuleVariant(this.state.slots[type]);
-        this.graphics?.fillStyle(MODULE_COLORS[type], variant ? 0.18 : 0.05).fillRoundedRect(point.x - 52 * s, point.y - 43 * s, 104 * s, 86 * s, 8);
-        this.graphics?.lineStyle(Math.max(1.2, 2 * s), MODULE_COLORS[type], variant ? 0.9 : 0.45).strokeRoundedRect(point.x - 52 * s, point.y - 43 * s, 104 * s, 86 * s, 8);
-        if (variant) gBlock(this.graphics, point.x, point.y, MODULE_COLORS[type], variant.shortName, s * 1.05, 1);
+        g.fillStyle(MODULE_COLORS[type], variant ? 0.18 : 0.05).fillRoundedRect(point.x - 52 * s, point.y - 43 * s, 104 * s, 86 * s, 8);
+        g.lineStyle(Math.max(1.2, 2 * s), MODULE_COLORS[type], variant ? 0.9 : 0.45).strokeRoundedRect(point.x - 52 * s, point.y - 43 * s, 104 * s, 86 * s, 8);
+        if (variant) this.drawInstalledBlock(point.x, point.y, s, type, variant.id);
+      }
+    }
+
+    private drawInstalledBlock(x: number, y: number, s: number, type: ModuleType, id: string) {
+      const g = this.graphics; if (!g) return;
+      const color = MODULE_COLORS[type];
+      g.fillStyle(0x02090d, 0.85).fillRoundedRect(x - 39 * s, y - 31 * s, 78 * s, 62 * s, 5 * s);
+      g.lineStyle(Math.max(1, 2 * s), color, 0.9).strokeRoundedRect(x - 39 * s, y - 31 * s, 78 * s, 62 * s, 5 * s);
+      if (type === "compute") {
+        const count = id === "vector-array" ? 5 : id === "wide-core" ? 4 : 2;
+        for (let i = 0; i < count; i += 1) for (let j = 0; j < 3; j += 1) {
+          g.fillStyle(color, 0.7).fillRoundedRect(x + (i - (count - 1) / 2) * 12 * s - 4 * s, y + (j - 1) * 13 * s - 4 * s, 8 * s, 8 * s, s);
+        }
+      } else if (type === "memory") {
+        for (let i = 0; i < (id === "deep-sram" ? 5 : id === "banked-sram" ? 4 : 3); i += 1) {
+          g.fillStyle(color, 0.15 + i * 0.08).fillRoundedRect(x - 28 * s + i * 11 * s, y - 18 * s, 8 * s, 37 * s, s);
+          g.lineStyle(Math.max(0.7, s), color, 0.7).strokeRoundedRect(x - 28 * s + i * 11 * s, y - 18 * s, 8 * s, 37 * s, s);
+        }
+      } else if (type === "noc") {
+        const nodes = id === "ring-noc" ? 4 : 9;
+        for (let i = 0; i < nodes; i += 1) {
+          const px = x + (nodes === 4 ? [-19, 19, 19, -19][i] : (i % 3 - 1) * 18) * s;
+          const py = y + (nodes === 4 ? [-16, -16, 16, 16][i] : (Math.floor(i / 3) - 1) * 15) * s;
+          g.fillStyle(color, 0.9).fillCircle(px, py, 3.5 * s);
+        }
+        g.lineStyle(Math.max(0.8, s), color, 0.45).strokeRect(x - 21 * s, y - 18 * s, 42 * s, 36 * s);
+      } else {
+        const lanes = id === "serdes-224" ? 6 : id === "serdes-112" ? 4 : 2;
+        for (let i = 0; i < lanes; i += 1) {
+          const py = y + (i - (lanes - 1) / 2) * 8 * s;
+          g.lineStyle(Math.max(1, 2 * s), color, 0.8).lineBetween(x - 25 * s, py, x + 24 * s, py);
+          g.fillStyle(color, 0.95).fillCircle(x + 25 * s, py, 2 * s);
+        }
+      }
+      for (let i = 0; i < 7; i += 1) {
+        g.fillStyle(0xa1c5ca, 0.65).fillRect(x - 27 * s + i * 9 * s, y - 34 * s, 3 * s, 3 * s);
+        g.fillRect(x - 27 * s + i * 9 * s, y + 31 * s, 3 * s, 3 * s);
       }
     }
 
     private drawStations() {
-      this.drawStation(chipArchitectLayout.verify.x, chipArchitectLayout.verify.y, GREEN, this.state.verified ? (this.state.verificationPass ? "PASS" : "FAIL") : "VERIFY");
-      this.drawStation(chipArchitectLayout.tune.x, chipArchitectLayout.tune.y, BLUE, this.state.frequency.toUpperCase());
-      this.drawStation(chipArchitectLayout.tapeout.x, chipArchitectLayout.tapeout.y, tapeoutReady(this.state) ? YELLOW : MUTED, "GDS");
+      this.drawStation(chipArchitectLayout.verify.x, chipArchitectLayout.verify.y, this.state.verified ? (this.state.verificationPass ? GREEN : 0xff6b74) : GREEN);
+      this.drawStation(chipArchitectLayout.tune.x, chipArchitectLayout.tune.y, BLUE);
+      this.drawStation(chipArchitectLayout.tapeout.x, chipArchitectLayout.tapeout.y, tapeoutReady(this.state) ? YELLOW : MUTED);
     }
 
-    private drawStation(x: number, y: number, color: number, label: string) {
+    private drawStation(x: number, y: number, color: number) {
       const point = this.project(x, y); const s = this.projection().scale;
       const pulse = 1 + Math.sin((this.visualElapsed + x) / 240) * 0.04;
-      this.graphics?.fillStyle(color, 0.1).fillCircle(point.x, point.y, 39 * s * pulse);
-      this.graphics?.lineStyle(Math.max(1.3, 2.2 * s), color, 0.8).strokeCircle(point.x, point.y, 39 * s * pulse);
-      this.graphics?.fillStyle(0x071116, 1).fillRoundedRect(point.x - 24 * s, point.y - 10 * s, 48 * s, 20 * s, 4);
-      this.graphics?.fillStyle(color, 0.9).fillRect(point.x - 17 * s, point.y - 2 * s, Math.max(5, label.length * 2.5) * s, 3 * s);
+      const g = this.graphics;
+      g?.fillStyle(color, 0.06).fillCircle(point.x, point.y, 47 * s * pulse);
+      g?.lineStyle(Math.max(1, 1.6 * s), color, 0.65).strokeCircle(point.x, point.y, 40 * s * pulse);
+      g?.fillStyle(0x02090d, 0.7).fillRoundedRect(point.x - 28 * s + 4 * s, point.y - 21 * s + 6 * s, 56 * s, 43 * s, 5 * s);
+      g?.fillStyle(0x102b33, 1).fillRoundedRect(point.x - 28 * s, point.y - 21 * s, 56 * s, 43 * s, 5 * s);
+      g?.lineStyle(Math.max(1, 1.6 * s), color, 0.9).strokeRoundedRect(point.x - 28 * s, point.y - 21 * s, 56 * s, 43 * s, 5 * s);
+      g?.fillStyle(0x02080d, 1).fillRoundedRect(point.x - 20 * s, point.y - 14 * s, 40 * s, 18 * s, 2 * s);
+      for (let i = 0; i < 4; i += 1) {
+        g?.fillStyle(color, i === 3 ? 0.95 : 0.25 + i * 0.15).fillRect(point.x - 15 * s + i * 9 * s, point.y - 4 * s - i * 2 * s, 5 * s, (5 + i * 2) * s);
+      }
+      g?.fillStyle(color, 0.85).fillCircle(point.x - 16 * s, point.y + 13 * s, 2.5 * s);
+      g?.fillStyle(0x42616b, 1).fillRoundedRect(point.x - 8 * s, point.y + 11 * s, 28 * s, 4 * s, s);
     }
 
     private drawPlayer() {
