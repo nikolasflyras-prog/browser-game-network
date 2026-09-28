@@ -24,15 +24,15 @@ const semiconductorGameSeo: Record<string, GameSeoContent> = {
     ],
   },
   "chip-architect": {
-    summary: "Chip Architect is a walkable ASIC design lab. Customer specifications arrive with performance, power, area, and timing targets. You physically collect compute, memory, network-on-chip, and I/O IP, place the blocks into a floorplan, choose a clock mode, run verification, and tape out only when the design closes against the customer target.",
+    summary: "Chip Architect is a walkable ASIC design lab. Four customer contracts have performance, power, area, timing, and yield targets. Collect IP, build a floorplan, tune the clock, review the binding constraint, verify, and earn up to three mastery marks per tapeout by creating extra design headroom.",
     howTo: [
       "Move with WASD or the arrow keys. Walk to an IP block in the library and press E or Space to pick it up.",
       "Carry compute, memory, NoC, and I/O blocks to the matching positions on the central floorplan. You can remove or swap installed blocks by returning to a slot.",
-      "Watch live PPA numbers: performance must reach the customer minimum while power and area stay below their limits. Timing margin must also close.",
+      "Watch live PPA and yield numbers. The design review identifies the first binding constraint and suggests an engineering change.",
       "Use the Clock / PVT station to cycle Balanced, Turbo, and Eco modes. Frequency changes performance, power, and timing, and any design change invalidates the previous verification result.",
-      "Run RTL / timing verification, then move to Tapeout once the verified design meets the full specification.",
+      "Run RTL / timing verification, then move to Tapeout once the verified design meets the full specification. Extra throughput and efficiency earn mastery marks; each new customer tests a different tradeoff.",
     ],
-    concepts: ["Performance, power, and area (PPA)", "Timing closure", "RTL verification", "Floorplanning", "Network-on-chip topology", "On-die SRAM", "SerDes tradeoffs", "Clock-frequency tradeoffs", "IP reuse", "Tapeout", "Workload-specific architecture"],
+    concepts: ["Performance, power, and area (PPA)", "Timing closure", "Yield margin", "RTL verification", "Floorplanning", "Network-on-chip topology", "On-die SRAM", "SerDes tradeoffs", "Clock-frequency tradeoffs", "IP reuse", "Tapeout", "Workload-specific architecture"],
     strategy: ["Start from the workload.", "Do not optimize performance alone.", "Use Eco mode as a timing and power rescue tool.", "Reverify after swapping a block or changing clock mode."],
     faqs: [
       { question: "What does PPA mean?", answer: "PPA stands for performance, power, and area." },
