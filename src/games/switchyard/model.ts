@@ -1,4 +1,5 @@
 export type SwitchLane = "left" | "center" | "right";
+export type SwitchTrainClass = "local" | "express" | "freight";
 
 export type SwitchDifficulty = {
   spawnMs: number;
@@ -8,6 +9,7 @@ export type SwitchDifficulty = {
 export type SwitchTrainSpec = {
   seed: number;
   lane: SwitchLane;
+  trainClass: SwitchTrainClass;
 };
 
 export type SwitchResolution = {
@@ -32,9 +34,17 @@ export function switchDifficulty(resolved: number): SwitchDifficulty {
   };
 }
 
+export function switchTrainProfile(trainClass: SwitchTrainClass) {
+  if (trainClass === "express") return { speedFactor: 1.24, scoreBonus: 14 };
+  if (trainClass === "freight") return { speedFactor: 0.82, scoreBonus: 9 };
+  return { speedFactor: 1, scoreBonus: 0 };
+}
+
 export function nextSwitchTrain(seed: number): SwitchTrainSpec {
-  const random = nextRandom(seed);
-  return { seed: random.seed, lane: lanes[Math.min(2, Math.floor(random.value * 3))] };
+  const laneRoll = nextRandom(seed);
+  const classRoll = nextRandom(laneRoll.seed);
+  const trainClass: SwitchTrainClass = classRoll.value < 0.22 ? "express" : classRoll.value > 0.78 ? "freight" : "local";
+  return { seed: classRoll.seed, lane: lanes[Math.min(2, Math.floor(laneRoll.value * 3))], trainClass };
 }
 
 export function resolveSwitchTrain(
@@ -43,11 +53,12 @@ export function resolveSwitchTrain(
   lives: number,
   targetLane: SwitchLane,
   routedLane: SwitchLane,
+  trainClass: SwitchTrainClass = "local",
 ): SwitchResolution {
   const correct = targetLane === routedLane;
   if (!correct) return { correct: false, score, streak: 0, lives: Math.max(0, lives - 1) };
   const nextStreak = streak + 1;
-  return { correct: true, score: score + 12 + Math.min(36, nextStreak * 3), streak: nextStreak, lives };
+  return { correct: true, score: score + 12 + Math.min(36, nextStreak * 3) + switchTrainProfile(trainClass).scoreBonus, streak: nextStreak, lives };
 }
 
 export function laneIndex(lane: SwitchLane) {
