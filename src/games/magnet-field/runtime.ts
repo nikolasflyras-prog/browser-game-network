@@ -10,6 +10,9 @@ const CORE = 0xf6fbff;
 const FIELD = 0x65c8ff;
 const SCRAP = 0x78e6b4;
 const BOMB = 0xff6675;
+const CELL = 0xffd66e;
+const MAGNET_TIERS = ["SHOP MAGNET", "INDUSTRIAL CORE", "RECYCLING REACTOR", "FIELD ARRAY"] as const;
+function magnetTier(score: number) { return score >= 7600 ? 3 : score >= 4100 ? 2 : score >= 1700 ? 1 : 0; }
 
 export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   let muted = false;
@@ -87,9 +90,11 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     }
 
     private drawGrid() {
-      const graphics = this.grid; if (!graphics) return; graphics.clear(); graphics.lineStyle(1, GRID, 0.65);
+      const graphics = this.grid; if (!graphics) return; graphics.clear(); const tier = magnetTier(bestScore); graphics.lineStyle(1, GRID, 0.65);
       for (let x = 0; x <= this.scale.width; x += 48) { graphics.beginPath(); graphics.moveTo(x, 0); graphics.lineTo(x, this.scale.height); graphics.strokePath(); }
       for (let y = 0; y <= this.scale.height; y += 48) { graphics.beginPath(); graphics.moveTo(0, y); graphics.lineTo(this.scale.width, y); graphics.strokePath(); }
+      if (tier >= 1) { graphics.lineStyle(2, FIELD, 0.12); graphics.strokeCircle(this.scale.width / 2, this.scale.height / 2, Math.min(this.scale.width, this.scale.height) * 0.32); }
+      if (tier >= 2) { for (let i = 0; i < 4 + tier; i++) { const x = (i * 137 + 54) % Math.max(1, this.scale.width); const y = (i * 91 + 72) % Math.max(1, this.scale.height); graphics.fillStyle(CELL, 0.08 + i * 0.01).fillCircle(x, y, 18 + (i % 3) * 8); } }
     }
 
     private syncVisuals(fieldActive: boolean) {
@@ -99,14 +104,15 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       for (const particle of this.state.particles) {
         liveIds.add(particle.id);
         let view = this.particles.get(particle.id);
-        if (!view) { view = this.add.circle(particle.x, particle.y, particle.kind === "bomb" ? 9 : 7, particle.kind === "bomb" ? BOMB : SCRAP).setDepth(2); this.particles.set(particle.id, view); }
-        view.setPosition(particle.x, particle.y).setFillStyle(particle.kind === "bomb" ? BOMB : SCRAP);
+        const radius = particle.kind === "bomb" ? 9 : particle.kind === "cell" ? 8 : 7; const color = particle.kind === "bomb" ? BOMB : particle.kind === "cell" ? CELL : SCRAP;
+        if (!view) { view = this.add.circle(particle.x, particle.y, radius, color).setDepth(2); this.particles.set(particle.id, view); }
+        view.setPosition(particle.x, particle.y).setRadius(radius).setFillStyle(color).setStrokeStyle(particle.kind === "cell" ? 2 : 0, particle.kind === "cell" ? 0xffffff : color, particle.kind === "cell" ? 0.35 : 0);
       }
       for (const [id, view] of this.particles) if (!liveIds.has(id)) { view.destroy(); this.particles.delete(id); }
       this.scoreLabel?.setText(`Score ${this.state.score} · x${Math.max(1, this.state.combo)}`);
       this.energyLabel?.setText(`Field ${Math.round(this.state.energy)}%`);
       this.livesLabel?.setText(`Lives ${this.state.lives}`);
-      this.bestLabel?.setText(`Best ${bestScore}`);
+      this.bestLabel?.setText(`${MAGNET_TIERS[magnetTier(bestScore)]} · Best ${bestScore}`);
       mount.dataset.magnetX = this.state.magnetX.toFixed(1);
       mount.dataset.magnetEnergy = this.state.energy.toFixed(1);
       mount.dataset.magnetScore = String(this.state.score);
@@ -115,17 +121,18 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     private handleEvents(events: string[]) {
       for (const event of events) {
         if (event === "scrap") { tone(660 + Math.min(180, this.state.combo * 12), 0.055, 0.028); bridge.emit("game_action", { action: "scrap_collected", score: this.state.score, combo: this.state.combo }); }
+        else if (event === "cell") { tone(820, 0.09, 0.04); bridge.emit("game_action", { action: "energy_cell", energy: Math.round(this.state.energy), combo: this.state.combo }); bridge.setStatus(`Energy cell captured — field restored to ${Math.round(this.state.energy)}%`); }
         else if (event === "bomb") { tone(150, 0.14, 0.05); bridge.emit("game_action", { action: "bomb_hit", lives: this.state.lives, score: this.state.score }); bridge.setStatus(`Bomb pulled into the core — ${this.state.lives} lives remain`); }
         else if (event === "game_over") this.endRun();
       }
     }
 
     private endRun() {
-      bestScore = Math.max(bestScore, this.state.score);
+      const oldTier = magnetTier(bestScore); bestScore = Math.max(bestScore, this.state.score); const newTier = magnetTier(bestScore);
       writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
       this.bestLabel?.setText(`Best ${bestScore}`);
-      bridge.emit("game_over", { score: this.state.score, best_score: bestScore, elapsed_seconds: Math.round(this.state.elapsed) });
-      bridge.setStatus(`Core lost — ${this.state.score} points · press R to retry`);
+      bridge.emit("game_over", { score: this.state.score, best_score: bestScore, elapsed_seconds: Math.round(this.state.elapsed), reactor_tier: newTier });
+      if (newTier > oldTier) { bridge.emit("game_action", { action: "reactor_tier_up", tier: newTier }); bridge.setStatus(`Reactor upgraded — ${MAGNET_TIERS[newTier]} unlocked`); } else bridge.setStatus(`Core lost — ${this.state.score} points · press R to retry`);
       tone(105, 0.24, 0.06);
       this.gameOverTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 18, "CORE LOST", { color: "#f6fbff", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "30px", fontStyle: "bold" }).setOrigin(0.5).setDepth(7);
       this.gameOverDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 28, `${this.state.score} points\nMove with WASD · hold Space to attract`, { color: "#8fa4b8", align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "15px", lineSpacing: 6 }).setOrigin(0.5).setDepth(7);
@@ -134,10 +141,10 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     private resetRun() {
       this.gameOverTitle?.destroy(); this.gameOverDetail?.destroy(); this.gameOverTitle = undefined; this.gameOverDetail = undefined;
       for (const view of this.particles.values()) view.destroy(); this.particles.clear();
-      this.state = createMagnetState(this.scale.width, this.scale.height);
+      const tier = magnetTier(bestScore); this.state = createMagnetState(this.scale.width, this.scale.height); if (tier >= 2) this.state.lives += 1;
       this.statusElapsed = 0; this.drawGrid(); this.syncVisuals(false);
-      bridge.setStatus("Magnet Field live — move with WASD/arrows, hold Space or touch to attract");
-      bridge.emit("game_started", { mode: "endless-field", best_score: bestScore });
+      bridge.setStatus(`Magnet Field live — ${MAGNET_TIERS[tier]} · gold cells restore field energy`);
+      bridge.emit("game_started", { mode: "endless-field", best_score: bestScore, reactor_tier: tier });
     }
 
     private handleResize() {
