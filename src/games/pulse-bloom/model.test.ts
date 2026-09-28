@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { circlesOverlap, particleSeeds, pulseRadius, roundConfig, roundScore } from "./model";
+import { circlesOverlap, particleProfile, particleSeeds, pulseRadius, roundConfig, roundScore } from "./model";
 
 describe("Pulse Bloom model", () => {
   it("raises the capture target across rounds", () => {
@@ -23,7 +23,14 @@ describe("Pulse Bloom model", () => {
     expect(roundScore(2, 7, 7)).toBeGreaterThan(roundScore(2, 6, 7));
   });
 
-  it("generates deterministic moving particles", () => {
-    expect(particleSeeds(99, 4, 800, 600)).toEqual(particleSeeds(99, 4, 800, 600));
+  it("gives catalyst and dense particles different bloom scales", () => {
+    expect(particleProfile("catalyst").pulseScale).toBeGreaterThan(1);
+    expect(particleProfile("dense").pulseScale).toBeLessThan(1);
+  });
+
+  it("generates deterministic moving particles with chemistry", () => {
+    expect(particleSeeds(99, 20, 800, 600)).toEqual(particleSeeds(99, 20, 800, 600));
+    const kinds = new Set(particleSeeds(99, 40, 800, 600).map((particle) => particle.kind));
+    expect(kinds.size).toBeGreaterThan(1);
   });
 });
