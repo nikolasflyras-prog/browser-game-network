@@ -39,6 +39,15 @@ describe("Magnet Field model", () => {
     expect(result.state.particles).toHaveLength(0);
   });
 
+  it("restores field energy when an energy cell reaches the core", () => {
+    const state = { ...createMagnetState(WIDTH, HEIGHT), energy: 20 };
+    const cell = { id: 66, kind: "cell" as const, x: state.magnetX, y: state.magnetY, vx: 0, vy: 0 };
+    const result = advanceMagnet({ ...state, particles: [cell] }, { x: 0, y: 0, active: false }, 0.01, WIDTH, HEIGHT);
+    expect(result.events).toContain("cell");
+    expect(result.state.energy).toBeGreaterThan(20);
+    expect(result.state.score).toBeGreaterThan(0);
+  });
+
   it("ends the run when a bomb consumes the final life", () => {
     const state = createMagnetState(WIDTH, HEIGHT);
     const bomb = { id: 88, kind: "bomb" as const, x: state.magnetX, y: state.magnetY, vx: 0, vy: 0 };
