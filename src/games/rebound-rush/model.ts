@@ -5,7 +5,8 @@ export type ReboundDifficulty = {
 };
 
 export type Velocity = { vx: number; vy: number };
-export type BrickSeed = { column: number; row: number; strength: number };
+export type ReboundBrickKind = "normal" | "armored" | "charge";
+export type BrickSeed = { column: number; row: number; strength: number; kind: ReboundBrickKind };
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -33,7 +34,7 @@ export function brickPattern(wave: number, columns = 8): BrickSeed[] {
   for (let row = 0; row < difficulty.rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
       const skip = wave > 2 && (column + row + wave) % 7 === 0;
-      if (!skip) bricks.push({ column, row, strength: wave >= 5 && (column + row) % 5 === 0 ? 2 : 1 });
+      if (!skip) { const kind: ReboundBrickKind = wave >= 3 && (column * 3 + row + wave) % 11 === 0 ? "charge" : wave >= 5 && (column + row) % 5 === 0 ? "armored" : "normal"; bricks.push({ column, row, strength: kind === "armored" ? 2 : 1, kind }); }
     }
   }
   return bricks;
