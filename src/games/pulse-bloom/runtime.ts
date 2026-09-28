@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { readLocalGameValue, writeLocalGameValue } from "@/games/_shared/storage/localGameStorage";
 import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/runtime";
-import { circlesOverlap, particleSeeds, pulseRadius, roundConfig, roundScore, type Vec2 } from "./model";
+import { circlesOverlap, particleProfile, particleSeeds, pulseRadius, roundConfig, roundScore, type PulseParticleKind, type Vec2 } from "./model";
 
 const SAVE_VERSION = 1;
 const BACKGROUND = 0x0d0b16;
@@ -11,16 +11,22 @@ const PARTICLE = 0x9f8cff;
 const ACCENT = 0xffcc67;
 const SUCCESS = 0x73dfad;
 const PARTICLE_RADIUS = 6;
+const CATALYST = 0x71e0ff;
+const DENSE = 0xff8ebd;
+const BLOOM_TIERS = ["PETRI DISH", "BIOREACTOR", "BLOOM LAB", "SYNTHETIC GARDEN"] as const;
+function bloomTier(score: number) { return score >= 9000 ? 3 : score >= 4200 ? 2 : score >= 1600 ? 1 : 0; }
 
 type Particle = Vec2 & {
   vx: number;
   vy: number;
+  kind: PulseParticleKind;
   captured: boolean;
   body: Phaser.GameObjects.Arc;
 };
 
 type Pulse = Vec2 & {
   age: number;
+  scale: number;
   body: Phaser.GameObjects.Arc;
 };
 
@@ -66,6 +72,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     private instruction?: Phaser.GameObjects.Text;
     private resultTitle?: Phaser.GameObjects.Text;
     private resultDetail?: Phaser.GameObjects.Text;
+    private field?: Phaser.GameObjects.Graphics;
+    private visualElapsed = 0;
 
     constructor() {
       super("pulse-bloom");
@@ -73,6 +81,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
     create() {
       this.cameras.main.setBackgroundColor(BACKGROUND);
+      this.field = this.add.graphics().setDepth(0);
       this.roundLabel = this.add.text(24, 18, "Round 1", { color: "#f7f3ff", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "20px", fontStyle: "bold" });
       this.targetLabel = this.add.text(24, 46, "Target 5", { color: "#948ca3", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", fontStyle: "bold" });
       this.scoreLabel = this.add.text(this.scale.width / 2, 20, "Score 0", { color: "#ffcc67", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "18px", fontStyle: "bold" }).setOrigin(0.5, 0);
@@ -90,9 +99,10 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     }
 
     update(_time: number, delta: number) {
-      const dt = Math.min(delta / 1000, 0.04);
+      const dt = Math.min(delta / 1000, 0.04); this.visualElapsed += delta; this.drawField();
       const width = this.scale.width;
       const height = this.scale.height;
+      this.drawField();
       for (const particle of this.particles) {
         if (particle.captured) continue;
         particle.x += particle.vx * dt;
@@ -107,8 +117,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const config = roundConfig(this.round);
       for (const pulse of this.pulses) {
         pulse.age += dt;
-        const radius = pulseRadius(pulse.age, config.pulseDuration, config.maxPulseRadius);
-        pulse.body.setRadius(radius).setAlpha(radius > 0 ? 0.2 + 0.5 * (radius / config.maxPulseRadius) : 0);
+        const radius = pulseRadius(pulse.age, config.pulseDuration, config.maxPulseRadius * pulse.scale);
+        pulse.body.setRadius(radius).setAlpha(radius > 0 ? 0.2 + 0.5 * Math.min(1, radius / (config.maxPulseRadius * pulse.scale)) : 0);
       }
       this.pulses = this.pulses.filter((pulse) => {
         if (pulse.age < config.pulseDuration) return true;
@@ -118,11 +128,19 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
       for (const particle of this.particles) {
         if (particle.captured) continue;
-        const hit = this.pulses.some((pulse) => circlesOverlap(particle, PARTICLE_RADIUS, pulse, pulseRadius(pulse.age, config.pulseDuration, config.maxPulseRadius)));
+        const hit = this.pulses.some((pulse) => circlesOverlap(particle, PARTICLE_RADIUS, pulse, pulseRadius(pulse.age, config.pulseDuration, config.maxPulseRadius * pulse.scale)));
         if (hit) this.captureParticle(particle);
       }
 
       if (this.pulses.length === 0 && this.chainElapsed > 0.25) this.resolveRound();
+    }
+
+    private drawField() {
+      const g = this.field; if (!g) return; const width = this.scale.width, height = this.scale.height, tier = bloomTier(bestScore); g.clear();
+      g.fillStyle(BACKGROUND, 1).fillRect(0, 0, width, height);
+      for (let i = 0; i < 12 + tier * 5; i++) { const x = (i * 97 + 31) % Math.max(1, width); const y = 76 + ((i * 61 + this.visualElapsed * 0.014) % Math.max(1, height - 150)); const r = 2 + (i % 3); g.fillStyle(i % 4 === 0 ? CATALYST : PARTICLE, 0.05 + (i % 3) * 0.025).fillCircle(x, y, r); }
+      if (tier >= 1) { g.lineStyle(1, PARTICLE, 0.08); for (let x = 30; x < width; x += 72) g.lineBetween(x, 72, x, height - 54); }
+      if (tier >= 2) { g.lineStyle(2, SUCCESS, 0.08).strokeCircle(width * 0.5, height * 0.52, Math.min(width, height) * 0.34); }
     }
 
     private handleAction(point: Vec2) {
@@ -130,7 +148,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       if (this.mode !== "aiming") return;
       this.mode = "chain";
       this.chainElapsed = 0;
-      this.addPulse(point.x, point.y);
+      this.addPulse(point.x, point.y, 1 + bloomTier(bestScore) * 0.04);
       this.instruction?.setText("CHAIN REACTION LIVE");
       bridge.emit("level_started", { round: this.round, target: roundConfig(this.round).target, x: Math.round(point.x), y: Math.round(point.y) });
       bridge.setStatus(`Pulse placed — chain ${this.captured}/${roundConfig(this.round).target}`);
@@ -141,15 +159,16 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       particle.captured = true;
       particle.body.setVisible(false);
       this.captured += 1;
-      this.addPulse(particle.x, particle.y);
+      this.addPulse(particle.x, particle.y, particleProfile(particle.kind).pulseScale);
       this.targetLabel?.setText(`Captured ${this.captured} / target ${roundConfig(this.round).target}`);
-      bridge.setStatus(`Chain growing — ${this.captured}/${roundConfig(this.round).target}`);
+      bridge.setStatus(`${particle.kind.toUpperCase()} bloom — ${this.captured}/${roundConfig(this.round).target}`);
       tone(430 + Math.min(360, this.captured * 18), 0.055, 0.025);
     }
 
-    private addPulse(x: number, y: number) {
-      const body = this.add.circle(x, y, 1, ACCENT, 0.45).setStrokeStyle(2, ACCENT, 0.85);
-      this.pulses.push({ x, y, age: 0.001, body });
+    private addPulse(x: number, y: number, scale = 1) {
+      const color = scale > 1.15 ? CATALYST : scale < 0.85 ? DENSE : ACCENT;
+      const body = this.add.circle(x, y, 1, color, 0.45).setStrokeStyle(2, color, 0.85);
+      this.pulses.push({ x, y, age: 0.001, scale, body });
     }
 
     private resolveRound() {
@@ -173,11 +192,11 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
     private endRun(target: number) {
       this.mode = "gameover";
-      bestScore = Math.max(bestScore, this.score);
+      const oldTier = bloomTier(bestScore); bestScore = Math.max(bestScore, this.score); const newTier = bloomTier(bestScore);
       writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
-      this.bestLabel?.setText(`Best ${bestScore}`);
-      bridge.emit("game_over", { score: this.score, round: this.round, captured: this.captured, target, best_score: bestScore });
-      bridge.setStatus(`Bloom ended — ${this.captured}/${target} captured · tap or press Space to retry`);
+      this.bestLabel?.setText(`${BLOOM_TIERS[newTier]} · Best ${bestScore}`);
+      bridge.emit("game_over", { score: this.score, round: this.round, captured: this.captured, target, best_score: bestScore, lab_tier: newTier });
+      if (newTier > oldTier) { bridge.emit("game_action", { action: "bloom_lab_tier_up", tier: newTier }); bridge.setStatus(`Bloom lab upgraded — ${BLOOM_TIERS[newTier]} unlocked`); } else bridge.setStatus(`Bloom ended — ${this.captured}/${target} captured · tap or press Space to retry`);
       tone(140, 0.2, 0.05);
       this.resultTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 18, "CHAIN BROKE", { color: "#f7f3ff", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "30px", fontStyle: "bold" }).setOrigin(0.5);
       this.resultDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 26, `${this.score} points · reached round ${this.round}\nTap / Space / R to retry`, { color: "#948ca3", align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "15px", lineSpacing: 6 }).setOrigin(0.5);
@@ -198,21 +217,21 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.mode = "aiming";
       const config = roundConfig(this.round);
       const seeds = particleSeeds(9000 + this.round * 137, config.particleCount, this.scale.width, this.scale.height);
-      this.particles = seeds.map((seed) => ({ ...seed, captured: false, body: this.add.circle(seed.x, seed.y, PARTICLE_RADIUS, PARTICLE) }));
+      this.particles = seeds.map((seed) => { const color = seed.kind === "catalyst" ? CATALYST : seed.kind === "dense" ? DENSE : PARTICLE; const radius = seed.kind === "dense" ? PARTICLE_RADIUS + 2 : PARTICLE_RADIUS; return { ...seed, captured: false, body: this.add.circle(seed.x, seed.y, radius, color).setStrokeStyle(seed.kind === "normal" ? 0 : 1.5, 0xffffff, seed.kind === "normal" ? 0 : 0.3) }; });
       this.roundLabel?.setText(`Round ${this.round}`);
       this.targetLabel?.setText(`Target ${config.target} of ${config.particleCount}`);
       this.scoreLabel?.setText(`Score ${this.score}`);
-      this.bestLabel?.setText(`Best ${bestScore}`);
-      this.instruction?.setText("PLACE ONE PULSE — TAP / CLICK / SPACE");
+      this.bestLabel?.setText(`${BLOOM_TIERS[bloomTier(bestScore)]} · Best ${bestScore}`);
+      this.instruction?.setText("CYAN CATALYST = BIG BLOOM · PINK DENSE = SMALL BLOOM");
       bridge.setStatus(`Round ${this.round} — capture ${config.target} with one pulse`);
     }
 
     private resetRun() {
       this.round = 1;
       this.score = 0;
-      this.pointerPosition = { x: this.scale.width / 2, y: this.scale.height / 2 };
+      this.pointerPosition = { x: this.scale.width / 2, y: this.scale.height / 2 }; this.visualElapsed = 0;
       this.startRound();
-      bridge.emit("game_started", { mode: "chain", best_score: bestScore });
+      bridge.emit("game_started", { mode: "chain", best_score: bestScore, lab_tier: bloomTier(bestScore) });
     }
 
     private handleResize() {
