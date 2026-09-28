@@ -102,7 +102,6 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const dt = Math.min(delta / 1000, 0.04); this.visualElapsed += delta; this.drawField();
       const width = this.scale.width;
       const height = this.scale.height;
-      this.drawField();
       for (const particle of this.particles) {
         if (particle.captured) continue;
         particle.x += particle.vx * dt;
@@ -242,6 +241,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.instruction?.setPosition(width / 2, height - 28);
       this.resultTitle?.setPosition(width / 2, height / 2 - 18);
       this.resultDetail?.setPosition(width / 2, height / 2 + 26);
+      this.drawField();
       for (const particle of this.particles) {
         particle.x = Math.max(PARTICLE_RADIUS, Math.min(width - PARTICLE_RADIUS, particle.x));
         particle.y = Math.max(72, Math.min(height - 54, particle.y));
