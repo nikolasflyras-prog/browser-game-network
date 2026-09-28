@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceCourier, courierMap, courierTarget, createCourierState } from "./model";
+import { advanceCourier, cargoForDelivery, courierDifficulty, courierMap, courierTarget, createCourierState } from "./model";
 
 const WIDTH = 1000;
 const HEIGHT = 600;
@@ -42,6 +42,24 @@ describe("Courier Loop model", () => {
     expect(picked.event).toBe("picked_up");
     expect(picked.state.phase).toBe("delivery");
     expect(picked.state.destinationIndex).toBe(1);
+  });
+
+  it("rotates cargo classes with distinct handling and payout pressure", () => {
+    expect(cargoForDelivery(0)).toBe("standard");
+    expect(cargoForDelivery(2)).toBe("express");
+    expect(cargoForDelivery(3)).toBe("fragile");
+    expect(courierDifficulty(4, "fragile").speed).toBeLessThan(courierDifficulty(4, "standard").speed);
+    expect(courierDifficulty(4, "express").scoreMultiplier).toBeGreaterThan(courierDifficulty(4, "standard").scoreMultiplier);
+    expect(courierDifficulty(4, "fragile").collisionPenaltySeconds).toBeGreaterThan(courierDifficulty(4, "standard").collisionPenaltySeconds);
+  });
+
+  it("loads the next cargo class after returning to the depot", () => {
+    const state = createCourierState(WIDTH, HEIGHT);
+    const target = courierTarget(state, WIDTH, HEIGHT);
+    const delivered = advanceCourier({ ...state, x: target.x, y: target.y, deliveries: 2 }, { x: 0, y: 0 }, 0.01, WIDTH, HEIGHT);
+    const depot = courierMap(WIDTH, HEIGHT).depot;
+    const picked = advanceCourier({ ...delivered.state, x: depot.x, y: depot.y }, { x: 0, y: 0 }, 0.01, WIDTH, HEIGHT);
+    expect(picked.state.cargoType).toBe("fragile");
   });
 
   it("ends the run when the clock expires", () => {
