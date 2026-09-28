@@ -11,6 +11,9 @@ const GRID = 0x153029;
 const BODY = 0x6fe3b5;
 const HEAD = 0xf5fff9;
 const FOOD = 0xffca62;
+const CAPACITOR = 0x71cfff;
+const COIL_TIERS = ["BREADBOARD", "CONTROL PCB", "BACKPLANE", "HIGH-DENSITY BOARD"] as const;
+function coilTier(score: number) { return score >= 32 ? 3 : score >= 18 ? 2 : score >= 8 ? 1 : 0; }
 
 export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   let muted = false; let audioContext: AudioContext | null = null; let bestScore = readLocalGameValue<number>(bridge.gameSlug, "high-score", SAVE_VERSION) ?? 0;
@@ -40,10 +43,11 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     update(_time: number, delta: number) {
       if (!this.state || this.state.mode === "gameover") return;
       this.accumulator += delta / 1000;
-      const interval = coilStepSeconds(this.state.score);
+      const interval = coilStepSeconds(Math.max(0, this.state.score - coilTier(bestScore) * 1.5));
       while (this.accumulator >= interval && this.state.mode === "playing") {
         this.accumulator -= interval; const result = advanceCircuitCoil(this.state, COLS, ROWS); this.state = result.state;
         if (result.event === "food") { tone(650 + Math.min(250, this.state.score * 12)); bridge.emit("game_action", { action: "node_collected", score: this.state.score, length: this.state.body.length }); bridge.setStatus(`Node ${this.state.score} captured — coil length ${this.state.body.length}`); }
+        else if (result.event === "capacitor") { tone(850, 0.09, 0.04); bridge.emit("game_action", { action: "capacitor_collected", score: this.state.score, length: this.state.body.length }); bridge.setStatus(`Capacitor discharged — trail shortened to ${this.state.body.length}`); }
         else if (result.event === "game_over") this.endRun();
       }
       this.draw();
@@ -58,18 +62,21 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     private offsetY(cell: number) { return Math.max(52, (this.scale.height - ROWS * cell) / 2); }
     private draw() {
       const graphics = this.graphics; if (!graphics) return; graphics.clear(); const cell = this.cellSize(); const ox = this.offsetX(cell); const oy = this.offsetY(cell);
-      graphics.lineStyle(1, GRID, 0.52); for (let x = 0; x <= COLS; x += 1) { graphics.beginPath(); graphics.moveTo(ox + x * cell, oy); graphics.lineTo(ox + x * cell, oy + ROWS * cell); graphics.strokePath(); } for (let y = 0; y <= ROWS; y += 1) { graphics.beginPath(); graphics.moveTo(ox, oy + y * cell); graphics.lineTo(ox + COLS * cell, oy + y * cell); graphics.strokePath(); }
+      const tier = coilTier(bestScore); graphics.fillStyle(BACKGROUND, 1).fillRect(0, 0, this.scale.width, this.scale.height); graphics.lineStyle(1, GRID, 0.52); for (let x = 0; x <= COLS; x += 1) { graphics.beginPath(); graphics.moveTo(ox + x * cell, oy); graphics.lineTo(ox + x * cell, oy + ROWS * cell); graphics.strokePath(); } for (let y = 0; y <= ROWS; y += 1) { graphics.beginPath(); graphics.moveTo(ox, oy + y * cell); graphics.lineTo(ox + COLS * cell, oy + y * cell); graphics.strokePath(); }
+      if (tier >= 1) { for (let x = 2; x < COLS; x += 5) { const px = ox + (x + 0.5) * cell; graphics.lineStyle(1.5, BODY, 0.09 + tier * 0.02).lineBetween(px, oy, px, oy + ROWS * cell); } }
+      if (tier >= 2) { for (let y = 3; y < ROWS; y += 5) { const py = oy + (y + 0.5) * cell; graphics.lineStyle(1.5, CAPACITOR, 0.08 + tier * 0.02).lineBetween(ox, py, ox + COLS * cell, py); } }
       this.state.body.forEach((segment, index) => { graphics.fillStyle(index === 0 ? HEAD : BODY, 1); graphics.fillRoundedRect(ox + segment.x * cell + 2, oy + segment.y * cell + 2, cell - 4, cell - 4, Math.max(2, cell * 0.18)); });
-      graphics.fillStyle(FOOD, 1); graphics.fillCircle(ox + (this.state.food.x + 0.5) * cell, oy + (this.state.food.y + 0.5) * cell, Math.max(4, cell * 0.28));
-      this.scoreLabel?.setText(`Nodes ${this.state.score} · Length ${this.state.body.length}`); this.bestLabel?.setText(`Best ${bestScore}`);
+      const fx = ox + (this.state.food.x + 0.5) * cell, fy = oy + (this.state.food.y + 0.5) * cell;
+      if (this.state.foodKind === "capacitor") { const r = Math.max(5, cell * 0.3); graphics.fillStyle(CAPACITOR, 0.2).fillCircle(fx, fy, r * 1.55); graphics.fillStyle(CAPACITOR, 1).fillRoundedRect(fx - r * 0.65, fy - r * 0.65, r * 1.3, r * 1.3, 2); graphics.lineStyle(2, HEAD, 0.55).lineBetween(fx - r * 0.9, fy, fx + r * 0.9, fy); } else { graphics.fillStyle(FOOD, 1).fillCircle(fx, fy, Math.max(4, cell * 0.28)); }
+      this.scoreLabel?.setText(`Nodes ${this.state.score} · Length ${this.state.body.length}`); this.bestLabel?.setText(`${COIL_TIERS[tier]} · Best ${bestScore}`);
       const head = this.state.body[0]; mount.dataset.coilHeadX = String(head.x); mount.dataset.coilHeadY = String(head.y); mount.dataset.coilDirection = this.state.direction; mount.dataset.coilScore = String(this.state.score);
     }
     private endRun() {
-      bestScore = Math.max(bestScore, this.state.score); writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore); bridge.emit("game_over", { score: this.state.score, length: this.state.body.length, best_score: bestScore }); bridge.setStatus(`Circuit broken — ${this.state.score} nodes · press R to retry`); tone(110, 0.22, 0.055);
+      const oldTier = coilTier(bestScore); bestScore = Math.max(bestScore, this.state.score); const newTier = coilTier(bestScore); writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore); bridge.emit("game_over", { score: this.state.score, length: this.state.body.length, best_score: bestScore, board_tier: newTier }); if (newTier > oldTier) { bridge.emit("game_action", { action: "board_tier_up", tier: newTier }); bridge.setStatus(`Board upgraded — ${COIL_TIERS[newTier]} unlocked`); } else bridge.setStatus(`Circuit broken — ${this.state.score} nodes · press R to retry`); tone(110, 0.22, 0.055);
       this.gameOverTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 18, "CIRCUIT BROKEN", { color: "#f5fff9", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "29px", fontStyle: "bold" }).setOrigin(0.5).setDepth(6);
       this.gameOverDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 28, `${this.state.score} nodes · length ${this.state.body.length}\nPress R or Restart`, { color: "#8ba89d", align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "15px", lineSpacing: 6 }).setOrigin(0.5).setDepth(6);
     }
-    private resetRun() { this.gameOverTitle?.destroy(); this.gameOverDetail?.destroy(); this.gameOverTitle = undefined; this.gameOverDetail = undefined; this.accumulator = 0; this.state = createCircuitCoilState(COLS, ROWS); this.draw(); bridge.setStatus("Circuit Coil live — turn with arrows/WASD or tap toward the next direction"); bridge.emit("game_started", { mode: "endless-coil", best_score: bestScore }); }
+    private resetRun() { this.gameOverTitle?.destroy(); this.gameOverDetail?.destroy(); this.gameOverTitle = undefined; this.gameOverDetail = undefined; this.accumulator = 0; this.state = createCircuitCoilState(COLS, ROWS); this.draw(); bridge.setStatus(`Circuit Coil live — ${COIL_TIERS[coilTier(bestScore)]} · blue capacitors shorten the trail`); bridge.emit("game_started", { mode: "endless-coil", best_score: bestScore, board_tier: coilTier(bestScore) }); }
     private handleResize() { this.bestLabel?.setPosition(this.scale.width - 20, 20); this.hintLabel?.setPosition(this.scale.width / 2, this.scale.height - 20); this.gameOverTitle?.setPosition(this.scale.width / 2, this.scale.height / 2 - 18); this.gameOverDetail?.setPosition(this.scale.width / 2, this.scale.height / 2 + 28); this.draw(); }
   }
   const game = new Phaser.Game({ type: Phaser.AUTO, parent: mount, backgroundColor: BACKGROUND, transparent: false, scene: [CircuitCoilScene], scale: { mode: Phaser.Scale.RESIZE, width: "100%", height: "100%" }, render: { antialias: true, pixelArt: false } });
