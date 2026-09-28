@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flipLane, nextRailObstacle, railCollision, railDifficulty, railPassScore } from "./model";
+import { flipLane, nextRailObstacle, railCollision, railDifficulty, railObstacleProfile, railPassScore } from "./model";
 
 describe("Railflip model", () => {
   it("accelerates and compresses obstacle cadence", () => {
@@ -9,6 +9,18 @@ describe("Railflip model", () => {
 
   it("generates deterministic obstacle lanes", () => {
     expect(nextRailObstacle(8128)).toEqual(nextRailObstacle(8128));
+  });
+
+  it("gives express and freight obstacles different timing profiles", () => {
+    expect(railObstacleProfile("express").speedFactor).toBeGreaterThan(1);
+    expect(railObstacleProfile("express").widthFactor).toBeLessThan(1);
+    expect(railObstacleProfile("freight").speedFactor).toBeLessThan(1);
+    expect(railObstacleProfile("freight").widthFactor).toBeGreaterThan(1);
+  });
+
+  it("rewards clearing special obstacle classes", () => {
+    expect(railPassScore(0, 4, "express")).toBeGreaterThan(railPassScore(0, 4, "barrier"));
+    expect(railPassScore(0, 4, "freight")).toBeGreaterThan(railPassScore(0, 4, "barrier"));
   });
 
   it("flips between the two rails", () => {
