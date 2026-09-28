@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeDailyStreak, formatDailyShare, offsetDateKey } from "./progress";
+import { activeDailyStreak, dailyMastery, formatDailyShare, offsetDateKey } from "./progress";
 
 describe("Linebreak Daily progress", () => {
   it("counts a streak through today when today is complete", () => {
@@ -17,6 +17,12 @@ describe("Linebreak Daily progress", () => {
   it("handles UTC date boundaries", () => {
     expect(offsetDateKey("2026-03-01", -1)).toBe("2026-02-28");
     expect(offsetDateKey("2024-03-01", -1)).toBe("2024-02-29");
+  });
+
+  it("grades route efficiency from spare ink", () => {
+    expect(dailyMastery(8, 8)).toMatchObject({ stars: 1, rank: "complete", spare: 0 });
+    expect(dailyMastery(7, 8)).toMatchObject({ stars: 2, rank: "clean", spare: 1 });
+    expect(dailyMastery(5, 8)).toMatchObject({ stars: 3, rank: "perfect", spare: 3 });
   });
 
   it("formats a compact share result", () => {
