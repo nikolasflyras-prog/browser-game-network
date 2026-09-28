@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { readLocalGameValue, writeLocalGameValue } from "@/games/_shared/storage/localGameStorage";
 import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/runtime";
-import { laneFromIndex, laneIndex, nextSwitchTrain, resolveSwitchTrain, switchDifficulty, type SwitchLane } from "./model";
+import { laneFromIndex, laneIndex, nextSwitchTrain, resolveSwitchTrain, switchDifficulty, switchTrainProfile, type SwitchLane, type SwitchTrainClass } from "./model";
 
 const SAVE_VERSION = 1;
 const BACKGROUND = 0x0c1018;
@@ -10,11 +10,14 @@ const ACTIVE_TRACK = 0xf5f7fa;
 const LANE_COLORS: Record<SwitchLane, number> = { left: 0x60d7ff, center: 0xffd36e, right: 0xff7ca8 };
 const LANE_LABELS: Record<SwitchLane, string> = { left: "1", center: "2", right: "3" };
 const ROUTE_LOCK_PROGRESS = 0.58;
+const YARD_TIERS = ["LOCAL YARD", "REGIONAL JUNCTION", "FREIGHT HUB", "METRO TERMINAL"] as const;
+function yardTier(score: number) { return score >= 5200 ? 3 : score >= 2800 ? 2 : score >= 1100 ? 1 : 0; }
 
 type Train = {
   progress: number;
   targetLane: SwitchLane;
   routedLane: SwitchLane | null;
+  trainClass: SwitchTrainClass;
   body: Phaser.GameObjects.Rectangle;
   label: Phaser.GameObjects.Text;
 };
@@ -52,6 +55,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     private score = 0;
     private streak = 0;
     private lives = 3;
+    private maxLives = 3;
     private seed = 48271;
     private spawnElapsed = 0;
     private tracks?: Phaser.GameObjects.Graphics;
@@ -103,7 +107,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const remaining: Train[] = [];
       for (const train of this.trains) {
         const previous = train.progress;
-        train.progress += difficulty.progressPerSecond * dt;
+        train.progress += difficulty.progressPerSecond * switchTrainProfile(train.trainClass).speedFactor * dt;
         if (previous < ROUTE_LOCK_PROGRESS && train.progress >= ROUTE_LOCK_PROGRESS) train.routedLane = this.selectedLane;
         this.positionTrain(train);
         if (train.progress >= 1) this.resolveTrain(train);
@@ -116,11 +120,13 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const spec = nextSwitchTrain(this.seed);
       this.seed = spec.seed;
       const color = LANE_COLORS[spec.lane];
-      const body = this.add.rectangle(this.scale.width / 2, this.scale.height + 20, 38, 24, color).setStrokeStyle(2, 0xffffff, 0.45);
-      const label = this.add.text(body.x, body.y, LANE_LABELS[spec.lane], { color: "#10131a", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", fontStyle: "bold" }).setOrigin(0.5);
-      this.trains.push({ progress: 0, targetLane: spec.lane, routedLane: null, body, label });
-      bridge.emit("level_started", { train: this.resolved + this.trains.length, target_lane: spec.lane, switch_lane: this.selectedLane });
-      bridge.setStatus(`Train ${LANE_LABELS[spec.lane]} approaching · switch ${LANE_LABELS[this.selectedLane]} · ${this.lives} lives`);
+      const dims = spec.trainClass === "freight" ? { w: 54, h: 26 } : spec.trainClass === "express" ? { w: 34, h: 20 } : { w: 40, h: 24 };
+      const body = this.add.rectangle(this.scale.width / 2, this.scale.height + 20, dims.w, dims.h, color).setStrokeStyle(spec.trainClass === "express" ? 3 : 2, spec.trainClass === "freight" ? 0xb9c0c9 : 0xffffff, spec.trainClass === "express" ? 0.72 : 0.45);
+      const mark = spec.trainClass === "express" ? "E" : spec.trainClass === "freight" ? "F" : "";
+      const label = this.add.text(body.x, body.y, `${LANE_LABELS[spec.lane]}${mark}`, { color: "#10131a", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", fontStyle: "bold" }).setOrigin(0.5);
+      this.trains.push({ progress: 0, targetLane: spec.lane, routedLane: null, trainClass: spec.trainClass, body, label });
+      bridge.emit("level_started", { train: this.resolved + this.trains.length, target_lane: spec.lane, train_class: spec.trainClass, switch_lane: this.selectedLane });
+      bridge.setStatus(`${spec.trainClass.toUpperCase()} ${LANE_LABELS[spec.lane]} approaching · switch ${LANE_LABELS[this.selectedLane]} · ${this.lives} lives`);
     }
 
     private positionTrain(train: Train) {
@@ -145,7 +151,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
     private resolveTrain(train: Train) {
       const routedLane = train.routedLane ?? this.selectedLane;
-      const result = resolveSwitchTrain(this.score, this.streak, this.lives, train.targetLane, routedLane);
+      const result = resolveSwitchTrain(this.score, this.streak, this.lives, train.targetLane, routedLane, train.trainClass);
       this.score = result.score;
       this.streak = result.streak;
       this.lives = result.lives;
@@ -153,10 +159,10 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       train.body.destroy();
       train.label.destroy();
       this.scoreLabel?.setText(`Score ${this.score}`);
-      this.livesLabel?.setText(`Lives ${"● ".repeat(this.lives)}${"○ ".repeat(3 - this.lives)}`.trim());
+      this.livesLabel?.setText(`Lives ${"● ".repeat(this.lives)}${"○ ".repeat(Math.max(0, this.maxLives - this.lives))}`.trim());
       if (result.correct) {
-        bridge.emit("level_completed", { train: this.resolved, target_lane: train.targetLane, routed_lane: routedLane, score: this.score, streak: this.streak });
-        bridge.setStatus(`Correct route — ${LANE_LABELS[routedLane]} · streak ${this.streak} · ${this.score} points`);
+        bridge.emit("level_completed", { train: this.resolved, target_lane: train.targetLane, routed_lane: routedLane, train_class: train.trainClass, score: this.score, streak: this.streak });
+        bridge.setStatus(`${train.trainClass.toUpperCase()} routed correctly — ${LANE_LABELS[routedLane]} · streak ${this.streak} · ${this.score} points`);
         tone(610 + Math.min(180, this.streak * 12));
       } else {
         bridge.emit("game_action", { action: "wrong_route", train: this.resolved, target_lane: train.targetLane, routed_lane: routedLane, lives: this.lives });
@@ -188,7 +194,9 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const width = this.scale.width;
       const height = this.scale.height;
       const junction = { x: width / 2, y: height * 0.58 };
-      graphics.clear();
+      graphics.clear(); const tier = yardTier(bestScore);
+      graphics.fillStyle(0x101722, 0.95).fillRect(0, 78, width, height - 78);
+      for (let y = 130; y < height; y += 52) { graphics.lineStyle(1, 0x263141, 0.28); graphics.lineBetween(0, y, width, y); }
       graphics.lineStyle(5, TRACK, 0.65);
       graphics.beginPath();
       graphics.moveTo(width / 2, height);
@@ -202,17 +210,19 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         graphics.strokePath();
         graphics.fillStyle(LANE_COLORS[lane], 0.95);
         graphics.fillCircle(this.laneX(lane), 91, lane === this.selectedLane ? 16 : 12);
+        for (let t = 0.15; t < 0.95; t += 0.12) { const x = Phaser.Math.Linear(junction.x, this.laneX(lane), t); const y = Phaser.Math.Linear(junction.y, 104, t); graphics.lineStyle(2, 0x9aa5b4, 0.22).lineBetween(x - 9, y, x + 9, y); }
       }
+      if (tier >= 1) { for (let i = 0; i < tier + 2; i++) { const x = 42 + i * 74; graphics.fillStyle(0xffd36e, 0.2 + i * 0.04).fillCircle(x, height - 54, 5); graphics.lineStyle(1, 0xffd36e, 0.2).lineBetween(x, height - 54, x, height - 82); } }
     }
 
     private endRun() {
       if (this.mode === "gameover") return;
       this.mode = "gameover";
-      bestScore = Math.max(bestScore, this.score);
+      const oldTier = yardTier(bestScore); bestScore = Math.max(bestScore, this.score); const newTier = yardTier(bestScore);
       writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
-      this.bestLabel?.setText(`Best ${bestScore}`);
-      bridge.emit("game_over", { score: this.score, trains: this.resolved, best_score: bestScore });
-      bridge.setStatus(`Yard closed — ${this.score} points · ${this.resolved} trains · tap a lane or press R to retry`);
+      this.bestLabel?.setText(`${YARD_TIERS[newTier]} · Best ${bestScore}`);
+      bridge.emit("game_over", { score: this.score, trains: this.resolved, best_score: bestScore, yard_tier: newTier });
+      if (newTier > oldTier) { bridge.emit("game_action", { action: "yard_tier_up", tier: newTier }); bridge.setStatus(`Yard upgraded — ${YARD_TIERS[newTier]} unlocked`); } else bridge.setStatus(`Yard closed — ${this.score} points · ${this.resolved} trains · tap a lane or press R to retry`);
       this.gameOverTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 26, "YARD CLOSED", { color: "#f5f7fa", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "30px", fontStyle: "bold" }).setOrigin(0.5);
       this.gameOverDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 20, `${this.score} points · ${this.resolved} trains\nTap / R to restart`, { color: "#9aa5b4", align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "15px", lineSpacing: 6 }).setOrigin(0.5);
       tone(120, 0.22, 0.055);
@@ -226,7 +236,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.resolved = 0;
       this.score = 0;
       this.streak = 0;
-      this.lives = 3;
+      this.maxLives = yardTier(bestScore) >= 2 ? 4 : 3;
+      this.lives = this.maxLives;
       this.seed = 48271;
       this.spawnElapsed = 1050;
       this.gameOverTitle?.destroy();
@@ -234,12 +245,12 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.gameOverTitle = undefined;
       this.gameOverDetail = undefined;
       this.scoreLabel?.setText("Score 0");
-      this.livesLabel?.setText("Lives ● ● ●");
-      this.bestLabel?.setText(`Best ${bestScore}`);
+      this.livesLabel?.setText(`Lives ${"● ".repeat(this.lives)}`.trim());
+      this.bestLabel?.setText(`${YARD_TIERS[yardTier(bestScore)]} · Best ${bestScore}`);
       this.switchLabel?.setText("Switch 2").setColor("#ffd36e");
       this.drawTracks();
-      bridge.setStatus("Switchyard live — route each numbered train to the matching exit");
-      bridge.emit("game_started", { mode: "endless", best_score: bestScore });
+      bridge.setStatus(`Switchyard live — ${YARD_TIERS[yardTier(bestScore)]} · E trains are fast, F trains are slower and worth more`);
+      bridge.emit("game_started", { mode: "endless", best_score: bestScore, yard_tier: yardTier(bestScore) });
     }
 
     private handleResize() {
