@@ -104,7 +104,6 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const keyboardDirection = Number(Boolean(this.cursors?.right.isDown || this.keyD?.isDown)) - Number(Boolean(this.cursors?.left.isDown || this.keyA?.isDown));
       if (keyboardDirection !== 0) {
         this.pointerTarget = null;
-      this.visualElapsed = 0;
         nextX += keyboardDirection * (330 + driftTier(bestScore) * 16) * dt;
       } else if (this.pointerTarget !== null) {
         nextX += (this.pointerTarget - nextX) * Math.min(1, dt * 9);
@@ -198,6 +197,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.spawnElapsed = 520;
       this.seed = 7331;
       this.pointerTarget = null;
+      this.visualElapsed = 0;
       this.gameOverTitle?.destroy();
       this.gameOverDetail?.destroy();
       this.gameOverTitle = undefined;
