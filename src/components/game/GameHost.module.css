@@ -18,6 +18,25 @@
   font-weight: 900;
 }
 
+.meter {
+  display: block;
+  flex: 0 0 72px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #d9d5cb;
+}
+
+.meterFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #b63b30;
+  transition: width 450ms ease;
+}
+
+.masteryMeter .meterFill { background: #527f90; }
+
 .unlock {
   margin-left: auto;
   color: #a92720;
@@ -39,6 +58,14 @@
   color: #65e6b4;
 }
 
+:global(.immersive-game-page) .meter { background: #263a40; }
+:global(.immersive-game-page) .meterFill { background: #66e0b3; }
+:global(.immersive-game-page) .masteryMeter .meterFill { background: #68cfff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .meterFill { transition: none; }
+}
+
 @keyframes unlockPulse {
   0% { opacity: 0; transform: translateY(-4px); }
   100% { opacity: 1; transform: translateY(0); }
@@ -52,9 +79,12 @@
     font-size: 9px;
   }
 
-  .progressionStrip > span:nth-of-type(3) {
+  .progressionStrip > span:nth-of-type(5) {
     display: none;
   }
+
+  .meter { flex-basis: 40px; }
+  .masteryMeter { display: none; }
 
   .unlock {
     max-width: 42%;

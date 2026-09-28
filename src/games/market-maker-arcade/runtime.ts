@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { drawOfficeDeskDetails } from "@/games/_shared/visuals/officeDetails";
 import { readLocalGameValue, writeLocalGameValue } from "@/games/_shared/storage/localGameStorage";
 import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/runtime";
 import { MARKET_SESSION_SECONDS, MARKET_WORLD, advanceMarketFloor, createMarketFloorState, interactMarketFloor, marketFloorLayout, marketFloorPnl, marketFloorPrompt, marketFloorQuote, scoreMarketFloor, type MarketFloorEvent, type MarketFloorState } from "./model";
@@ -157,6 +158,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const monitorW = Math.max(5, 17 * this.projection().scale); const monitorH = Math.max(3, 9 * this.projection().scale);
       this.graphics?.fillStyle(0x071214, 1).fillRoundedRect(screen.x - monitorW / 2, screen.y - monitorH, monitorW, monitorH, 2);
       this.graphics?.fillStyle(0x5b8f98, 0.5).fillRect(screen.x - monitorW * 0.35, screen.y - monitorH * 0.72, monitorW * 0.7, Math.max(1, monitorH * 0.18));
+      if (this.graphics) drawOfficeDeskDetails(this.graphics, (px, py) => this.project(px, py), x, y, width, height, this.projection().scale, BUY, this.elapsedVisual);
     }
 
     private drawPerson(x: number, y: number, color: number, facing = 1, small = false) {

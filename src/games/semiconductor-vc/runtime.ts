@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { drawOfficeDeskDetails } from "@/games/_shared/visuals/officeDetails";
 import { readLocalGameValue, writeLocalGameValue } from "@/games/_shared/storage/localGameStorage";
 import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/runtime";
 import {
@@ -301,6 +302,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const s = this.projection().scale;
       this.graphics?.fillStyle(0x05090b, 1).fillRoundedRect(monitor.x - 10 * s, monitor.y - 10 * s, 20 * s, 11 * s, 2);
       this.graphics?.fillStyle(0x5f9aa7, 0.55).fillRect(monitor.x - 7 * s, monitor.y - 7 * s, 14 * s, 2 * s);
+      if (this.graphics) drawOfficeDeskDetails(this.graphics, (px, py) => this.project(px, py), x, y, width, height, s, GREEN, this.visualElapsed);
     }
 
     private drawPerson(x: number, y: number, color: number, small = false) {

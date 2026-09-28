@@ -203,7 +203,19 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
     private drawSubstrate() {
       const tl = this.project(445, 210); const br = this.project(845, 500); const s = this.projection().scale;
-      this.graphics?.fillStyle(0x604a26, 0.48).fillRoundedRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y, 12); this.graphics?.lineStyle(2, 0xd8b05d, 0.65).strokeRoundedRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y, 12);
+      this.graphics?.fillStyle(0x090a08, 0.65).fillRoundedRect(tl.x + 10 * s, tl.y + 13 * s, br.x - tl.x, br.y - tl.y, 12);
+      this.graphics?.fillStyle(0x604a26, 0.75).fillRoundedRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y, 12); this.graphics?.lineStyle(2, 0xd8b05d, 0.85).strokeRoundedRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y, 12);
+      for (let i = 0; i < 23; i += 1) {
+        for (const [x, y] of [[452 + i * 16, 216], [452 + i * 16, 488]] as const) {
+          const pad = this.project(x, y);
+          this.graphics?.fillStyle(0xf5cf76, 0.68).fillCircle(pad.x, pad.y, 2.5 * s);
+        }
+      }
+      for (let i = 0; i < 12; i += 1) {
+        const top = this.project(480 + i * 28, 232);
+        const bottom = this.project(480 + i * 28, 478);
+        this.graphics?.lineStyle(Math.max(0.7, s), 0xd0a75b, 0.22).lineBetween(top.x, top.y, bottom.x, bottom.y);
+      }
 
       const components = this.state.slots.map((id) => getPackageComponent(id));
       const neighborPairs = [[0,1],[1,2],[3,4],[4,5],[0,3],[1,4],[2,5]] as const;
@@ -212,6 +224,10 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         const a = this.project(packageSlotPositions[aIndex].x, packageSlotPositions[aIndex].y); const b = this.project(packageSlotPositions[bIndex].x, packageSlotPositions[bIndex].y);
         const usefulLink = (left.type === "compute" && right.bandwidth > 0) || (right.type === "compute" && left.bandwidth > 0);
         this.graphics?.lineStyle(Math.max(1, 3 * s), usefulLink ? CYAN : 0x7a6b4a, usefulLink ? 0.85 : 0.45).lineBetween(a.x, a.y, b.x, b.y);
+        if (usefulLink) {
+          const phase = (this.visualElapsed / 900 + aIndex * 0.17) % 1;
+          this.graphics?.fillStyle(0xe9ffff, 0.95).fillCircle(a.x + (b.x - a.x) * phase, a.y + (b.y - a.y) * phase, Math.max(1.5, 3 * s));
+        }
       }
 
       packageSlotPositions.forEach((slot, index) => {
@@ -222,8 +238,33 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
           if (component.thermal >= 20) { const radius = (22 + component.thermal * 0.45) * s; this.graphics?.fillStyle(RED, 0.08).fillCircle(point.x, point.y, radius); }
           if (component.cooling > 0) { this.graphics?.lineStyle(Math.max(1, 2 * s), CYAN, 0.5).strokeCircle(point.x, point.y, 36 * s); }
           drawDie(this.graphics, point.x, point.y, TYPE_COLORS[component.type], s * 1.05, 1, component.type === "hbm");
+          this.drawComponentFace(point.x, point.y, s, component.type);
         }
       });
+    }
+
+    private drawComponentFace(x: number, y: number, s: number, type: ComponentType) {
+      const g = this.graphics; if (!g) return;
+      const color = TYPE_COLORS[type];
+      if (type === "compute") {
+        for (let row = 0; row < 3; row += 1) for (let col = 0; col < 4; col += 1) {
+          g.fillStyle(color, 0.8).fillRoundedRect(x + (col - 1.5) * 10 * s - 3 * s, y + (row - 1) * 10 * s - 3 * s, 6 * s, 6 * s, s);
+        }
+      } else if (type === "hbm") {
+        for (let layer = 0; layer < 4; layer += 1) {
+          g.lineStyle(Math.max(0.8, s), color, 0.8).strokeRoundedRect(x - 21 * s + layer * 2 * s, y - 13 * s - layer * 3 * s, 42 * s, 24 * s, 2 * s);
+        }
+      } else if (type === "bridge") {
+        for (let lane = 0; lane < 5; lane += 1) g.lineStyle(Math.max(0.8, s), color, 0.8).lineBetween(x - 24 * s, y + (lane - 2) * 5 * s, x + 24 * s, y + (lane - 2) * 5 * s);
+      } else if (type === "spreader") {
+        for (let fin = 0; fin < 6; fin += 1) g.fillStyle(color, 0.65).fillRect(x - 23 * s + fin * 9 * s, y - 15 * s, 4 * s, 30 * s);
+      } else if (type === "optics") {
+        g.lineStyle(Math.max(1, 2 * s), color, 0.8).strokeCircle(x, y, 12 * s);
+        g.fillStyle(color, 0.9).fillCircle(x, y, 5 * s);
+        for (let lane = -1; lane <= 1; lane += 1) g.lineStyle(Math.max(0.8, s), color, 0.7).lineBetween(x + 12 * s, y + lane * 6 * s, x + 25 * s, y + lane * 6 * s);
+      } else {
+        for (let lane = 0; lane < 5; lane += 1) g.fillStyle(color, 0.8).fillRoundedRect(x - 23 * s + lane * 10 * s, y - 12 * s, 7 * s, 24 * s, 2 * s);
+      }
     }
 
     private drawStations() {

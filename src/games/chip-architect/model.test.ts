@@ -4,7 +4,9 @@ import {
   advanceChipArchitect,
   chipArchitectLayout,
   chipDesignStats,
+  contractMastery,
   createChipArchitectState,
+  designReview,
   interactChipArchitect,
   moduleVariants,
   tapeoutReady,
@@ -78,7 +80,23 @@ describe("Chip Architect model", () => {
     expect(taped.event).toBe("tapeout");
     expect(taped.state.tapeouts).toBe(1);
     expect(taped.state.jobIndex).toBe(1);
+    expect(taped.state.mastery).toBeGreaterThanOrEqual(1);
     expect(Object.values(taped.state.slots).every((slot) => slot === null)).toBe(true);
+  });
+
+  it("explains the binding customer constraint and rewards headroom", () => {
+    const built = buildAiDesign();
+    expect(designReview(built)).toContain("Customer spec met");
+    expect(contractMastery(built)).toBeGreaterThanOrEqual(1);
+    const risky = { ...built, frequency: "turbo" as const };
+    expect(designReview(risky)).toContain("Timing short");
+    expect(contractMastery(risky)).toBe(0);
+  });
+
+  it("enforces a customer's yield target even if basic verification passes", () => {
+    const state = { ...buildAiDesign(), jobIndex: 1, frequency: "eco" as const };
+    expect(designReview(state)).toContain("Yield margin");
+    expect(tapeoutReady({ ...state, verified: true, verificationPass: true })).toBe(false);
   });
 
   it("invalidates verification when a placed block is removed", () => {
