@@ -6,6 +6,8 @@ import {
   isOutsideBounds,
   nextTargetBase,
   orbitPosition,
+  relayModifierForIndex,
+  relayModifierProfile,
   scoreAfterRelay,
   tangentialVelocity,
 } from "./model";
@@ -38,6 +40,19 @@ describe("Orbit Relay model", () => {
     expect(state.relays).toBe(3);
     expect(state.multiplier).toBe(1.25);
     expect(state.score).toBe(325);
+  });
+
+  it("cycles boost and reverse relay modifiers", () => {
+    expect(relayModifierForIndex(3)).toBe("boost");
+    expect(relayModifierForIndex(5)).toBe("reverse");
+    expect(relayModifierForIndex(2)).toBe("normal");
+  });
+
+  it("rewards harder relay modifiers", () => {
+    const base = { relays: 2, score: 200, multiplier: 1 };
+    expect(scoreAfterRelay(base, "boost").score).toBeGreaterThan(scoreAfterRelay(base, "normal").score);
+    expect(relayModifierProfile("boost").targetRadiusFactor).toBeLessThan(1);
+    expect(relayModifierProfile("reverse").targetRadiusFactor).toBeLessThan(1);
   });
 
   it("detects capture overlap and out-of-bounds misses", () => {
