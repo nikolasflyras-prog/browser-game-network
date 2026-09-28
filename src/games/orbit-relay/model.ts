@@ -1,5 +1,6 @@
 export type Vec2 = { x: number; y: number };
 export type Bounds = { width: number; height: number };
+export type RelayModifier = "normal" | "boost" | "reverse";
 
 export type OrbitRelayDifficulty = {
   orbitRadius: number;
@@ -28,10 +29,23 @@ export function difficultyForRelay(relays: number): OrbitRelayDifficulty {
   };
 }
 
-export function scoreAfterRelay(previous: OrbitRelayScore): OrbitRelayScore {
+export function relayModifierForIndex(relayIndex: number): RelayModifier {
+  const safe = Math.max(1, relayIndex);
+  if (safe % 5 === 0) return "reverse";
+  if (safe % 3 === 0) return "boost";
+  return "normal";
+}
+
+export function relayModifierProfile(modifier: RelayModifier) {
+  if (modifier === "boost") return { targetRadiusFactor: 0.82, scoreBonus: 65 };
+  if (modifier === "reverse") return { targetRadiusFactor: 0.9, scoreBonus: 40 };
+  return { targetRadiusFactor: 1, scoreBonus: 0 };
+}
+
+export function scoreAfterRelay(previous: OrbitRelayScore, modifier: RelayModifier = "normal"): OrbitRelayScore {
   const relays = previous.relays + 1;
   const multiplier = Math.min(4, 1 + Math.floor(relays / 3) * 0.25);
-  const score = previous.score + Math.round(100 * multiplier);
+  const score = previous.score + Math.round(100 * multiplier) + relayModifierProfile(modifier).scoreBonus;
   return { relays, score, multiplier };
 }
 
