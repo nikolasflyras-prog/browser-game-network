@@ -12,6 +12,7 @@ import {
   masteryLevel,
   progressionLevel,
   readProgression,
+  xpIntoCurrentLevel,
   type ProgressionUpdateDetail,
 } from "@/lib/progression/playerProgression";
 import styles from "./GameHost.module.css";
@@ -155,7 +156,13 @@ export function GameHost({ game }: Props) {
         data-game-mastery={gameMastery}
       >
         <span className={styles.primary}>Network Lv {progressionLevel(progression.xp)} · {progression.xp} XP</span>
+        <span className={styles.meter} role="progressbar" aria-label="XP toward next network level" aria-valuenow={xpIntoCurrentLevel(progression.xp)} aria-valuemin={0} aria-valuemax={100}>
+          <span className={styles.meterFill} style={{ width: `${xpIntoCurrentLevel(progression.xp)}%` }} />
+        </span>
         <span>{game.title} mastery Lv {masteryLevel(gameMastery)}</span>
+        <span className={`${styles.meter} ${styles.masteryMeter}`} role="progressbar" aria-label="XP toward next game mastery level" aria-valuenow={gameMastery % 75} aria-valuemin={0} aria-valuemax={75}>
+          <span className={styles.meterFill} style={{ width: `${(gameMastery % 75) / 75 * 100}%` }} />
+        </span>
         <span>{progression.playedGames.length} {exploredLabel} · {progression.achievements.length} {badgeLabel}</span>
         {unlockNotice ? <strong className={styles.unlock} aria-live="polite">{unlockNotice}</strong> : null}
       </div>
