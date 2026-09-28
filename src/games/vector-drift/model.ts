@@ -4,13 +4,13 @@ export type DriftDifficulty = {
   gateSpeed: number;
   spawnMs: number;
   gapWidth: number;
-  kind: DriftGateKind;
 };
 
 export type DriftGateSpec = {
   seed: number;
   gapCenter: number;
   gapWidth: number;
+  kind: DriftGateKind;
 };
 
 function clamp(value: number, min: number, max: number) {
