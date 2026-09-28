@@ -8,11 +8,14 @@ import {
   isOutsideBounds,
   movingTargetCenter,
   nextTargetBase,
+  relayModifierForIndex,
+  relayModifierProfile,
   orbitPosition,
   scoreAfterRelay,
   stepPoint,
   tangentialVelocity,
   type OrbitRelayScore,
+  type RelayModifier,
   type Vec2,
 } from "./model";
 
@@ -23,6 +26,10 @@ const PAPER = 0xf5f3ed;
 const MUTED_TEXT = 0x8e8c86;
 const ACCENT = 0xd93a2f;
 const PLAYER = 0xf1c75b;
+const BOOST = 0x70d8ff;
+const REVERSE = 0xbb8cff;
+const ORBIT_TIERS = ["GROUND LINK", "ORBIT NET", "DEEP-SPACE ARRAY", "QUANTUM RELAY"] as const;
+function orbitTier(score: number) { return score >= 8000 ? 3 : score >= 4000 ? 2 : score >= 1500 ? 1 : 0; }
 
 type Mode = "orbiting" | "flying" | "gameover";
 
@@ -56,6 +63,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     private source: Vec2 = { x: 0, y: 0 };
     private targetBase: Vec2 = { x: 0, y: 0 };
     private targetPhase = 0.7;
+    private targetModifier: RelayModifier = "normal";
+    private clockwise = true;
     private orbitAngle = 0;
     private flightPosition: Vec2 = { x: 0, y: 0 };
     private flightVelocity: Vec2 = { x: 0, y: 0 };
@@ -134,6 +143,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         this.targetPhase,
       );
 
+      const targetRadius = difficulty.targetRadius * relayModifierProfile(this.targetModifier).targetRadiusFactor + orbitTier(bestScore) * 1.5;
       if (this.mode === "orbiting") {
         this.orbitAngle += difficulty.orbitSpeed * dt;
         const position = orbitPosition(this.source, difficulty.orbitRadius, this.orbitAngle);
@@ -141,15 +151,16 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       } else if (this.mode === "flying") {
         this.flightPosition = stepPoint(this.flightPosition, this.flightVelocity, dt);
         this.player?.setPosition(this.flightPosition.x, this.flightPosition.y);
-        if (intersectsCapture(this.flightPosition, PLAYER_RADIUS, target, difficulty.targetRadius)) {
+        if (intersectsCapture(this.flightPosition, PLAYER_RADIUS, target, targetRadius)) {
           this.completeRelay(target);
         } else if (isOutsideBounds(this.flightPosition, this.currentBounds())) {
           this.endRun();
         }
       }
 
-      this.targetBody?.setPosition(target.x, target.y);
-      this.drawGuides(target);
+      const targetColor = this.targetModifier === "boost" ? BOOST : this.targetModifier === "reverse" ? REVERSE : ACCENT;
+      this.targetBody?.setPosition(target.x, target.y).setFillStyle(targetColor);
+      this.drawGuides(target, targetRadius);
     }
 
     private currentBounds() {
@@ -165,42 +176,49 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
       const difficulty = difficultyForRelay(this.run.relays);
       this.flightPosition = orbitPosition(this.source, difficulty.orbitRadius, this.orbitAngle);
-      this.flightVelocity = tangentialVelocity(this.orbitAngle, difficulty.launchSpeed, true);
+      this.flightVelocity = tangentialVelocity(this.orbitAngle, difficulty.launchSpeed, this.clockwise);
       this.mode = "flying";
-      this.instruction?.setText("CAPTURE THE RED RELAY");
+      this.instruction?.setText(`CAPTURE ${this.targetModifier.toUpperCase()} RELAY`);
       bridge.setStatus(`Relay ${this.run.relays + 1} in flight`);
       bridge.emit("level_started", {
         relay: this.run.relays + 1,
         input_type: inputType,
         multiplier: this.run.multiplier,
+        relay_modifier: this.targetModifier,
+        orbit_direction: this.clockwise ? "clockwise" : "counterclockwise",
       });
       tone(230, 0.06, 0.035);
     }
 
     private completeRelay(target: Vec2) {
-      this.run = scoreAfterRelay(this.run);
+      const capturedModifier = this.targetModifier; const oldTier = orbitTier(bestScore);
+      this.run = scoreAfterRelay(this.run, capturedModifier);
       if (this.run.score > bestScore) {
         bestScore = this.run.score;
         writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
+        const newTier = orbitTier(bestScore); if (newTier > oldTier) { bridge.emit("game_action", { action: "relay_network_tier_up", tier: newTier }); bridge.setStatus(`Relay network upgraded — ${ORBIT_TIERS[newTier]} unlocked`); }
       }
 
       bridge.emit("level_completed", {
         relay: this.run.relays,
         score: this.run.score,
         multiplier: this.run.multiplier,
+        relay_modifier: capturedModifier,
       });
       bridge.setStatus(`Relay ${this.run.relays} captured — keep the chain alive`);
       tone(620, 0.09, 0.05);
 
       this.source = { ...target };
+      if (capturedModifier === "reverse") this.clockwise = !this.clockwise;
       this.targetBase = nextTargetBase(this.source, this.currentBounds(), this.run.relays + 1);
+      this.targetModifier = relayModifierForIndex(this.run.relays + 1);
       this.targetPhase = this.run.relays * 0.91 + 0.7;
       this.orbitAngle = this.source.x < this.scale.width / 2 ? 0 : Math.PI;
       this.mode = "orbiting";
       this.scoreLabel?.setText(`Score ${this.run.score}`);
       this.multiplierLabel?.setText(`x${this.run.multiplier.toFixed(2)} · ${this.run.relays} relay${this.run.relays === 1 ? "" : "s"}`);
-      this.bestLabel?.setText(`Best ${bestScore}`);
-      this.instruction?.setText("TAP / CLICK / SPACE TO LAUNCH");
+      this.bestLabel?.setText(`${ORBIT_TIERS[orbitTier(bestScore)]} · Best ${bestScore}`);
+      this.instruction?.setText(`${this.targetModifier === "boost" ? "BLUE BOOST" : this.targetModifier === "reverse" ? "PURPLE REVERSE" : "RED STANDARD"} · TAP / SPACE TO LAUNCH`);
     }
 
     private endRun() {
@@ -213,6 +231,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         relays: this.run.relays,
         multiplier: this.run.multiplier,
         best_score: bestScore,
+        relay_tier: orbitTier(bestScore),
       });
       bridge.setStatus(`Run over — ${this.run.score} points · tap or press Space to retry`);
       tone(135, 0.22, 0.055);
@@ -246,33 +265,38 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.source = initialSource(this.currentBounds());
       this.targetBase = nextTargetBase(this.source, this.currentBounds(), 1);
       this.targetPhase = 0.7;
+      this.targetModifier = relayModifierForIndex(1);
+      this.clockwise = true;
       this.gameOverTitle?.destroy();
       this.gameOverDetail?.destroy();
       this.gameOverTitle = undefined;
       this.gameOverDetail = undefined;
       this.scoreLabel?.setText("Score 0");
       this.multiplierLabel?.setText("x1.00 · 0 relays");
-      this.bestLabel?.setText(`Best ${bestScore}`);
-      this.instruction?.setText("TAP / CLICK / SPACE TO LAUNCH");
+      this.bestLabel?.setText(`${ORBIT_TIERS[orbitTier(bestScore)]} · Best ${bestScore}`);
+      this.instruction?.setText("RED STANDARD · BLUE BOOST · PURPLE REVERSES ORBIT");
       this.layoutStaticObjects();
-      bridge.setStatus("Orbiting — launch when the tangent points at the red relay");
-      bridge.emit("game_started", { mode: "standard", best_score: bestScore });
+      bridge.setStatus(`Orbiting — ${ORBIT_TIERS[orbitTier(bestScore)]} · time the tangent for ${this.targetModifier} relay`);
+      bridge.emit("game_started", { mode: "standard", best_score: bestScore, relay_tier: orbitTier(bestScore) });
     }
 
-    private drawGuides(target: Vec2) {
+    private drawGuides(target: Vec2, targetRadius: number) {
       const graphics = this.guides;
       const player = this.player;
       if (!graphics || !player) return;
       const difficulty = difficultyForRelay(this.run.relays);
-      graphics.clear();
+      graphics.clear(); const tier = orbitTier(bestScore);
+      for (let i = 0; i < 16 + tier * 8; i++) { const x = (i * 137 + 43) % Math.max(1, this.scale.width); const y = (i * 83 + 29) % Math.max(1, this.scale.height - 55); graphics.fillStyle(PAPER, 0.08 + (i % 4) * 0.04).fillCircle(x, y, 1 + (i % 3) * 0.35); }
+      if (tier >= 2) { graphics.lineStyle(1, BOOST, 0.08).strokeCircle(this.scale.width * 0.5, this.scale.height * 0.5, Math.min(this.scale.width, this.scale.height) * 0.42); }
 
       graphics.lineStyle(1, MUTED_TEXT, 0.34);
       graphics.strokeCircle(this.source.x, this.source.y, difficulty.orbitRadius);
-      graphics.lineStyle(2, ACCENT, 0.38);
-      graphics.strokeCircle(target.x, target.y, difficulty.targetRadius);
+      const targetColor = this.targetModifier === "boost" ? BOOST : this.targetModifier === "reverse" ? REVERSE : ACCENT;
+      graphics.lineStyle(2, targetColor, 0.48);
+      graphics.strokeCircle(target.x, target.y, targetRadius);
 
       if (this.mode === "orbiting") {
-        const velocity = tangentialVelocity(this.orbitAngle, 92, true);
+        const velocity = tangentialVelocity(this.orbitAngle, 92, this.clockwise);
         graphics.lineStyle(2, PAPER, 0.28);
         graphics.beginPath();
         graphics.moveTo(player.x, player.y);
