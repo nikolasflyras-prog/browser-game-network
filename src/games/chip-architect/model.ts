@@ -40,6 +40,7 @@ export type WorkloadSpec = {
   maxPower: number;
   maxArea: number;
   minTiming: number;
+  minReliability: number;
   hint: string;
 };
 
@@ -66,6 +67,8 @@ export type ChipArchitectState = {
   verificationPass: boolean;
   verificationCooldown: number;
   tapeouts: number;
+  mastery: number;
+  review: string;
   missedJobs: number;
   reputation: number;
   points: number;
@@ -117,10 +120,10 @@ export const moduleVariants: readonly ModuleVariant[] = [
 ] as const;
 
 export const workloadSpecs: readonly WorkloadSpec[] = [
-  { id: "ai-inference", name: "AI Inference ASIC", customer: "Helix Compute", brief: "Push token throughput without blowing the rack power envelope.", minPerformance: 120, maxPower: 92, maxArea: 102, minTiming: 0, hint: "Vector compute likes bandwidth. Do not ignore timing closure." },
-  { id: "edge-vision", name: "Edge Vision SoC", customer: "Northstar Robotics", brief: "Fit useful vision inference into a tight thermal and die-size budget.", minPerformance: 84, maxPower: 50, maxArea: 78, minTiming: 4, hint: "Efficiency and timing margin matter more than peak bandwidth." },
-  { id: "network-switch", name: "Network Switch ASIC", customer: "BluePeak Networks", brief: "Build a fast switching die around high-speed I/O without missing timing.", minPerformance: 118, maxPower: 82, maxArea: 96, minTiming: 0, hint: "The fastest I/O can force you to back off frequency elsewhere." },
-  { id: "storage-controller", name: "Storage Controller", customer: "Granite Systems", brief: "Balance memory movement, reliability, and cost for a high-volume controller.", minPerformance: 108, maxPower: 86, maxArea: 106, minTiming: 0, hint: "A balanced fabric and memory system beats brute force here." },
+  { id: "ai-inference", name: "AI Inference ASIC", customer: "Helix Compute", brief: "Push token throughput without blowing the rack power envelope.", minPerformance: 120, maxPower: 92, maxArea: 102, minTiming: 0, minReliability: 0.96, hint: "Vector compute likes bandwidth. Do not ignore timing closure." },
+  { id: "edge-vision", name: "Edge Vision SoC", customer: "Northstar Robotics", brief: "Fit useful vision inference into a tight thermal and die-size budget.", minPerformance: 84, maxPower: 50, maxArea: 78, minTiming: 4, minReliability: 0.98, hint: "Efficiency and timing margin matter more than peak bandwidth." },
+  { id: "network-switch", name: "Network Switch ASIC", customer: "BluePeak Networks", brief: "Build a fast switching die around high-speed I/O without missing timing.", minPerformance: 118, maxPower: 82, maxArea: 96, minTiming: 0, minReliability: 0.96, hint: "The fastest I/O can force you to back off frequency elsewhere." },
+  { id: "storage-controller", name: "Storage Controller", customer: "Granite Systems", brief: "Balance memory movement, reliability, and cost for a high-volume controller.", minPerformance: 108, maxPower: 86, maxArea: 106, minTiming: 0, minReliability: 0.97, hint: "A balanced fabric and memory system beats brute force here." },
 ] as const;
 
 const frequencyModes: Record<FrequencyMode, { performance: number; power: number; timing: number }> = {
@@ -206,11 +209,31 @@ export function verificationCanPass(state: Pick<ChipArchitectState, "slots" | "f
   return stats.timing >= 0 && stats.reliability >= 0.94;
 }
 
+export function designReview(state: Pick<ChipArchitectState, "slots" | "frequency" | "jobIndex">) {
+  const spec = getArchitectWorkload(state);
+  const stats = chipDesignStats(state);
+  if (!designComplete(state)) return `Install all four IP blocks. ${spec.hint}`;
+  const problems: string[] = [];
+  if (stats.timing < spec.minTiming) problems.push(`Timing short by ${(spec.minTiming - stats.timing).toFixed(1)}: lower the clock or choose faster-closing IP.`);
+  if (stats.reliability < spec.minReliability) problems.push(`Yield margin ${(stats.reliability * 100).toFixed(1)}% below ${(spec.minReliability * 100).toFixed(1)}%: replace riskier blocks.`);
+  if (stats.power > spec.maxPower) problems.push(`Power over by ${(stats.power - spec.maxPower).toFixed(1)}: try eco clock or efficient blocks.`);
+  if (stats.area > spec.maxArea) problems.push(`Area over by ${(stats.area - spec.maxArea).toFixed(1)}: use compact memory or a ring NoC.`);
+  if (stats.performance < spec.minPerformance) problems.push(`Throughput short by ${(spec.minPerformance - stats.performance).toFixed(1)}: pair compute with suitable memory and fabric.`);
+  return problems[0] ?? `Customer spec met. ${spec.hint}`;
+}
+
+export function contractMastery(state: Pick<ChipArchitectState, "slots" | "frequency" | "jobIndex">) {
+  const spec = getArchitectWorkload(state);
+  const stats = chipDesignStats(state);
+  if (designReview(state).startsWith("Install") || stats.performance < spec.minPerformance || stats.power > spec.maxPower || stats.area > spec.maxArea || stats.timing < spec.minTiming || stats.reliability < spec.minReliability) return 0;
+  return 1 + Number(stats.performance >= spec.minPerformance * 1.08 && stats.power <= spec.maxPower * 0.92) + Number(stats.area <= spec.maxArea * 0.9 && stats.timing >= spec.minTiming + 2);
+}
+
 export function tapeoutReady(state: Pick<ChipArchitectState, "slots" | "frequency" | "jobIndex" | "verified" | "verificationPass">) {
   if (!state.verified || !state.verificationPass || !designComplete(state)) return false;
   const stats = chipDesignStats(state);
   const spec = getArchitectWorkload(state);
-  return stats.performance >= spec.minPerformance && stats.power <= spec.maxPower && stats.area <= spec.maxArea && stats.timing >= spec.minTiming;
+  return stats.performance >= spec.minPerformance && stats.power <= spec.maxPower && stats.area <= spec.maxArea && stats.timing >= spec.minTiming && stats.reliability >= spec.minReliability;
 }
 
 export function chipArchitectScore(state: Pick<ChipArchitectState, "points" | "reputation" | "tapeouts" | "missedJobs">) {
@@ -233,6 +256,8 @@ export function createChipArchitectState(): ChipArchitectState {
     verificationPass: false,
     verificationCooldown: 0,
     tapeouts: 0,
+    mastery: 0,
+    review: "Install four blocks, verify the design, then tape out.",
     missedJobs: 0,
     reputation: 100,
     points: 0,
@@ -252,6 +277,7 @@ function resetDesignForNextJob(state: ChipArchitectState, nextIndex: number): Ch
     verified: false,
     verificationPass: false,
     verificationCooldown: 0,
+    review: "New customer brief loaded. Balance throughput, power, area, timing and yield.",
   };
 }
 
@@ -279,7 +305,7 @@ export function architectPrompt(state: ChipArchitectState) {
   if (distance(state.playerX, state.playerY, chipArchitectLayout.verify.x, chipArchitectLayout.verify.y) <= 58) {
     if (!designComplete(state)) return "BUILD ALL FOUR BLOCKS BEFORE VERIFICATION";
     if (state.verificationCooldown > 0) return `VERIFICATION RUNNING · ${Math.ceil(state.verificationCooldown)}s`;
-    return state.verified ? "VERIFICATION COMPLETE · CHANGE DESIGN TO RERUN" : "E · RUN RTL / TIMING VERIFICATION";
+    return state.verified ? "VERIFICATION COMPLETE · CHECK DESIGN REVIEW" : "E · RUN RTL / TIMING VERIFICATION";
   }
 
   if (distance(state.playerX, state.playerY, chipArchitectLayout.tune.x, chipArchitectLayout.tune.y) <= 58) {
@@ -327,7 +353,7 @@ export function interactChipArchitect(state: ChipArchitectState): { state: ChipA
     if (!designComplete(state) || state.verificationCooldown > 0 || state.verified) return { state, event: "none" };
     const pass = verificationCanPass(state);
     return {
-      state: { ...state, verified: true, verificationPass: pass, verificationCooldown: 5.5 },
+      state: { ...state, verified: true, verificationPass: pass, verificationCooldown: 5.5, review: designReview(state) },
       event: pass ? "verification_passed" : "verification_failed",
     };
   }
@@ -345,17 +371,18 @@ export function interactChipArchitect(state: ChipArchitectState): { state: ChipA
     const stats = chipDesignStats(state);
     const spec = getArchitectWorkload(state);
     const headroom = Math.max(0, stats.performance - spec.minPerformance) + Math.max(0, spec.maxPower - stats.power) + Math.max(0, spec.maxArea - stats.area) + Math.max(0, stats.timing - spec.minTiming) * 2;
-    const points = state.points + 1050 + Math.round(state.jobTimeLeft * 5 + headroom * 8);
+    const stars = contractMastery(state);
+    const points = state.points + 1050 + Math.round(state.jobTimeLeft * 5 + headroom * 8) + (stars - 1) * 300;
     const nextIndex = state.jobIndex + 1;
     const tapeouts = state.tapeouts + 1;
     if (nextIndex >= workloadSpecs.length) {
       return {
-        state: { ...state, points, tapeouts, reputation: Math.min(100, state.reputation + 4), mode: "complete", vx: 0, vy: 0 },
+        state: { ...state, points, tapeouts, mastery: state.mastery + stars, review: `${stars}/3 mastery · ${getArchitectWorkload(state).hint}`, reputation: Math.min(100, state.reputation + 4), mode: "complete", vx: 0, vy: 0 },
         event: "complete",
       };
     }
     return {
-      state: resetDesignForNextJob({ ...state, points, tapeouts, reputation: Math.min(100, state.reputation + 4) }, nextIndex),
+      state: resetDesignForNextJob({ ...state, points, tapeouts, mastery: state.mastery + stars, reputation: Math.min(100, state.reputation + 4) }, nextIndex),
       event: "tapeout",
     };
   }
