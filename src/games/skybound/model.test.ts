@@ -26,6 +26,26 @@ describe("Skybound model", () => {
     expect(result.state.landings).toBe(1);
   });
 
+  it("uses boost platforms for a stronger bounce", () => {
+    const state = createSkyboundState(WIDTH, HEIGHT);
+    const base = { ...state.platforms[0], kind: "boost" as const };
+    const falling = { ...state, platforms: [base], playerX: base.x + base.width / 2, playerY: base.y - 19, vy: 220 };
+    const result = advanceSkybound(falling, 0, 0.04, WIDTH, HEIGHT);
+    expect(result.event).toBe("landed");
+    expect(result.state.lastLandingKind).toBe("boost");
+    expect(result.state.vy).toBeLessThan(-520);
+  });
+
+  it("removes fragile platforms after they are used", () => {
+    const state = createSkyboundState(WIDTH, HEIGHT);
+    const fragile = { ...state.platforms[0], kind: "fragile" as const };
+    const falling = { ...state, platforms: [fragile], playerX: fragile.x + fragile.width / 2, playerY: fragile.y - 19, vy: 220 };
+    const result = advanceSkybound(falling, 0, 0.04, WIDTH, HEIGHT);
+    expect(result.event).toBe("landed");
+    expect(result.state.lastLandingKind).toBe("fragile");
+    expect(result.state.platforms.some((platform) => platform.id === fragile.id)).toBe(false);
+  });
+
   it("scrolls the world when the player climbs above the camera line", () => {
     const state = createSkyboundState(WIDTH, HEIGHT);
     const climbing = { ...state, playerY: HEIGHT * 0.32, vy: -300 };
