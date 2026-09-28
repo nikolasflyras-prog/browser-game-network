@@ -324,7 +324,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     }
 
     private drawFloorplan() {
-      const topLeft = this.project(455, 215); const bottomRight = this.project(805, 515);
+      const topLeft = this.project(455, 215); const bottomRight = this.project(805, 515); const s = this.projection().scale;
       this.graphics?.fillStyle(0x0a151a, 1).fillRoundedRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
       this.graphics?.lineStyle(2, 0x6f8790, 0.85).strokeRoundedRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
       const routes = [["compute","memory"],["compute","noc"],["memory","io"],["noc","io"]] as const;
