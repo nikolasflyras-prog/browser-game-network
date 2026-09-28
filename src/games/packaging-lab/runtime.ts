@@ -48,6 +48,8 @@ function formatClock(seconds: number) {
   const value = Math.max(0, Math.ceil(seconds));
   return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`;
 }
+const PKG_TIERS = ["PROTO BENCH", "2.5D LAB", "HVM PACKAGING LINE", "ADVANCED PACKAGE CENTER"] as const;
+function packagingTier(score: number) { return score >= 7800 ? 3 : score >= 4400 ? 2 : score >= 2000 ? 1 : 0; }
 
 export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   let muted = false;
@@ -167,13 +169,13 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       for (let x = 0; x <= PACKAGING_WORLD.width; x += 80) { const top = this.project(x, 0); const bottom = this.project(x, PACKAGING_WORLD.height); g.lineBetween(top.x, top.y, bottom.x, bottom.y); }
       for (let y = 0; y <= PACKAGING_WORLD.height; y += 80) { const left = this.project(0, y); const right = this.project(PACKAGING_WORLD.width, y); g.lineBetween(left.x, left.y, right.x, right.y); }
 
-      this.drawBench(345, 105, 185, 95); this.drawBench(345, 545, 185, 95); this.drawBench(850, 545, 185, 95);
+      this.drawEnvironment(); this.drawBench(345, 105, 185, 95); this.drawBench(345, 545, 185, 95); this.drawBench(850, 545, 185, 95);
       this.drawSubstrate(); this.drawBins(); this.drawStations(); this.drawPlayer();
       for (const label of this.labels) { const point = this.project(label.x, label.y); label.text.setPosition(point.x, point.y); label.text.setVisible(point.x > -90 && point.x < this.scale.width + 90 && point.y > -40 && point.y < this.scale.height + 60); }
 
       const stats = packageStats(this.state); const spec = getPackageSpec(this.state); const counts = packagingCounts(this.state);
       this.hudLeft?.setText(`C ${stats.compute}/${spec.minCompute}   BW ${stats.bandwidth}/${spec.minBandwidth}\nHOT ${stats.thermalPeak}/${spec.maxThermal}   WARP ${stats.warpage}/${spec.maxWarpage}   Y ${(stats.yield * 100).toFixed(1)}%`);
-      this.hudRight?.setText(`${formatClock(this.state.jobTimeLeft)} SPEC · ${formatClock(this.state.timeLeft)} RUN\nShipped ${this.state.packagesShipped} · Rep ${this.state.reputation} · Best ${bestScore}`);
+      this.hudRight?.setText(`${formatClock(this.state.jobTimeLeft)} SPEC · ${formatClock(this.state.timeLeft)} RUN · ${PKG_TIERS[packagingTier(bestScore)]}\nShipped ${this.state.packagesShipped} · Rep ${this.state.reputation} · Best ${bestScore}`);
       this.specText?.setText(`${spec.customer.toUpperCase()} · ${spec.name.toUpperCase()} · ${this.state.bondProfile.toUpperCase()} BOND`);
       this.prompt?.setText(`${packagingPrompt(this.state)} · WASD/ARROWS + E`);
       const carried = getPackageComponent(this.state.carriedComponentId);
@@ -187,6 +189,20 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       mount.dataset.pkgSlots = String(stats.occupied); mount.dataset.pkgPending = this.state.inspectionPending ? "true" : "false"; mount.dataset.pkgInspected = this.state.inspected ? "true" : "false";
       mount.dataset.pkgPass = this.state.inspectionPass ? "true" : "false"; mount.dataset.pkgShipped = String(this.state.packagesShipped); mount.dataset.pkgProfile = this.state.bondProfile;
       mount.dataset.pkgMeetsSpec = packageMeetsSpec(this.state) ? "true" : "false"; mount.dataset.pkgMode = this.state.mode;
+    }
+
+    private drawEnvironment() {
+      const g = this.graphics; if (!g) return;
+      const s = this.projection().scale; const tier = packagingTier(bestScore); const pulse = 0.5 + 0.28 * Math.sin(this.visualElapsed / 330);
+      const railA = this.project(330, 78); const railB = this.project(1085, 78);
+      g.lineStyle(7 * s, 0x26383c, 0.92).lineBetween(railA.x, railA.y, railB.x, railB.y);
+      g.lineStyle(2 * s, CYAN, 0.34).lineBetween(railA.x, railA.y, railB.x, railB.y);
+      const carrierX = 380 + ((this.visualElapsed * 0.05) % 620); const carrier = this.project(carrierX, 78);
+      g.fillStyle(0x16313a, 1).fillRoundedRect(carrier.x - 19 * s, carrier.y - 9 * s, 38 * s, 18 * s, 4 * s); g.lineStyle(1.5 * s, CYAN, 0.7).strokeRoundedRect(carrier.x - 19 * s, carrier.y - 9 * s, 38 * s, 18 * s, 4 * s);
+      const cleanA = this.project(390, 615); const cleanB = this.project(1080, 615); g.lineStyle(2 * s, GREEN, 0.18).lineBetween(cleanA.x, cleanA.y, cleanB.x, cleanB.y);
+      for (let x = 430; x <= 1040; x += 86) { const q = this.project(x, 615); g.fillStyle(GREEN, 0.18 + pulse * 0.16).fillCircle(q.x, q.y, 4 * s); }
+      if (tier >= 1) { const inspectRack = this.project(1110, 610); g.fillStyle(0x13272b, 0.98).fillRoundedRect(inspectRack.x - 44 * s, inspectRack.y - 52 * s, 88 * s, 104 * s, 7 * s); g.lineStyle(2 * s, PURPLE, 0.42).strokeRoundedRect(inspectRack.x - 44 * s, inspectRack.y - 52 * s, 88 * s, 104 * s, 7 * s); for (let i = 0; i < 5 + tier; i++) { g.fillStyle(0x20393e, 1).fillRect(inspectRack.x - 31 * s, inspectRack.y + (-37 + i * 13) * s, 62 * s, 7 * s); g.fillStyle(i < 2 + tier ? GREEN : MUTED, 0.6).fillCircle(inspectRack.x + 25 * s, inspectRack.y + (-34 + i * 13) * s, 2.5 * s); } }
+      if (tier >= 2) { for (let i = 0; i < tier; i++) { const q = this.project(720 + i * 112, 688); g.fillStyle(0x1b2b2e, 0.98).fillRoundedRect(q.x - 40 * s, q.y - 19 * s, 80 * s, 38 * s, 5 * s); g.lineStyle(1.5 * s, CYAN, 0.32).strokeRoundedRect(q.x - 40 * s, q.y - 19 * s, 80 * s, 38 * s, 5 * s); } }
     }
 
     private drawBench(x: number, y: number, width: number, height: number) {
@@ -214,6 +230,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         this.graphics?.lineStyle(Math.max(1, 3 * s), usefulLink ? CYAN : 0x7a6b4a, usefulLink ? 0.85 : 0.45).lineBetween(a.x, a.y, b.x, b.y);
       }
 
+      for (let row = 0; row < 7; row++) { const y = tl.y + (row + 1) * (br.y - tl.y) / 8; this.graphics?.lineStyle(Math.max(0.6, s), 0xe0bd72, 0.10).lineBetween(tl.x + 12 * s, y, br.x - 12 * s, y); }
       packageSlotPositions.forEach((slot, index) => {
         const point = this.project(slot.x, slot.y); const component = components[index];
         this.graphics?.fillStyle(0x0a1112, 0.72).fillRoundedRect(point.x - 48 * s, point.y - 42 * s, 96 * s, 84 * s, 8);
@@ -269,15 +286,16 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     }
 
     private endRun(failed: boolean) {
-      const score = packagingScore(this.state); bestScore = Math.max(bestScore, score); writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
-      bridge.emit("game_over", { score, packages_shipped: this.state.packagesShipped, missed_specs: this.state.missedJobs, reputation: this.state.reputation, failed });
-      bridge.setStatus(`${failed ? "Packaging program cancelled" : "Packaging shift complete"} — ${this.state.packagesShipped} shipped · score ${score}`);
+      const score = packagingScore(this.state); const oldTier = packagingTier(bestScore); bestScore = Math.max(bestScore, score); const newTier = packagingTier(bestScore); writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
+      bridge.emit("game_over", { score, packages_shipped: this.state.packagesShipped, missed_specs: this.state.missedJobs, reputation: this.state.reputation, failed, packaging_tier: newTier });
+      if (newTier > oldTier) { bridge.emit("game_action", { action: "packaging_tier_up", tier: newTier }); bridge.setStatus(`Packaging center upgraded — ${PKG_TIERS[newTier]} unlocked`); }
+      else bridge.setStatus(`${failed ? "Packaging program cancelled" : "Packaging shift complete"} — ${this.state.packagesShipped} shipped · score ${score}`);
       this.endTitle?.destroy(); this.endDetail?.destroy();
       this.endTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 32, failed ? "PROGRAM CANCELLED" : "SHIFT REVIEW", { color: "#e9f6f4", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "28px", fontStyle: "bold", backgroundColor: "#071012f2", padding: { x: 18, y: 11 } }).setOrigin(0.5).setDepth(40);
       this.endDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 32, `${this.state.packagesShipped} packages · ${this.state.missedJobs} misses · rep ${this.state.reputation}\nScore ${score} · Best ${bestScore}\nPress R or Restart for a new packaging shift`, { color: "#9fb3b0", align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", lineSpacing: 6, backgroundColor: "#071012f2", padding: { x: 18, y: 11 } }).setOrigin(0.5).setDepth(40);
     }
 
-    private resetRun() { this.endTitle?.destroy(); this.endDetail?.destroy(); this.endTitle = undefined; this.endDetail = undefined; this.state = createPackagingState(); this.visualElapsed = 0; this.statusElapsed = 0; this.draw(); bridge.setStatus("Packaging Lab live — place chiplets on the substrate and make adjacency work for you"); bridge.emit("game_started", { mode: "walkable-advanced-packaging-lab", session_seconds: 300 }); }
+    private resetRun() { this.endTitle?.destroy(); this.endDetail?.destroy(); this.endTitle = undefined; this.endDetail = undefined; const tier = packagingTier(bestScore); this.state = createPackagingState(); this.state.reputation += tier * 3; this.state.jobTimeLeft += tier * 3; this.visualElapsed = 0; this.statusElapsed = 0; this.draw(); bridge.setStatus(`Packaging Lab live — ${PKG_TIERS[tier]} · place chiplets on the substrate and make adjacency work for you`); bridge.emit("game_started", { mode: "walkable-advanced-packaging-lab", session_seconds: 300, packaging_tier: tier }); }
 
     private handleResize() { this.hudRight?.setPosition(this.scale.width - 14, 12); this.specText?.setPosition(this.scale.width / 2, 12); this.prompt?.setPosition(this.scale.width / 2, this.scale.height - 11); this.detail?.setPosition(14, this.scale.height - 12); this.touchInteract?.setPosition(this.scale.width - 66, this.scale.height - 38); this.endTitle?.setPosition(this.scale.width / 2, this.scale.height / 2 - 32); this.endDetail?.setPosition(this.scale.width / 2, this.scale.height / 2 + 32); this.draw(); }
   }
