@@ -198,6 +198,69 @@ export function ChipFab() {
 
       <div className={styles.fabPanel}>
         <div className={styles.eventHeader}><div><p className={styles.kicker}>{state.eventLabel}</p><strong>{state.eventDetail}</strong></div><span>{state.tick}/{state.maxTicks} ticks</span></div>
+
+        <div className={styles.cleanroom} data-running={running ? "true" : "false"} data-pressure={signals.flowState} aria-label="Animated cleanroom operating view">
+          <div className={styles.cleanroomHeader}>
+            <span>300mm cleanroom · AMHS live view</span>
+            <strong>{running ? "AUTOMATED MATERIAL HANDLING ACTIVE" : state.complete ? "SHIFT COMPLETE" : "LINE STANDBY"}</strong>
+          </div>
+          <div className={styles.overheadRail} aria-hidden="true">
+            <span className={styles.railLine} />
+            {Array.from({ length: Math.max(1, Math.min(6, Math.ceil(signals.totalWip / 3))) }, (_, carrier) => (
+              <i className={styles.foopCarrier} data-running={running ? "true" : "false"} key={carrier} style={{ animationDelay: `${carrier * -1.15}s` }}>
+                <b />
+              </i>
+            ))}
+          </div>
+          <div className={styles.cleanroomFloor}>
+            <div className={styles.fabEntry}>
+              <span>FOUP STARTS</span>
+              <strong>{startLabels[state.startMode]}</strong>
+              <small>{state.startMode === "push" ? "high feed" : state.startMode === "hold" ? "release held" : "balanced feed"}</small>
+            </div>
+            {stationOrder.map((station) => {
+              const tool = state.stations[station];
+              const focused = state.focus === station;
+              const maintenance = tool.maintenanceTicks > 0;
+              const alert = tool.health < 65;
+              const bottleneck = signals.bottleneck === station;
+              return (
+                <div
+                  className={styles.toolModule}
+                  data-focused={focused ? "true" : "false"}
+                  data-alert={alert ? "true" : "false"}
+                  data-maintenance={maintenance ? "true" : "false"}
+                  data-bottleneck={bottleneck ? "true" : "false"}
+                  key={`cleanroom-${station}`}
+                >
+                  <div className={styles.toolTower}>
+                    <span className={styles.toolBeacon} />
+                    <div className={styles.toolScreen}><i style={{ width: `${Math.max(8, tool.health)}%` }} /></div>
+                    <div className={styles.toolChamber}><i /><i /></div>
+                    <div className={styles.toolLoadPort}>
+                      {Array.from({ length: Math.min(5, tool.queue) }, (_, wafer) => <i key={wafer} />)}
+                    </div>
+                  </div>
+                  <div className={styles.toolCopy}>
+                    <strong>{stationLabels[station]}</strong>
+                    <span>{maintenance ? `PM · ${tool.maintenanceTicks}t` : `${Math.round(tool.health)}% health`}</span>
+                    <small>{bottleneck ? `BOTTLENECK · Q${tool.queue}` : focused ? "ENGINEERING FOCUS" : `Queue ${tool.queue}`}</small>
+                  </div>
+                </div>
+              );
+            })}
+            <div className={styles.fabOutput}>
+              <span>OUTGOING</span>
+              <strong>{Math.round(state.goodDie)}</strong>
+              <small>good die · {signals.yieldRate.toFixed(0)}% yield</small>
+            </div>
+          </div>
+          <div className={styles.crewTrack} aria-hidden="true">
+            <span>Engineering crew</span>
+            <div data-focus={state.focus}><i /><b>{stationLabels[state.focus]}</b></div>
+          </div>
+        </div>
+
         <div className={styles.flow} aria-label="Live fab process flow">
           {stationOrder.map((station, index) => {
             const stationState = state.stations[station];
