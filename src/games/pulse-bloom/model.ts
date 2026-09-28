@@ -1,5 +1,6 @@
 export type Vec2 = { x: number; y: number };
-export type PulseParticleSeed = Vec2 & { vx: number; vy: number };
+export type PulseParticleKind = "normal" | "catalyst" | "dense";
+export type PulseParticleSeed = Vec2 & { vx: number; vy: number; kind: PulseParticleKind };
 
 export type PulseRoundConfig = {
   particleCount: number;
@@ -42,6 +43,13 @@ export function roundScore(round: number, captured: number, target: number) {
   return captured * captured * 4 + clearBonus;
 }
 
+
+export function particleProfile(kind: PulseParticleKind) {
+  if (kind === "catalyst") return { pulseScale: 1.42, speedFactor: 1.08 };
+  if (kind === "dense") return { pulseScale: 0.72, speedFactor: 0.82 };
+  return { pulseScale: 1, speedFactor: 1 };
+}
+
 export function particleSeeds(seed: number, count: number, width: number, height: number): PulseParticleSeed[] {
   let current = seed >>> 0;
   const particles: PulseParticleSeed[] = [];
@@ -51,13 +59,16 @@ export function particleSeeds(seed: number, count: number, width: number, height
     const ry = nextRandom(current); current = ry.seed;
     const ra = nextRandom(current); current = ra.seed;
     const rs = nextRandom(current); current = rs.seed;
+    const rk = nextRandom(current); current = rk.seed;
+    const kind: PulseParticleKind = rk.value < 0.16 ? "catalyst" : rk.value > 0.8 ? "dense" : "normal";
     const angle = ra.value * Math.PI * 2;
-    const speed = 34 + rs.value * 42;
+    const speed = (34 + rs.value * 42) * particleProfile(kind).speedFactor;
     particles.push({
       x: margin + rx.value * Math.max(1, width - margin * 2),
       y: 78 + ry.value * Math.max(1, height - 150),
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
+      kind,
     });
   }
   return particles;
