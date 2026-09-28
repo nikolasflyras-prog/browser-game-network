@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { laneFromIndex, nextSwitchTrain, resolveSwitchTrain, switchDifficulty } from "./model";
+import { laneFromIndex, nextSwitchTrain, resolveSwitchTrain, switchDifficulty, switchTrainProfile } from "./model";
 
 describe("Switchyard model", () => {
   it("spawns trains deterministically", () => {
@@ -11,6 +11,19 @@ describe("Switchyard model", () => {
     const late = switchDifficulty(20);
     expect(late.spawnMs).toBeLessThan(early.spawnMs);
     expect(late.progressPerSecond).toBeGreaterThan(early.progressPerSecond);
+  });
+
+  it("gives express and freight trains distinct speed/value profiles", () => {
+    expect(switchTrainProfile("express").speedFactor).toBeGreaterThan(1);
+    expect(switchTrainProfile("freight").speedFactor).toBeLessThan(1);
+    expect(switchTrainProfile("express").scoreBonus).toBeGreaterThan(0);
+    expect(switchTrainProfile("freight").scoreBonus).toBeGreaterThan(0);
+  });
+
+  it("rewards special train classes on correct routing", () => {
+    const local = resolveSwitchTrain(20, 2, 3, "left", "left", "local");
+    const express = resolveSwitchTrain(20, 2, 3, "left", "left", "express");
+    expect(express.score).toBeGreaterThan(local.score);
   });
 
   it("builds score and streak on correct routing", () => {
