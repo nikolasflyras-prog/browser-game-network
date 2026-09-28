@@ -399,6 +399,12 @@ export function semiVcFundNav(state: Pick<SemiVcState, "dryPowder" | "holdings">
   return state.dryPowder + state.holdings.reduce((total, holding) => total + holding.mark, 0);
 }
 
+// A diligence estimate of execution risk, expressed as a multiple of the check.
+// It is applied whether or not the player chose to inspect the deal first.
+export function semiVcEntryMarkMultiple(company: Pick<SemiCompany, "quality">) {
+  return clamp(1 + (company.quality - 0.6) * 0.65, 0.65, 1.3);
+}
+
 export function semiVcTvpi(state: Pick<SemiVcState, "dryPowder" | "holdings" | "distributions">) {
   return (semiVcFundNav(state) + state.distributions) / SEMI_VC_FUND_SIZE;
 }
@@ -630,12 +636,11 @@ export function interactSemiVc(state: SemiVcState): { state: SemiVcState; event:
       if (icPad.check > state.dryPowder) return { state, event: "none" };
       const postMoney = active.preMoney + active.raiseAmount;
       const ownershipPct = (icPad.check / postMoney) * 100;
-      const qualityAdjustment = state.activeDealDiligenced ? 1 + (active.quality - 0.5) * 0.05 : 1;
       const holding: VentureHolding = {
         companyId: active.id,
         invested: icPad.check,
         ownershipPct,
-        mark: icPad.check * qualityAdjustment,
+        mark: icPad.check * semiVcEntryMarkMultiple(active),
         supportBoost: 0,
       };
       return {

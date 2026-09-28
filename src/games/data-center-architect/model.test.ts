@@ -54,4 +54,15 @@ describe("Data Center Architect model", () => {
     expect(state.faultSlot).toBeNull();
     expect(state.repairTimer).toBe(0);
   });
+
+  it("counts lost redundancy as an SLA breach and reduces the contract payout", () => {
+    const slots = ["compute", "network", "compute", "cooling", "storage", "power", "power", null] as DataCenterState["slots"];
+    const base = { ...createDataCenterState(31), slots, workloadRunning: true, workloadTime: 0.05, faultTimer: 100, budget: 50 };
+    const healthy = advanceDataCenter(base, { x: 0, y: 0 }, 0.05).state;
+    const degraded = advanceDataCenter({ ...base, workloadBreachTime: 5, slots: slots.map((rack, index) => index === 6 ? null : rack) }, { x: 0, y: 0 }, 0.05).state;
+    expect(healthy.workloadBreachTime).toBe(0);
+    expect(degraded.workloadBreachTime).toBeGreaterThan(0);
+    expect(degraded.slaBreaches).toBeGreaterThan(0);
+    expect(healthy.budget).toBeGreaterThan(degraded.budget);
+  });
 });

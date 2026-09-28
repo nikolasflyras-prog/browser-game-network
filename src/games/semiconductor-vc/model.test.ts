@@ -9,6 +9,7 @@ import {
   interactSemiVc,
   semiVcCompanies,
   semiVcDpi,
+  semiVcEntryMarkMultiple,
   semiVcExitCandidate,
   semiVcFundNav,
   semiVcLayout,
@@ -73,6 +74,25 @@ describe("Semiconductor VC office model", () => {
     expect(invested.state.dryPowder).toBe(SEMI_VC_FUND_SIZE - 500_000);
     expect(invested.state.holdings[0]?.companyId).toBe("latchwave");
     expect(invested.state.holdings[0]?.ownershipPct).toBeCloseTo(500_000 / (12_000_000 + 3_000_000) * 100, 5);
+  });
+
+  it("prices execution risk into the entry mark even when the player skips diligence", () => {
+    const weak = semiVcCompanies.find((company) => company.id === "skyferro")!;
+    const strong = semiVcCompanies.find((company) => company.id === "latticebridge")!;
+    expect(semiVcEntryMarkMultiple(weak)).toBeLessThan(1);
+    expect(semiVcEntryMarkMultiple(strong)).toBeGreaterThan(1);
+
+    const base = createSemiVcState(22);
+    const pad = semiVcLayout.icPads[1];
+    const invest = (diligenced: boolean) => interactSemiVc({
+      ...base,
+      playerX: pad.x,
+      playerY: pad.y,
+      activeDealId: weak.id,
+      activeDealDiligenced: diligenced,
+    }).state.holdings[0]!.mark;
+    expect(invest(false)).toBeCloseTo(pad.check * semiVcEntryMarkMultiple(weak));
+    expect(invest(true)).toBeCloseTo(invest(false));
   });
 
   it("turns staff hiring into a real operating tradeoff", () => {

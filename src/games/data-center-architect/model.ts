@@ -47,6 +47,7 @@ export type DataCenterState = {
   workloadIndex: number;
   workloadRunning: boolean;
   workloadTime: number;
+  workloadBreachTime: number;
   uptime: number;
   slaBreaches: number;
   faultSlot: number | null;
@@ -130,6 +131,7 @@ export function createDataCenterState(seed = 90909): DataCenterState {
     workloadIndex: 0,
     workloadRunning: false,
     workloadTime: 0,
+    workloadBreachTime: 0,
     uptime: 0,
     slaBreaches: 0,
     faultSlot: null,
@@ -302,7 +304,7 @@ export function interactDataCenter(state: DataCenterState): { state: DataCenterS
   if (distance(state.playerX, state.playerY, dataCenterLayout.deploy.x, dataCenterLayout.deploy.y) <= 62 && !state.workloadRunning) {
     if (!dataCenterReady(state)) return { state, event: "deploy_blocked" };
     const workload = currentWorkload(state);
-    return { state: { ...state, workloadRunning: true, workloadTime: workload.duration }, event: "deploy_started" };
+    return { state: { ...state, workloadRunning: true, workloadTime: workload.duration, workloadBreachTime: 0 }, event: "deploy_started" };
   }
 
   if (distance(state.playerX, state.playerY, dataCenterLayout.repair.x, dataCenterLayout.repair.y) <= 62 && !state.carryingRepairKit) {
@@ -359,6 +361,7 @@ export function advanceDataCenter(state: DataCenterState, input: { x: number; y:
   let workloadRunning = state.workloadRunning;
   let uptime = state.uptime;
   let slaBreaches = state.slaBreaches;
+  let workloadBreachTime = state.workloadBreachTime;
   let reputation = state.reputation;
   let completedWorkloads = state.completedWorkloads;
   let workloadIndex = state.workloadIndex;
@@ -372,17 +375,22 @@ export function advanceDataCenter(state: DataCenterState, input: { x: number; y:
       && stats.network >= workload.network
       && stats.storage >= workload.storage
       && stats.powerCapacity >= stats.powerDraw
-      && stats.thermal <= workload.maxHeat;
+      && stats.thermal <= workload.maxHeat
+      && stats.redundancy >= workload.redundancy;
     if (healthy) uptime += dt;
     else {
       slaBreaches += dt;
+      workloadBreachTime += dt;
       reputation = clamp(reputation - 0.55 * dt, 0, 100);
     }
 
     if (workloadTime <= 0) {
       workloadRunning = false;
       completedWorkloads += 1;
-      budget = clamp(budget + 18, 0, 100);
+      // Contracts pay in proportion to delivered uptime, with a bonus for meeting 99% SLA.
+      const availability = 1 - workloadBreachTime / workload.duration;
+      budget = clamp(budget + Math.round(18 * availability) + (availability >= 0.99 ? 8 : 0), 0, 100);
+      reputation = clamp(reputation + (availability >= 0.99 ? 3 : -Math.min(8, workloadBreachTime * 0.35)), 0, 100);
       workloadIndex += 1;
       event = workloadIndex >= workloads.length ? "session_complete" : "workload_complete";
     }
@@ -405,6 +413,7 @@ export function advanceDataCenter(state: DataCenterState, input: { x: number; y:
       repairTimer,
       seed,
       workloadTime,
+      workloadBreachTime,
       workloadRunning,
       uptime,
       slaBreaches,

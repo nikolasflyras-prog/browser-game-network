@@ -11,6 +11,7 @@ import {
   semiVcActiveCompany,
   semiVcCompanies,
   semiVcDpi,
+  semiVcEntryMarkMultiple,
   semiVcExitCandidate,
   semiVcFundNav,
   semiVcLayout,
@@ -333,6 +334,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         { label: "LIQUIDITY / EXITS", x: semiVcLayout.exit.x, y: semiVcLayout.exit.y - 75, color: "#68e0b0" },
         { label: "RECRUITING", x: semiVcLayout.hire.x, y: semiVcLayout.hire.y - 62, color: "#a7b6bd" },
         { label: "NEWS WALL", x: semiVcLayout.news.x, y: semiVcLayout.news.y - 48, color: "#ff7185" },
+        ...semiVcLayout.icPads.map((pad) => ({ label: pad.label, x: pad.x, y: pad.y - 33, color: pad.check ? "#ffd166" : "#ff7185" })),
+        ...semiVcLayout.portfolioPads.map((pad) => ({ label: pad.label, x: pad.x, y: pad.y - 34, color: pad.id === "support" ? "#b794f6" : "#ff7185" })),
       ];
       this.worldLabels = specs.map((spec) => ({
         text: this.add.text(0, 0, spec.label, {
@@ -356,6 +359,24 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.drawFloor();
 
       for (const rect of semiVcLayout.obstacles) this.drawDesk(rect.x, rect.y, rect.width, rect.height);
+
+      // A low-contrast trail points to the next physical decision without obscuring the office.
+      const objective = this.state.activeDealId
+        ? (this.state.activeDealDiligenced ? semiVcLayout.icPads[1] : semiVcLayout.diligence)
+        : this.state.portfolioAlertCompanyId
+          ? semiVcLayout.portfolioPads[1]
+          : this.state.incoming[0] ?? (semiVcExitCandidate(this.state) ? semiVcLayout.exit : null);
+      if (objective) {
+        const start = this.project(this.state.playerX, this.state.playerY);
+        const end = this.project(objective.x, objective.y);
+        const length = Math.hypot(end.x - start.x, end.y - start.y);
+        const count = Math.floor(length / 20);
+        for (let i = 2; i < count; i += 1) {
+          const t = i / count;
+          graphics.fillStyle(GREEN, 0.17 + 0.12 * Math.sin(this.visualElapsed / 500 + i * 0.7) ** 2)
+            .fillCircle(start.x + (end.x - start.x) * t, start.y + (end.y - start.y) * t, 2.2);
+        }
+      }
 
       for (let i = 0; i < this.state.staff; i += 1) this.drawPerson(375 + i * 55, 160, ANALYST, true);
       this.drawPerson(690, 145, PARTNER, true);
@@ -422,7 +443,9 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
       const active = semiVcActiveCompany(this.state);
       if (active) {
-        const diligence = this.state.activeDealDiligenced ? `\nDILIGENCE: ${active.hiddenInsight}` : "\nDILIGENCE: walk the file to the analyst station.";
+        const diligence = this.state.activeDealDiligenced
+          ? `\nDILIGENCE: ${active.hiddenInsight}\nUNDERWRITING: ${(semiVcEntryMarkMultiple(active) * 100).toFixed(0)} cents of initial value per $1 invested.`
+          : "\nDILIGENCE: walk the file to the analyst station to reveal the initial value estimate.";
         const flags = active.redFlag ? `\nRISK: ${active.redFlag}` : active.greenFlag ? `\nSIGNAL: ${active.greenFlag}` : "";
         this.dealPanel?.setText(
           `${active.name} · ${active.round} · raising ${moneyMillions(active.raiseAmount)} at ${moneyMillions(active.preMoney)} pre\n` +
