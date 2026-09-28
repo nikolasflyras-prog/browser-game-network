@@ -43,6 +43,8 @@ function formatClock(seconds: number) {
   const value = Math.max(0, Math.ceil(seconds));
   return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, "0")}`;
 }
+const ARCH_TIERS = ["GARAGE RTL", "DESIGN STUDIO", "ASIC LAB", "FULL DESIGN CENTER"] as const;
+function architectTier(score: number) { return score >= 7600 ? 3 : score >= 4300 ? 2 : score >= 1900 ? 1 : 0; }
 
 export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   let muted = false;
@@ -248,6 +250,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         g.lineBetween(left.x, left.y, right.x, right.y);
       }
 
+      this.drawEnvironment();
       this.drawBench(350, 105, 190, 92);
       this.drawBench(350, 545, 190, 92);
       this.drawBench(855, 535, 180, 92);
@@ -265,7 +268,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const stats = chipDesignStats(this.state);
       const spec = getArchitectWorkload(this.state);
       this.hudLeft?.setText(`P ${stats.performance}/${spec.minPerformance}   W ${stats.power}/${spec.maxPower}\nA ${stats.area}/${spec.maxArea}   T ${stats.timing >= 0 ? "+" : ""}${stats.timing}/${spec.minTiming >= 0 ? "+" : ""}${spec.minTiming}`);
-      this.hudRight?.setText(`${formatClock(this.state.jobTimeLeft)} SPEC · ${formatClock(this.state.timeLeft)} RUN\nTapeouts ${this.state.tapeouts} · Rep ${this.state.reputation} · Best ${bestScore}`);
+      this.hudRight?.setText(`${formatClock(this.state.jobTimeLeft)} SPEC · ${formatClock(this.state.timeLeft)} RUN · ${ARCH_TIERS[architectTier(bestScore)]}\nTapeouts ${this.state.tapeouts} · Rep ${this.state.reputation} · Best ${bestScore}`);
       this.specText?.setText(`${spec.customer.toUpperCase()} · ${spec.name.toUpperCase()} · ${this.state.frequency.toUpperCase()}`);
       this.prompt?.setText(`${architectPrompt(this.state)} · WASD/ARROWS + E`);
       const carried = getModuleVariant(this.state.carriedVariantId);
@@ -287,6 +290,19 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       mount.dataset.archMode = this.state.mode;
     }
 
+    private drawEnvironment() {
+      const g = this.graphics; if (!g) return;
+      const s = this.projection().scale; const tier = architectTier(bestScore); const pulse = 0.5 + 0.3 * Math.sin(this.visualElapsed / 360);
+      const wallA = this.project(330, 72); const wallB = this.project(1060, 72);
+      g.fillStyle(0x0a171d, 0.95).fillRoundedRect(wallA.x, wallA.y - 23 * s, wallB.x - wallA.x, 46 * s, 7 * s);
+      for (let x = 370; x <= 1020; x += 72) { const q = this.project(x, 72); g.fillStyle(BLUE, 0.18 + pulse * 0.18).fillRect(q.x - 20 * s, q.y - 4 * s, 40 * s, 8 * s); }
+      const routeA = this.project(420, 610); const routeB = this.project(1080, 610);
+      g.lineStyle(3 * s, BLUE, 0.24).lineBetween(routeA.x, routeA.y, routeB.x, routeB.y);
+      for (let x = 460; x < 1060; x += 76) { const q = this.project(x, 610); g.fillStyle(GREEN, 0.24 + pulse * 0.2).fillCircle(q.x, q.y, 4 * s); }
+      if (tier >= 1) { const rack = this.project(1120, 600); g.fillStyle(0x111f25, 1).fillRoundedRect(rack.x - 42 * s, rack.y - 64 * s, 84 * s, 128 * s, 7 * s); g.lineStyle(2 * s, BLUE, 0.45).strokeRoundedRect(rack.x - 42 * s, rack.y - 64 * s, 84 * s, 128 * s, 7 * s); for (let i = 0; i < 6 + tier; i++) { g.fillStyle(0x1d3540, 1).fillRect(rack.x - 31 * s, rack.y + (-48 + i * 14) * s, 62 * s, 8 * s); g.fillStyle(i < 3 + tier ? GREEN : MUTED, 0.65).fillCircle(rack.x + 25 * s, rack.y + (-44 + i * 14) * s, 2.5 * s); } }
+      if (tier >= 2) { for (let i = 0; i < tier; i++) { const q = this.project(760 + i * 105, 690); g.fillStyle(0x172a32, 0.95).fillRoundedRect(q.x - 39 * s, q.y - 20 * s, 78 * s, 40 * s, 5 * s); g.lineStyle(1.5 * s, GREEN, 0.35).strokeRoundedRect(q.x - 39 * s, q.y - 20 * s, 78 * s, 40 * s, 5 * s); } }
+    }
+
     private drawBench(x: number, y: number, width: number, height: number) {
       const p = this.project(x, y); const q = this.project(x + width, y + height);
       this.graphics?.fillStyle(0x172b34, 1).fillRoundedRect(p.x, p.y, q.x - p.x, q.y - p.y, 5);
@@ -294,6 +310,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const screen = this.project(x + width * 0.62, y + height * 0.42);
       this.graphics?.fillStyle(0x020607, 1).fillRoundedRect(screen.x - 16 * this.projection().scale, screen.y - 9 * this.projection().scale, 32 * this.projection().scale, 18 * this.projection().scale, 2);
       this.graphics?.fillStyle(0x4f8797, 0.75).fillRect(screen.x - 11 * this.projection().scale, screen.y - 3 * this.projection().scale, 22 * this.projection().scale, 2 * this.projection().scale);
+      this.graphics?.fillStyle(GREEN, 0.45).fillCircle(screen.x + 12 * this.projection().scale, screen.y - 6 * this.projection().scale, 2.3 * this.projection().scale);
+      this.graphics?.lineStyle(Math.max(1, this.projection().scale), 0x6f8790, 0.35).lineBetween(p.x + 14 * this.projection().scale, q.y - 13 * this.projection().scale, q.x - 14 * this.projection().scale, q.y - 13 * this.projection().scale);
     }
 
     private drawLibrary() {
@@ -309,6 +327,8 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const topLeft = this.project(455, 215); const bottomRight = this.project(805, 515);
       this.graphics?.fillStyle(0x0a151a, 1).fillRoundedRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
       this.graphics?.lineStyle(2, 0x6f8790, 0.85).strokeRoundedRect(topLeft.x, topLeft.y, bottomRight.x - topLeft.x, bottomRight.y - topLeft.y, 10);
+      const routes = [["compute","memory"],["compute","noc"],["memory","io"],["noc","io"]] as const;
+      for (const [leftType,rightType] of routes) { const a = chipArchitectLayout.slots[leftType]; const b = chipArchitectLayout.slots[rightType]; const pa = this.project(a.x,a.y); const pb = this.project(b.x,b.y); const active = Boolean(this.state.slots[leftType] && this.state.slots[rightType]); this.graphics?.lineStyle(Math.max(1,3*s), active ? BLUE : 0x33464d, active ? 0.62 : 0.22).lineBetween(pa.x,pa.y,pb.x,pb.y); }
       for (const type of Object.keys(chipArchitectLayout.slots) as ModuleType[]) {
         const slot = chipArchitectLayout.slots[type];
         const point = this.project(slot.x, slot.y);
@@ -393,11 +413,12 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     }
 
     private endRun(failed: boolean) {
-      const score = chipArchitectScore(this.state);
-      bestScore = Math.max(bestScore, score);
+      const score = chipArchitectScore(this.state); const oldTier = architectTier(bestScore);
+      bestScore = Math.max(bestScore, score); const newTier = architectTier(bestScore);
       writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
-      bridge.emit("game_over", { score, tapeouts: this.state.tapeouts, missed_specs: this.state.missedJobs, reputation: this.state.reputation, failed });
-      bridge.setStatus(`${failed ? "Architecture program cancelled" : "Architecture sprint complete"} — ${this.state.tapeouts} tapeouts · score ${score}`);
+      bridge.emit("game_over", { score, tapeouts: this.state.tapeouts, missed_specs: this.state.missedJobs, reputation: this.state.reputation, failed, design_center_tier: newTier });
+      if (newTier > oldTier) { bridge.emit("game_action", { action: "design_center_tier_up", tier: newTier }); bridge.setStatus(`Design center upgraded — ${ARCH_TIERS[newTier]} unlocked`); }
+      else bridge.setStatus(`${failed ? "Architecture program cancelled" : "Architecture sprint complete"} — ${this.state.tapeouts} tapeouts · score ${score}`);
       this.endTitle?.destroy(); this.endDetail?.destroy();
       this.endTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 32, failed ? "PROGRAM CANCELLED" : "DESIGN REVIEW", {
         color: "#eaf5f8", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "28px", fontStyle: "bold", backgroundColor: "#061016f2", padding: { x: 18, y: 11 },
@@ -409,11 +430,11 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
     private resetRun() {
       this.endTitle?.destroy(); this.endDetail?.destroy(); this.endTitle = undefined; this.endDetail = undefined;
-      this.state = createChipArchitectState();
+      const tier = architectTier(bestScore); this.state = createChipArchitectState(); this.state.reputation += tier * 3; this.state.jobTimeLeft += tier * 3;
       this.visualElapsed = 0; this.statusElapsed = 0;
       this.draw();
-      bridge.setStatus("Chip Architect live — build the customer die by moving IP blocks into the floorplan");
-      bridge.emit("game_started", { mode: "walkable-chip-design-lab", session_seconds: 300 });
+      bridge.setStatus(`Chip Architect live — ${ARCH_TIERS[tier]} · build the customer die by moving IP blocks into the floorplan`);
+      bridge.emit("game_started", { mode: "walkable-chip-design-lab", session_seconds: 300, design_center_tier: tier });
     }
 
     private handleResize() {
