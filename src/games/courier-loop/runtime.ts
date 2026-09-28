@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { readLocalGameValue, writeLocalGameValue } from "@/games/_shared/storage/localGameStorage";
 import type { GameBridge, GameRuntimeController } from "@/games/_shared/types/runtime";
-import { advanceCourier, courierMap, courierTarget, createCourierState, type CourierState } from "./model";
+import { advanceCourier, courierDifficulty, courierMap, courierTarget, createCourierState, type CourierState } from "./model";
 
 const SAVE_VERSION = 1;
 const BACKGROUND = 0x091313;
@@ -11,6 +11,10 @@ const DEPOT = 0x70d6aa;
 const TARGET = 0xffcf66;
 const PLAYER = 0xf5fbf7;
 const DANGER = 0xff6c73;
+const EXPRESS = 0x63c7ff;
+const FRAGILE = 0xff8bc2;
+const COURIER_TIERS = ["BIKE COURIER", "CITY VAN", "EXPRESS FLEET", "METRO DISPATCH"] as const;
+function courierTier(score: number) { return score >= 9000 ? 3 : score >= 5000 ? 2 : score >= 2200 ? 1 : 0; }
 
 export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeController {
   let muted = false;
@@ -101,7 +105,10 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       graphics.fillRect(0, 0, this.scale.width, this.scale.height);
       const map = courierMap(this.scale.width, this.scale.height);
       graphics.fillStyle(BUILDING, 1);
-      for (const rect of map.obstacles) graphics.fillRoundedRect(rect.x, rect.y, rect.width, rect.height, 10);
+      for (const rect of map.obstacles) { graphics.fillRoundedRect(rect.x, rect.y, rect.width, rect.height, 10); graphics.lineStyle(1, 0x344843, 0.8).strokeRoundedRect(rect.x, rect.y, rect.width, rect.height, 10); for (let wx = rect.x + 16; wx < rect.x + rect.width - 8; wx += 24) for (let wy = rect.y + 18; wy < rect.y + rect.height - 10; wy += 28) graphics.fillStyle(0x8fb4a7, 0.16).fillRect(wx, wy, 8, 11); }
+      graphics.lineStyle(2, 0x8da39c, 0.12); for (let y = 90; y < this.scale.height; y += 96) { for (let x = 20; x < this.scale.width; x += 54) graphics.lineBetween(x, y, Math.min(x + 24, this.scale.width), y); }
+      const tier = courierTier(bestScore); if (tier >= 1) { graphics.fillStyle(0x18372d, 0.9).fillRoundedRect(this.scale.width * 0.035, this.scale.height * 0.1, this.scale.width * 0.13, this.scale.height * 0.18, 14); graphics.fillStyle(0x70d6aa, 0.18).fillCircle(this.scale.width * 0.1, this.scale.height * 0.19, 34); }
+      if (tier >= 2) { const hubX = this.scale.width * 0.9, hubY = this.scale.height * 0.48; graphics.fillStyle(0x132329, 0.95).fillRoundedRect(hubX - 42, hubY - 52, 84, 104, 8); graphics.lineStyle(2, EXPRESS, 0.45).strokeRoundedRect(hubX - 42, hubY - 52, 84, 104, 8); for (let i = 0; i < 4; i++) graphics.fillStyle(EXPRESS, 0.3 + i * 0.1).fillRect(hubX - 28, hubY - 34 + i * 18, 56, 6); }
       graphics.fillStyle(DEPOT, 0.22);
       graphics.fillCircle(map.depot.x, map.depot.y, 30);
       graphics.lineStyle(2, DEPOT, 0.85);
@@ -116,22 +123,24 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.targetRing?.setPosition(target.x, target.y).setStrokeStyle(3, this.state.phase === "pickup" ? DEPOT : TARGET).setFillStyle(this.state.phase === "pickup" ? DEPOT : TARGET, 0.12);
       this.scoreLabel?.setText(`Score ${this.state.score}`);
       this.clockLabel?.setText(`${Math.ceil(this.state.timeLeft)}s · ${this.state.deliveries} delivered`);
-      this.missionLabel?.setText(this.state.phase === "pickup" ? "RETURN TO DEPOT" : `DELIVER #${this.state.deliveries + 1}`);
-      this.bestLabel?.setText(`Best ${bestScore}`);
+      const cargoName = this.state.cargoType === "express" ? "EXPRESS" : this.state.cargoType === "fragile" ? "FRAGILE" : "STANDARD";
+      this.missionLabel?.setText(this.state.phase === "pickup" ? "RETURN TO DEPOT" : `${cargoName} · DELIVER #${this.state.deliveries + 1}`).setColor(this.state.cargoType === "express" ? "#63c7ff" : this.state.cargoType === "fragile" ? "#ff8bc2" : "#ffcf66");
+      this.bestLabel?.setText(`${COURIER_TIERS[courierTier(bestScore)]} · Best ${bestScore}`);
       mount.dataset.courierX = this.state.x.toFixed(1);
       mount.dataset.courierY = this.state.y.toFixed(1);
       mount.dataset.courierPhase = this.state.phase;
+      mount.dataset.courierCargo = this.state.cargoType;
     }
 
     private handleEvent(event: string) {
       if (event === "collision") {
         tone(145, 0.09, 0.04);
         bridge.emit("game_action", { action: "collision", score: this.state.score, time_left: Math.round(this.state.timeLeft) });
-        bridge.setStatus(`Building hit — 1.25s penalty · ${Math.ceil(this.state.timeLeft)}s left`);
+        bridge.setStatus(`Building hit — ${courierDifficulty(this.state.deliveries, this.state.cargoType).collisionPenaltySeconds.toFixed(2)}s penalty · ${Math.ceil(this.state.timeLeft)}s left`);
       } else if (event === "delivered") {
         tone(720, 0.11, 0.045);
         bridge.emit("level_completed", { deliveries: this.state.deliveries, score: this.state.score, time_left: Math.round(this.state.timeLeft) });
-        bridge.setStatus(`Delivered ${this.state.deliveries} — return to depot for the next package`);
+        bridge.setStatus(`Delivered ${this.state.cargoType.toUpperCase()} package ${this.state.deliveries} — return to depot for the next load`);
       } else if (event === "picked_up") {
         tone(510, 0.07, 0.035);
         bridge.emit("game_action", { action: "pickup", deliveries: this.state.deliveries, score: this.state.score });
@@ -142,11 +151,12 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     }
 
     private endRun() {
-      bestScore = Math.max(bestScore, this.state.score);
+      const oldTier = courierTier(bestScore); bestScore = Math.max(bestScore, this.state.score); const newTier = courierTier(bestScore);
       writeLocalGameValue(bridge.gameSlug, "high-score", SAVE_VERSION, bestScore);
       this.bestLabel?.setText(`Best ${bestScore}`);
-      bridge.emit("game_over", { score: this.state.score, deliveries: this.state.deliveries, best_score: bestScore });
-      bridge.setStatus(`Shift over — ${this.state.deliveries} deliveries · ${this.state.score} points · press R to retry`);
+      bridge.emit("game_over", { score: this.state.score, deliveries: this.state.deliveries, best_score: bestScore, license_tier: newTier });
+      if (newTier > oldTier) { bridge.emit("game_action", { action: "courier_license_up", tier: newTier }); bridge.setStatus(`Courier license upgraded — ${COURIER_TIERS[newTier]} unlocked`); }
+      else bridge.setStatus(`Shift over — ${this.state.deliveries} deliveries · ${this.state.score} points · press R to retry`);
       tone(120, 0.22, 0.055);
       this.gameOverTitle = this.add.text(this.scale.width / 2, this.scale.height / 2 - 18, "SHIFT OVER", { color: "#f5fbf7", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "30px", fontStyle: "bold" }).setOrigin(0.5).setDepth(6);
       this.gameOverDetail = this.add.text(this.scale.width / 2, this.scale.height / 2 + 28, `${this.state.deliveries} deliveries · ${this.state.score} points\nPress R or Restart to run another shift`, { color: "#9aaca6", align: "center", fontFamily: "Arial, Helvetica, sans-serif", fontSize: "15px", lineSpacing: 6 }).setOrigin(0.5).setDepth(6);
@@ -157,12 +167,12 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.gameOverDetail?.destroy();
       this.gameOverTitle = undefined;
       this.gameOverDetail = undefined;
-      this.state = createCourierState(this.scale.width, this.scale.height);
+      const tier = courierTier(bestScore); this.state = createCourierState(this.scale.width, this.scale.height); this.state.timeLeft += tier * 2;
       this.statusElapsed = 0;
       this.drawMap();
       this.syncVisuals();
-      bridge.setStatus("Courier Loop live — steer with WASD/arrows or drag toward your route");
-      bridge.emit("game_started", { mode: "timed-delivery", best_score: bestScore });
+      bridge.setStatus(`Courier Loop live — ${COURIER_TIERS[tier]} · cargo types change speed, collision cost, and payout`);
+      bridge.emit("game_started", { mode: "timed-delivery", best_score: bestScore, license_tier: tier });
     }
 
     private handleResize() {
@@ -189,6 +199,6 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
     resume() { game.scene.resume("courier-loop"); bridge.setStatus("Courier Loop resumed"); },
     restart() { game.scene.stop("courier-loop"); game.scene.start("courier-loop"); },
     setMuted(nextMuted: boolean) { muted = nextMuted; },
-    destroy() { delete mount.dataset.courierX; delete mount.dataset.courierY; delete mount.dataset.courierPhase; game.destroy(true); void audioContext?.close(); audioContext = null; },
+    destroy() { delete mount.dataset.courierX; delete mount.dataset.courierY; delete mount.dataset.courierPhase; delete mount.dataset.courierCargo; game.destroy(true); void audioContext?.close(); audioContext = null; },
   } satisfies GameRuntimeController;
 }
