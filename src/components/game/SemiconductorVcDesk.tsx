@@ -96,7 +96,8 @@ export function SemiconductorVcDesk() {
     </div>
     <div className={styles.news}><span>MARKET WIRE</span><strong>{state.newsLabel ?? "Monitoring semiconductor markets and portfolio catalysts"}</strong><small>{state.newsLabel ? "Current development" : "No new headline"}</small></div>
     <nav className={styles.rooms} aria-label="Fund spaces"><button className={room === "office" ? styles.selected : ""} onClick={() => travel("office")}>01 · Office & research</button><button className={room === "deals" ? styles.selected : ""} onClick={() => travel("deals")}>02 · Deal room <span>{state.incoming.length}</span></button><button className={room === "updates" ? styles.selected : ""} onClick={() => travel("updates")}>03 · Portfolio updates {alertCompany ? <span className={styles.notification}>!</span> : null}</button></nav>
-    <SemiVcRoomScene room={room} week={week} headline={room === "office" ? state.newsLabel ?? "Market watch active" : room === "deals" ? active?.name ?? "Founder meetings open" : alertCompany?.name ?? "No urgent board vote"} holdingCount={state.holdings.length} dealCount={state.incoming.length} onInspect={() => setInspecting((value) => !value)} onTravel={travel} />
+    <div className={styles.stage}>
+    <SemiVcRoomScene room={room} week={week} headline={room === "office" ? state.newsLabel ?? "Market watch active" : room === "deals" ? active?.name ?? "Founder meetings open" : alertCompany?.name ?? "No urgent board vote"} holdingCount={state.holdings.length} dealCount={state.incoming.length} inspecting={inspecting} onInspect={() => setInspecting((value) => !value)} onTravel={travel} />
     {weeklyReport.length ? <div className={styles.weekReport}><div><span className={styles.kicker}>WEEK {week} BRIEFING</span><button onClick={() => setWeeklyReport([])}>Dismiss ×</button></div><ul>{weeklyReport.map((item) => <li key={item}>{item}</li>)}</ul><div className={styles.actions}><button onClick={() => { travel("deals"); setWeeklyReport([]); }}>Deal room →</button><button onClick={() => { travel("updates"); setWeeklyReport([]); }}>Portfolio updates →</button></div></div> : null}
     {inspecting ? <div className={styles.inspectHeading}><span>{room === "office" ? "RESEARCH DESK" : room === "deals" ? "FOUNDER FILES" : "BOARD MATERIALS"}</span><button onClick={() => setInspecting(false)}>Close materials ×</button></div> : null}
     {state.mode !== "playing" ? <div className={styles.result}><h3>{state.mode === "complete" ? "Fund cycle complete" : "Fund mandate lost"}</h3><p>{state.investments} investments · {state.exits} exits · {semiVcTvpi(state).toFixed(2)}× TVPI · {semiVcDpi(state).toFixed(2)}× DPI</p><button onClick={reset}>Launch another fund</button></div> : null}
@@ -127,6 +128,7 @@ export function SemiconductorVcDesk() {
         <div className={styles.operations}><span className={styles.kicker}>FUND OPERATIONS</span><p>Analysts reduce diligence wait. Hiring draws on the operating budget.</p><button disabled={state.staff >= 3 || state.operatingBudget < 150_000} onClick={() => act(semiVcLayout.hire.x, semiVcLayout.hire.y)}>Hire analyst · $150k</button></div>
         <div className={styles.tape}><span className={styles.kicker}>ACTIVITY TAPE</span>{feed.map((entry, index) => <p key={`${entry}-${index}`}>{entry}</p>)}</div>
       </div>
+    </div>
     </div>
   </section>;
 }

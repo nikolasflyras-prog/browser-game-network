@@ -16,6 +16,8 @@ The calendar advances only when the player chooses the next week. An occupied in
 
 The room scenes now have separate compositions: a research office, a conference-based deal room, and an operations boardroom. Deal arrivals and meeting windows were retuned for week-based play, the pipeline has twelve distinct companies, and a weekly briefing lists all material arrivals, market news, and portfolio calls from the turn.
 
+Research, deal, and board materials now open in a contextual overlay within the room viewport. The player keeps the room in sight while using the underlying simulation controls; the panel becomes a lower sheet on narrower screens.
+
 ## Remaining design work
 
 - Deepen negotiated terms into staged checks, syndicate composition, and rival bids with explicit counteroffers.
