@@ -18,7 +18,7 @@ export type SemiVcEvent =
   | "game_over";
 
 export type SemiTheme = "eda" | "ai" | "power" | "rf" | "packaging" | "memory" | "equipment" | "photonics";
-export type PortfolioAlertKind = "up_round" | "bridge" | "down_round" | "design_win" | "customer_slip";
+export type PortfolioAlertKind = "up_round" | "bridge" | "down_round" | "design_win" | "customer_slip" | "refinance" | "fab_delay" | "board_meeting" | "rival_term_sheet";
 
 export type SemiCompany = {
   id: string;
@@ -56,6 +56,8 @@ export type VentureHolding = {
   ownershipPct: number;
   mark: number;
   supportBoost: number;
+  pendingEvent?: PortfolioAlertKind | null;
+  history?: string[];
 };
 
 export type SemiVcState = {
@@ -298,16 +300,7 @@ export const semiVcLayout = {
   ],
   exit: { x: 1035, y: 585 },
   news: { x: 545, y: 95 },
-  obstacles: [
-    { x: 70, y: 90, width: 120, height: 88 },
-    { x: 70, y: 535, width: 120, height: 88 },
-    { x: 310, y: 110, width: 145, height: 92 },
-    { x: 500, y: 110, width: 145, height: 92 },
-    { x: 310, y: 500, width: 145, height: 92 },
-    { x: 650, y: 95, width: 145, height: 90 },
-    { x: 845, y: 95, width: 145, height: 90 },
-    { x: 845, y: 300, width: 145, height: 90 },
-  ],
+  obstacles: [],
 } as const;
 
 const newsEvents: readonly { label: string; theme: SemiTheme | "all"; effect: number }[] = [
@@ -322,7 +315,7 @@ const newsEvents: readonly { label: string; theme: SemiTheme | "all"; effect: nu
   { label: "Foundry process-control spending expands", theme: "equipment", effect: 0.0014 },
 ] as const;
 
-const portfolioKinds: readonly PortfolioAlertKind[] = ["up_round", "bridge", "down_round", "design_win", "customer_slip"];
+const portfolioKinds: readonly PortfolioAlertKind[] = ["up_round", "bridge", "down_round", "design_win", "customer_slip", "refinance", "fab_delay", "board_meeting", "rival_term_sheet"];
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -354,7 +347,41 @@ function portfolioHeadline(kind: PortfolioAlertKind, company: SemiCompany) {
     case "down_round": return `${company.name}: insider down round proposed after a schedule slip`;
     case "design_win": return `${company.name}: major design win needs board-level execution support`;
     case "customer_slip": return `${company.name}: lead customer qualification slipped`;
+    case "refinance": return `${company.name}: lender offers runway extension with a senior claim`;
+    case "fab_delay": return `${company.name}: ${company.foundry} slot slips; pay for an alternate run or miss the milestone`;
+    case "board_meeting": return `${company.name}: board votes on a focused operating plan before the next raise`;
+    case "rival_term_sheet": return `${company.name}: rival VC demands the remaining allocation today`;
   }
+}
+
+function nextPortfolioEvent(kind: PortfolioAlertKind, supported: boolean): PortfolioAlertKind | null {
+  switch (kind) {
+    case "fab_delay": return supported ? "design_win" : "bridge";
+    case "bridge": return supported ? "board_meeting" : "down_round";
+    case "refinance": return supported ? "board_meeting" : "down_round";
+    case "rival_term_sheet": return supported ? "up_round" : "down_round";
+    case "board_meeting": return supported ? "design_win" : "customer_slip";
+    case "customer_slip": return supported ? "board_meeting" : "bridge";
+    case "down_round": return supported ? "board_meeting" : null;
+    default: return null;
+  }
+}
+
+function eventRecord(kind: PortfolioAlertKind, supported: boolean) {
+  const names: Record<PortfolioAlertKind, string> = {
+    up_round: "Up round", bridge: "Bridge", down_round: "Down round", design_win: "Design win",
+    customer_slip: "Customer slip", refinance: "Refinancing", fab_delay: "Fab delay",
+    board_meeting: "Board meeting", rival_term_sheet: "Rival VC offer",
+  };
+  return `${names[kind]}: ${supported ? "backed" : "declined"}`;
+}
+
+function progressHolding(holding: VentureHolding, kind: PortfolioAlertKind, supported: boolean): VentureHolding {
+  return {
+    ...holding,
+    pendingEvent: nextPortfolioEvent(kind, supported),
+    history: [...(holding.history ?? []), eventRecord(kind, supported)].slice(-4),
+  };
 }
 
 function spawnFounder(state: SemiVcState): SemiVcState {
@@ -430,8 +457,8 @@ export function semiVcExitCandidate(state: Pick<SemiVcState, "holdings">) {
 export function semiVcPortfolioDecision(state: Pick<SemiVcState, "portfolioAlertKind" | "operatingBudget" | "dryPowder">) {
   const kind = state.portfolioAlertKind;
   if (!kind) return null;
-  const boardSupport = kind === "design_win" || kind === "customer_slip";
-  const amount = boardSupport ? SEMI_VC_BOARD_SUPPORT_COST : SEMI_VC_FOLLOW_ON_CHECK;
+  const boardSupport = kind === "design_win" || kind === "customer_slip" || kind === "board_meeting";
+  const amount = kind === "fab_delay" ? 400_000 : kind === "rival_term_sheet" ? 500_000 : kind === "refinance" ? 100_000 : boardSupport ? SEMI_VC_BOARD_SUPPORT_COST : SEMI_VC_FOLLOW_ON_CHECK;
   const source = boardSupport ? "operatingBudget" as const : "dryPowder" as const;
   const available = source === "operatingBudget" ? state.operatingBudget >= amount : state.dryPowder >= amount;
   return {
@@ -439,7 +466,7 @@ export function semiVcPortfolioDecision(state: Pick<SemiVcState, "portfolioAlert
     amount,
     source,
     available,
-    supportLabel: boardSupport ? `BOARD SUPPORT · $${Math.round(amount / 1000)}K OPS` : `FOLLOW-ON · $${Math.round(amount / 1000)}K`,
+    supportLabel: kind === "refinance" ? "REFINANCE · $100K FEE + SENIOR CLAIM" : kind === "fab_delay" ? "FUND ALTERNATE FAB · $400K" : kind === "rival_term_sheet" ? "DEFEND ALLOCATION · $500K" : boardSupport ? `BOARD PLAN · $${Math.round(amount / 1000)}K OPS` : `FOLLOW-ON · $${Math.round(amount / 1000)}K`,
   };
 }
 
@@ -553,17 +580,23 @@ function declinePortfolioAlert(state: SemiVcState): SemiVcState {
 
   const holdings = state.holdings.map((holding) => {
     if (holding.companyId !== companyId) return holding;
-    if (kind === "up_round") return { ...holding, mark: holding.mark * 1.08, ownershipPct: holding.ownershipPct * 0.82 };
-    if (kind === "bridge") return { ...holding, mark: holding.mark * 0.88, ownershipPct: holding.ownershipPct * 0.92 };
-    if (kind === "down_round") return { ...holding, mark: holding.mark * 0.72, ownershipPct: holding.ownershipPct * 0.78 };
-    if (kind === "design_win") return { ...holding, mark: holding.mark * 1.1 };
-    return { ...holding, mark: holding.mark * 0.78 };
+    const changed = kind === "up_round" ? { ...holding, mark: holding.mark * 1.08, ownershipPct: holding.ownershipPct * 0.82 }
+      : kind === "bridge" ? { ...holding, mark: holding.mark * 0.88, ownershipPct: holding.ownershipPct * 0.92 }
+      : kind === "down_round" ? { ...holding, mark: holding.mark * 0.72, ownershipPct: holding.ownershipPct * 0.78 }
+      : kind === "design_win" ? { ...holding, mark: holding.mark * 1.1 }
+      : kind === "refinance" ? { ...holding, mark: holding.mark * 0.62, ownershipPct: holding.ownershipPct * 0.85 }
+      : kind === "fab_delay" ? { ...holding, mark: holding.mark * 0.66 }
+      : kind === "board_meeting" ? { ...holding, mark: holding.mark * 0.83, supportBoost: Math.max(0, holding.supportBoost - 0.25) }
+      : kind === "rival_term_sheet" ? { ...holding, mark: holding.mark * 1.06, ownershipPct: holding.ownershipPct * 0.65 }
+      : { ...holding, mark: holding.mark * 0.78 };
+    return progressHolding(changed, kind, false);
   });
 
-  const reputationHit = kind === "design_win" ? 0.5 : kind === "customer_slip" ? 1.5 : 2;
+  const reputationHit = kind === "design_win" ? 0.5 : kind === "customer_slip" ? 1.5 : kind === "fab_delay" || kind === "board_meeting" ? 3 : 2;
   return {
     ...state,
     holdings,
+    portfolioTimer: holdings.some((item) => item.pendingEvent) ? 14 : state.portfolioTimer,
     portfolioAlertCompanyId: null,
     portfolioAlertKind: null,
     portfolioAlertHeadline: null,
@@ -590,11 +623,16 @@ function supportPortfolioAlert(state: SemiVcState): SemiVcState {
 
   const holdings = state.holdings.map((holding) => {
     if (holding.companyId !== companyId) return holding;
-    if (kind === "design_win") return { ...holding, mark: holding.mark * 1.2, supportBoost: Math.min(1, holding.supportBoost + 0.3) };
-    if (kind === "customer_slip") return { ...holding, mark: holding.mark * 0.96, supportBoost: Math.min(1, holding.supportBoost + 0.35) };
-    if (kind === "up_round") return { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 1.08 + decision.amount, ownershipPct: Math.min(100, holding.ownershipPct * 1.01), supportBoost: Math.min(1, holding.supportBoost + 0.25) };
-    if (kind === "bridge") return { ...holding, invested: holding.invested + decision.amount, mark: holding.mark + decision.amount * 0.96, ownershipPct: Math.min(100, holding.ownershipPct * 1.03), supportBoost: Math.min(1, holding.supportBoost + 0.35) };
-    return { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 0.88 + decision.amount, ownershipPct: Math.min(100, holding.ownershipPct * 1.12), supportBoost: Math.min(1, holding.supportBoost + 0.4) };
+    const changed = kind === "design_win" ? { ...holding, mark: holding.mark * 1.2, supportBoost: Math.min(1, holding.supportBoost + 0.3) }
+      : kind === "customer_slip" ? { ...holding, mark: holding.mark * 0.96, supportBoost: Math.min(1, holding.supportBoost + 0.35) }
+      : kind === "board_meeting" ? { ...holding, mark: holding.mark * 1.09, supportBoost: Math.min(1, holding.supportBoost + 0.5) }
+      : kind === "fab_delay" ? { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 0.95 + decision.amount * 0.8, ownershipPct: Math.min(100, holding.ownershipPct * 1.08), supportBoost: Math.min(1, holding.supportBoost + 0.35) }
+      : kind === "rival_term_sheet" ? { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 1.06 + decision.amount, ownershipPct: Math.min(100, holding.ownershipPct * 1.12) }
+      : kind === "refinance" ? { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 0.91 + decision.amount * 0.55, supportBoost: Math.min(1, holding.supportBoost + 0.25) }
+      : kind === "up_round" ? { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 1.08 + decision.amount, ownershipPct: Math.min(100, holding.ownershipPct * 1.01), supportBoost: Math.min(1, holding.supportBoost + 0.25) }
+      : kind === "bridge" ? { ...holding, invested: holding.invested + decision.amount, mark: holding.mark + decision.amount * 0.96, ownershipPct: Math.min(100, holding.ownershipPct * 1.03), supportBoost: Math.min(1, holding.supportBoost + 0.35) }
+      : { ...holding, invested: holding.invested + decision.amount, mark: holding.mark * 0.88 + decision.amount, ownershipPct: Math.min(100, holding.ownershipPct * 1.12), supportBoost: Math.min(1, holding.supportBoost + 0.4) };
+    return progressHolding(changed, kind, true);
   });
 
   return {
@@ -603,6 +641,7 @@ function supportPortfolioAlert(state: SemiVcState): SemiVcState {
     dryPowder,
     operatingBudget,
     reserveSpent,
+    portfolioTimer: holdings.some((item) => item.pendingEvent) ? 14 : state.portfolioTimer,
     portfolioAlertCompanyId: null,
     portfolioAlertKind: null,
     portfolioAlertHeadline: null,
@@ -792,20 +831,23 @@ export function advanceSemiVc(state: SemiVcState, input: SemiVcInput, deltaSecon
 
   if (!next.portfolioAlertCompanyId && next.holdings.length > 0 && next.portfolioTimer <= 0) {
     const holdingRoll = random(next.seed);
-    const holding = next.holdings[Math.floor(holdingRoll.value * next.holdings.length) % next.holdings.length];
+    const pending = next.holdings.filter((item) => item.pendingEvent);
+    const candidates = pending.length ? pending : next.holdings;
+    const holding = candidates[Math.floor(holdingRoll.value * candidates.length) % candidates.length];
     const kindRoll = random(holdingRoll.seed);
-    const kind = next.portfolioEvents === 0
+    const kind = holding.pendingEvent ?? (next.portfolioEvents === 0
       ? "design_win"
-      : portfolioKinds[Math.floor(kindRoll.value * portfolioKinds.length) % portfolioKinds.length];
+      : portfolioKinds[Math.floor(kindRoll.value * portfolioKinds.length) % portfolioKinds.length]);
     const waitRoll = random(kindRoll.seed);
     const company = companyById(holding.companyId);
     next = {
       ...next,
       seed: waitRoll.seed,
+      holdings: next.holdings.map((item) => item === holding ? { ...item, pendingEvent: null } : item),
       portfolioAlertCompanyId: holding.companyId,
       portfolioAlertKind: kind,
       portfolioAlertHeadline: company ? portfolioHeadline(kind, company) : "Portfolio company needs a decision",
-      portfolioAlertTimeLeft: 28,
+      portfolioAlertTimeLeft: kind === "rival_term_sheet" ? 16 : kind === "fab_delay" ? 22 : 28,
       portfolioTimer: 38 + waitRoll.value * 16,
       portfolioEvents: next.portfolioEvents + 1,
     };
@@ -815,7 +857,6 @@ export function advanceSemiVc(state: SemiVcState, input: SemiVcInput, deltaSecon
   if (next.portfolioAlertCompanyId && next.portfolioAlertTimeLeft <= 0) {
     next = {
       ...declinePortfolioAlert(next),
-      portfolioTimer: Math.max(next.portfolioTimer, 18),
     };
     if (event === "none") event = "follow_on_declined";
   }

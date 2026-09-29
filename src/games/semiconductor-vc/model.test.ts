@@ -273,4 +273,50 @@ describe("Semiconductor VC office model", () => {
     expect(semiVcDpi(exited.state)).toBeCloseTo(0.16, 5);
     expect(semiVcTvpi(exited.state)).toBeCloseTo(0.96, 5);
   });
+
+  it("makes rival allocation and fab delays distinct capital decisions", () => {
+    const base: SemiVcState = {
+      ...createSemiVcState(41),
+      dryPowder: 600_000,
+      holdings: [{ companyId: "photonmesa", invested: 1_000_000, ownershipPct: 8, mark: 1_000_000, supportBoost: 0 }],
+      portfolioAlertCompanyId: "photonmesa",
+      portfolioAlertKind: "rival_term_sheet",
+      portfolioAlertHeadline: "Rival term sheet",
+      portfolioAlertTimeLeft: 16,
+      playerX: semiVcLayout.portfolioPads[1].x,
+      playerY: semiVcLayout.portfolioPads[1].y,
+    };
+    const defended = interactSemiVc(base).state;
+    expect(defended.dryPowder).toBe(100_000);
+    expect(defended.holdings[0]?.ownershipPct).toBeGreaterThan(8);
+
+    const declined = interactSemiVc({ ...base, playerY: semiVcLayout.portfolioPads[0].y }).state;
+    expect(declined.dryPowder).toBe(600_000);
+    expect(declined.holdings[0]?.ownershipPct).toBeCloseTo(5.2);
+
+    const fab = interactSemiVc({ ...base, portfolioAlertKind: "fab_delay" }).state;
+    expect(fab.dryPowder).toBe(200_000);
+    expect(fab.holdings[0]?.mark).toBeLessThan(fab.holdings[0]?.invested ?? 0);
+  });
+
+  it("carries a declined fab delay into a bridge for the same company", () => {
+    const initial: SemiVcState = {
+      ...createSemiVcState(51),
+      holdings: [{ companyId: "photonmesa", invested: 1_000_000, ownershipPct: 8, mark: 1_000_000, supportBoost: 0 }],
+      portfolioAlertCompanyId: "photonmesa",
+      portfolioAlertKind: "fab_delay",
+      portfolioAlertHeadline: "Fab slot slipped",
+      portfolioAlertTimeLeft: 20,
+      playerX: semiVcLayout.portfolioPads[0].x,
+      playerY: semiVcLayout.portfolioPads[0].y,
+    };
+    const declined = interactSemiVc(initial).state;
+    expect(declined.holdings[0]?.pendingEvent).toBe("bridge");
+    expect(declined.holdings[0]?.history).toContain("Fab delay: declined");
+    let state = declined;
+    for (let step = 0; step < 281; step += 1) state = advanceSemiVc(state, { x: 0, y: 0 }, 0.05).state;
+    expect(state.portfolioAlertCompanyId).toBe("photonmesa");
+    expect(state.portfolioAlertKind).toBe("bridge");
+    expect(state.holdings[0]?.pendingEvent).toBeNull();
+  });
 });

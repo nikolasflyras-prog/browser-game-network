@@ -7,6 +7,7 @@ import { LinebreakDailyProgress } from "@/components/game/LinebreakDailyProgress
 import { PowerGridDispatcher } from "@/components/game/PowerGridDispatcher";
 import { RunTheFed } from "@/components/game/RunTheFed";
 import { SupplyChainShock } from "@/components/game/SupplyChainShock";
+import { SemiconductorVcDesk } from "@/components/game/SemiconductorVcDesk";
 import { getAnyGameSeoContent } from "@/content/gameSeoResolver";
 import { getGameMetadata, gameRegistry } from "@/games/registry";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
@@ -30,7 +31,7 @@ export default async function GamePage({ params }: PageProps) {
   if (!game) notFound();
   const seo = getAnyGameSeoContent(game.slug);
   const isPublic = game.status !== "diagnostic";
-  const immersive = ["market-maker", "hedge-fund-floor", "semiconductor-vc", "chip-architect", "packaging-lab", "fab-floor", "data-center-architect"].includes(game.slug);
+  const immersive = ["market-maker", "hedge-fund-floor", "chip-architect", "packaging-lab", "fab-floor", "data-center-architect"].includes(game.slug);
   const structuredData = isPublic ? { "@context": "https://schema.org", "@type": "SoftwareApplication", name: game.title, description: game.description, url: absoluteUrl(`/games/${game.slug}`), applicationCategory: game.lane === "Learn" ? "EducationalApplication" : "GameApplication", operatingSystem: "Any modern web browser", isAccessibleForFree: true, offers: { "@type": "Offer", price: "0", priceCurrency: "USD" } } : null;
 
   return (
@@ -42,7 +43,7 @@ export default async function GamePage({ params }: PageProps) {
         <p>{game.description}</p>
         {immersive ? <p className="immersive-controls-hint">WASD / arrows to move · E / Space to interact</p> : null}
       </header>
-      {game.slug === "run-the-fed" ? <RunTheFed /> : game.slug === "supply-chain-shock" ? <SupplyChainShock /> : game.slug === "chip-fab" ? <ChipFab /> : game.slug === "power-grid-dispatcher" ? <PowerGridDispatcher /> : <><GameHost game={game} />{game.slug === "linebreak-daily" ? <LinebreakDailyProgress /> : null}</>}
+      {game.slug === "run-the-fed" ? <RunTheFed /> : game.slug === "supply-chain-shock" ? <SupplyChainShock /> : game.slug === "chip-fab" ? <ChipFab /> : game.slug === "power-grid-dispatcher" ? <PowerGridDispatcher /> : game.slug === "semiconductor-vc" ? <SemiconductorVcDesk /> : <><GameHost game={game} />{game.slug === "linebreak-daily" ? <LinebreakDailyProgress /> : null}</>}
       {seo ? (
         <div className="game-guide">
           <section className="content-section"><p className="eyebrow">Overview</p><h2>How {game.title} works</h2><p>{seo.summary}</p></section>

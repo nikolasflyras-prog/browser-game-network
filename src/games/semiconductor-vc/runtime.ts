@@ -28,8 +28,6 @@ const SAVE_VERSION = 2;
 const BACKGROUND = 0x05080b;
 const FLOOR = 0x0e171c;
 const GRID = 0x20323a;
-const DESK_TOP = 0x31444d;
-const DESK_SIDE = 0x17252b;
 const PLAYER = 0xf7fafb;
 const SHADOW = 0x010203;
 const FOUNDER = 0x69d9ff;
@@ -220,14 +218,14 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const cameraY = mobile ? this.state.playerY : SEMI_VC_WORLD.height / 2;
       const scale = mobile
         ? Math.max(0.62, Math.min(0.82, this.scale.width / 510))
-        : Math.min((this.scale.width - 46) / 930, (this.scale.height - 92) / 490);
+        : Math.min((this.scale.width - 46) / 1100, (this.scale.height - 92) / 700);
       return {
         mobile,
         cameraX,
         cameraY,
         scale,
         anchorX: this.scale.width / 2,
-        anchorY: mobile ? this.scale.height * 0.53 : 58 + SEMI_VC_WORLD.height * 0.34 * scale,
+        anchorY: mobile ? this.scale.height * 0.53 : this.scale.height / 2,
       };
     }
 
@@ -236,15 +234,15 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       const dx = x - p.cameraX;
       const dy = y - p.cameraY;
       return {
-        x: p.anchorX + (dx * 0.72 + dy * 0.18) * p.scale,
-        y: p.anchorY + dy * 0.68 * p.scale,
+        x: p.anchorX + dx * p.scale,
+        y: p.anchorY + dy * p.scale,
       };
     }
 
     private pointerToWorld(screenX: number, screenY: number) {
       const p = this.projection();
-      const dy = ((screenY - p.anchorY) / p.scale) / 0.68;
-      const dx = ((screenX - p.anchorX) / p.scale - dy * 0.18) / 0.72;
+      const dy = (screenY - p.anchorY) / p.scale;
+      const dx = (screenX - p.anchorX) / p.scale;
       return { x: p.cameraX + dx, y: p.cameraY + dy };
     }
 
@@ -272,9 +270,9 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         this.project(SEMI_VC_WORLD.width, SEMI_VC_WORLD.height),
         this.project(0, SEMI_VC_WORLD.height),
       ];
-      this.polygon(corners.map((point) => ({ x: point.x + 10, y: point.y + 14 })), SHADOW, 0.72);
+      this.polygon(corners.map((point) => ({ x: point.x + 8, y: point.y + 10 })), SHADOW, 0.72);
       this.polygon(corners, FLOOR, 1, GRID);
-      graphics.lineStyle(Math.max(0.75, this.projection().scale), GRID, 0.42);
+      graphics.lineStyle(Math.max(0.75, this.projection().scale), GRID, 0.24);
       for (let x = 0; x <= SEMI_VC_WORLD.width; x += 100) {
         const a = this.project(x, 0);
         const b = this.project(x, SEMI_VC_WORLD.height);
@@ -287,35 +285,23 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       }
     }
 
-    private drawDesk(x: number, y: number, width: number, height: number) {
-      const p1 = this.project(x, y);
-      const p2 = this.project(x + width, y);
-      const p3 = this.project(x + width, y + height);
-      const p4 = this.project(x, y + height);
-      const depth = Math.max(5, 12 * this.projection().scale);
-      const down = (point: Point) => ({ x: point.x, y: point.y + depth });
-      this.polygon([down(p1), down(p2), down(p3), down(p4)], SHADOW, 0.54);
-      this.polygon([p4, p3, down(p3), down(p4)], DESK_SIDE, 1);
-      this.polygon([p2, p3, down(p3), down(p2)], 0x20343b, 1);
-      this.polygon([p1, p2, p3, p4], DESK_TOP, 1, GRID);
-      const monitor = this.project(x + width * 0.55, y + height * 0.35);
-      const s = this.projection().scale;
-      this.graphics?.fillStyle(0x05090b, 1).fillRoundedRect(monitor.x - 10 * s, monitor.y - 10 * s, 20 * s, 11 * s, 2);
-      this.graphics?.fillStyle(0x5f9aa7, 0.55).fillRect(monitor.x - 7 * s, monitor.y - 7 * s, 14 * s, 2 * s);
-    }
-
-    private drawPerson(x: number, y: number, color: number, small = false) {
+    private drawToken(x: number, y: number, color: number, letter: string) {
       const graphics = this.graphics;
       if (!graphics) return;
       const p = this.project(x, y);
-      const s = this.projection().scale * (small ? 0.82 : 1);
-      const bob = Math.sin((this.visualElapsed + x * 2.4) / 190) * 1.05 * s;
-      graphics.fillStyle(SHADOW, 0.5).fillEllipse(p.x + 2 * s, p.y + 12 * s, 23 * s, 8 * s);
-      graphics.lineStyle(Math.max(1, 3 * s), color, 1);
-      graphics.lineBetween(p.x - 4 * s, p.y + 2 * s + bob, p.x - 6 * s, p.y + 14 * s);
-      graphics.lineBetween(p.x + 4 * s, p.y + 2 * s + bob, p.x + 6 * s, p.y + 14 * s);
-      graphics.fillStyle(color, 1).fillRoundedRect(p.x - 8 * s, p.y - 12 * s + bob, 16 * s, 18 * s, 5 * s);
-      graphics.fillStyle(0xf0c6a0, 1).fillCircle(p.x, p.y - 18 * s + bob, 6.5 * s);
+      const s = this.projection().scale;
+      graphics.fillStyle(SHADOW, 0.5).fillCircle(p.x + 3 * s, p.y + 4 * s, 19 * s);
+      graphics.fillStyle(0x101b22, 1).fillCircle(p.x, p.y, 19 * s);
+      graphics.lineStyle(Math.max(2, 3 * s), color, 1).strokeCircle(p.x, p.y, 19 * s);
+      this.addTokenLetter(p, letter, color, s);
+    }
+
+    private addTokenLetter(p: Point, letter: string, color: number, scale: number) {
+      const graphics = this.graphics;
+      if (!graphics) return;
+      // Distinct horizontal bars read as a dossier emblem even at mobile scale.
+      const count = Math.min(3, Math.max(1, letter.length));
+      for (let i = 0; i < count; i += 1) graphics.fillStyle(color, 0.9).fillRoundedRect(p.x - 9 * scale, p.y - 7 * scale + i * 6 * scale, (16 - i * 3) * scale, 2.5 * scale, 1);
     }
 
     private drawZone(x: number, y: number, color: number, radius = 38) {
@@ -327,12 +313,12 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
 
     private buildWorldLabels() {
       const specs = [
-        { label: "PITCH ROOMS", x: 175, y: 118, color: "#69d9ff" },
+        { label: "DEAL FLOW", x: 175, y: 118, color: "#69d9ff" },
         { label: "DILIGENCE", x: semiVcLayout.diligence.x, y: semiVcLayout.diligence.y - 66, color: "#65e6b4" },
         { label: "INVESTMENT COMMITTEE", x: 760, y: 185, color: "#ffd166" },
-        { label: "PORTFOLIO / RESERVES", x: 915, y: 470, color: "#b794f6" },
+        { label: "PORTFOLIO EVENTS", x: 915, y: 470, color: "#b794f6" },
         { label: "LIQUIDITY / EXITS", x: semiVcLayout.exit.x, y: semiVcLayout.exit.y - 75, color: "#68e0b0" },
-        { label: "RECRUITING", x: semiVcLayout.hire.x, y: semiVcLayout.hire.y - 62, color: "#a7b6bd" },
+        { label: "FUND OPERATIONS", x: semiVcLayout.hire.x, y: semiVcLayout.hire.y - 62, color: "#a7b6bd" },
         { label: "NEWS WALL", x: semiVcLayout.news.x, y: semiVcLayout.news.y - 48, color: "#ff7185" },
         ...semiVcLayout.icPads.map((pad) => ({ label: pad.label, x: pad.x, y: pad.y - 33, color: pad.check ? "#ffd166" : "#ff7185" })),
         ...semiVcLayout.portfolioPads.map((pad) => ({ label: pad.label, x: pad.x, y: pad.y - 34, color: pad.id === "support" ? "#b794f6" : "#ff7185" })),
@@ -358,9 +344,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       graphics.fillStyle(BACKGROUND, 1).fillRect(0, 0, this.scale.width, this.scale.height);
       this.drawFloor();
 
-      for (const rect of semiVcLayout.obstacles) this.drawDesk(rect.x, rect.y, rect.width, rect.height);
-
-      // A low-contrast trail points to the next physical decision without obscuring the office.
+      // Deal flow runs across a fund map rather than a literal office.
       const objective = this.state.activeDealId
         ? (this.state.activeDealDiligenced ? semiVcLayout.icPads[1] : semiVcLayout.diligence)
         : this.state.portfolioAlertCompanyId
@@ -378,10 +362,10 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         }
       }
 
-      for (let i = 0; i < this.state.staff; i += 1) this.drawPerson(375 + i * 55, 160, ANALYST, true);
-      this.drawPerson(690, 145, PARTNER, true);
-      this.drawPerson(745, 145, PARTNER, true);
-      this.drawPerson(800, 145, PARTNER, true);
+      for (let i = 0; i < this.state.staff; i += 1) this.drawToken(375 + i * 55, 160, ANALYST, "A");
+      this.drawToken(690, 145, PARTNER, "IC");
+      this.drawToken(745, 145, PARTNER, "IC");
+      this.drawToken(800, 145, PARTNER, "IC");
 
       this.drawZone(semiVcLayout.diligence.x, semiVcLayout.diligence.y, GREEN);
       this.drawZone(semiVcLayout.hire.x, semiVcLayout.hire.y, ANALYST);
@@ -390,7 +374,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       this.drawZone(semiVcLayout.exit.x, semiVcLayout.exit.y, EXIT, 34);
 
       for (const founder of this.state.incoming) {
-        this.drawPerson(founder.x, founder.y, FOUNDER);
+        this.drawToken(founder.x, founder.y, FOUNDER, "DEAL");
         const p = this.project(founder.x, founder.y - 36);
         graphics.fillStyle(FOUNDER, 0.14).fillCircle(p.x, p.y, Math.max(12, 21 * this.projection().scale));
         const pct = Math.max(0, Math.min(1, founder.timeLeft / 30));
@@ -414,7 +398,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         graphics.lineStyle(3, EXIT, 0.95).strokeCircle(p.x, p.y, 47 * this.projection().scale * pulse);
       }
 
-      this.drawPerson(this.state.playerX, this.state.playerY, PLAYER);
+      this.drawToken(this.state.playerX, this.state.playerY, PLAYER, "FUND");
       const player = this.project(this.state.playerX, this.state.playerY);
       if (this.state.activeDealId) {
         graphics.fillStyle(PARTNER, 1).fillRoundedRect(player.x + 8, player.y - 39, 16, 11, 2);
@@ -459,7 +443,9 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
         this.dealPanel?.setText(
           `PORTFOLIO DECISION · ${alertCompany.name}\n${this.state.portfolioAlertHeadline ?? "Company needs a decision."}\n` +
           `Ownership ${holding?.ownershipPct.toFixed(1) ?? "—"}% · carrying value ${moneyMillions(holding?.mark ?? 0)}\n` +
-          `${decision?.supportLabel ?? "Support"} or decline and accept the dilution / operating consequence.`,
+          `${decision?.supportLabel ?? "Support"} · ${Math.ceil(this.state.portfolioAlertTimeLeft)}s to decide\n` +
+          `DECLINE: ${this.state.portfolioAlertKind === "rival_term_sheet" ? "rival takes allocation; ownership falls" : this.state.portfolioAlertKind === "fab_delay" ? "miss the milestone; mark falls" : this.state.portfolioAlertKind === "refinance" ? "runway crisis; mark and ownership fall" : "preserve capital; accept operating or dilution risk"}.` +
+          (holding?.history?.length ? `\nHISTORY: ${holding.history.slice(-2).join(" → ")}` : ""),
         );
         this.dealPanel?.setAlpha(1);
       } else if (exitCandidate) {
@@ -477,7 +463,7 @@ export function mountGame(mount: HTMLElement, bridge: GameBridge): GameRuntimeCo
       if (this.state.holdings.length && !mobile) {
         const lines = this.state.holdings.slice(0, 5).map((holding) => {
           const company = companyById(holding.companyId);
-          return `${company?.name ?? holding.companyId} · ${holding.ownershipPct.toFixed(1)}% · ${(holding.mark / holding.invested).toFixed(2)}x`;
+          return `${company?.name ?? holding.companyId} · ${holding.ownershipPct.toFixed(1)}% · ${(holding.mark / holding.invested).toFixed(2)}x${holding.pendingEvent ? " · NEXT: " + holding.pendingEvent.replaceAll("_", " ").toUpperCase() : ""}`;
         });
         this.portfolioPanel?.setText(["PORTFOLIO BOOK", ...lines]).setAlpha(1);
       } else {
