@@ -14,6 +14,8 @@ The public route now uses three navigable first-person room scenes: an office an
 
 The calendar advances only when the player chooses the next week. An occupied investment file prevents opening another founder, while board calls, exits, and hiring remain available. Company histories, queued events, and fund accounting remain in use.
 
+The room scenes now have separate compositions: a research office, a conference-based deal room, and an operations boardroom. Deal arrivals and meeting windows were retuned for week-based play, the pipeline has twelve distinct companies, and a weekly briefing lists all material arrivals, market news, and portfolio calls from the turn.
+
 ## Remaining design work
 
 - Deepen negotiated terms into staged checks, syndicate composition, and rival bids with explicit counteroffers.

@@ -20,6 +20,13 @@ import {
 } from "./model";
 
 describe("Semiconductor VC office model", () => {
+  it("surfaces multiple founder files across the opening weeks", () => {
+    let state = createSemiVcState(73);
+    for (let step = 0; step < 600; step += 1) state = advanceSemiVc(state, { x: 0, y: 0 }, 0.05).state;
+    expect(state.nextDealIndex).toBeGreaterThanOrEqual(3);
+    expect(state.incoming.length).toBeGreaterThanOrEqual(2);
+    expect(state.missedDeals).toBe(0);
+  });
   it("makes valuation negotiation compete with a rival investor clock", () => {
     const base = { ...createSemiVcState(63), activeDealId: "latchwave", incoming: [], rivalPressure: 48 };
     const lower = negotiateSemiVc(base, "terms");

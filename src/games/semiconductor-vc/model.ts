@@ -283,6 +283,30 @@ export const semiVcCompanies: readonly SemiCompany[] = [
     greenFlag: "Two switch-silicon partners are integrating evaluation modules.",
     hiddenInsight: "The photonics works, but packaging yield is currently below the threshold needed for attractive unit economics.",
   },
+  {
+    id: "copperpeak", name: "CopperPeak Systems", founder: "Leo Martens", sector: "Data Center Networking", theme: "ai",
+    pitch: "Low-latency switch silicon for scale-out AI clusters with an open software stack.", round: "Series A", raiseAmount: 16_000_000, preMoney: 55_000_000,
+    processNode: "5nm", designStage: "First silicon", foundry: "TSMC", designWins: 2, nreToDate: 12_000_000, customerConcentrationPct: 72, patents: 7, quality: 0.69,
+    greenFlag: "A large cloud customer is running rack-level trials.", hiddenInsight: "The benchmark is promising, but the software team has not yet reproduced it under production traffic.",
+  },
+  {
+    id: "arcforge", name: "ArcForge Materials", founder: "Sofia Reyes", sector: "Semiconductor Materials", theme: "equipment",
+    pitch: "High-purity deposition precursors that improve advanced-node process stability.", round: "Seed", raiseAmount: 5_000_000, preMoney: 17_000_000,
+    processNode: "Supports 3nm", designStage: "Fab qualification", foundry: "Multiple foundries", designWins: 1, nreToDate: 2_400_000, customerConcentrationPct: 88, patents: 6, quality: 0.72,
+    redFlag: "One foundry controls nearly the entire near-term revenue forecast.", hiddenInsight: "The customer confirmed a material improvement, but its second-site qualification is a year behind schedule.",
+  },
+  {
+    id: "novapulse", name: "NovaPulse RF", founder: "Aisha Rahman", sector: "RF Power", theme: "rf",
+    pitch: "Wide-bandgap RF power amplifiers for satellite links and defense communications.", round: "Seed", raiseAmount: 4_000_000, preMoney: 15_000_000,
+    processNode: "GaN", designStage: "Qualification", foundry: "GlobalFoundries", designWins: 3, nreToDate: 2_100_000, customerConcentrationPct: 46, patents: 5, quality: 0.77,
+    greenFlag: "Two customers have moved from evaluation boards to paid prototypes.", hiddenInsight: "Thermal performance holds at the target duty cycle, but packaging cost is still above the customer target.",
+  },
+  {
+    id: "stackriver", name: "StackRiver Memory", founder: "Jun Park", sector: "Memory / Packaging", theme: "memory",
+    pitch: "Near-memory compute modules for bandwidth-constrained inference workloads.", round: "Series A", raiseAmount: 11_000_000, preMoney: 36_000_000,
+    processNode: "7nm + HBM", designStage: "Engineering samples", foundry: "TSMC + OSAT", designWins: 2, nreToDate: 8_300_000, customerConcentrationPct: 61, patents: 8, quality: 0.63,
+    redFlag: "The first package has a yield issue at high temperature.", hiddenInsight: "Yield improves with a new substrate, but the redesign consumes another two quarters and most of the current runway.",
+  },
 ] as const;
 
 export const semiVcLayout = {
@@ -398,9 +422,9 @@ function spawnFounder(state: SemiVcState): SemiVcState {
   return {
     ...state,
     seed: roll.seed,
-    incoming: [...state.incoming, { companyId: company.id, x: spot.x, y: spot.y, timeLeft: 22 + roll.value * 8 }],
+    incoming: [...state.incoming, { companyId: company.id, x: spot.x, y: spot.y, timeLeft: 65 + roll.value * 15 }],
     nextDealIndex: state.nextDealIndex + 1,
-    dealSpawnTimer: 18 + roll.value * 8,
+    dealSpawnTimer: 9 + roll.value * 5,
   };
 }
 
@@ -500,17 +524,17 @@ export function createSemiVcState(seed = 271828): SemiVcState {
     founderTrust: 0,
     proposedPreMoney: null,
     negotiationCooldown: 0,
-    incoming: [{ companyId: semiVcCompanies[0].id, x: semiVcLayout.pitchSpots[0].x, y: semiVcLayout.pitchSpots[0].y, timeLeft: 30 }],
+    incoming: [{ companyId: semiVcCompanies[0].id, x: semiVcLayout.pitchSpots[0].x, y: semiVcLayout.pitchSpots[0].y, timeLeft: 70 }],
     holdings: [],
     nextDealIndex: 1,
-    dealSpawnTimer: 16,
+    dealSpawnTimer: 10,
     analystCooldown: 0,
     newsTimer: 24,
     newsLabel: null,
     newsTheme: null,
     newsEffect: 0,
     newsTimeLeft: 0,
-    portfolioTimer: 16,
+    portfolioTimer: 12,
     portfolioAlertCompanyId: null,
     portfolioAlertKind: null,
     portfolioAlertHeadline: null,
@@ -884,7 +908,7 @@ export function advanceSemiVc(state: SemiVcState, input: SemiVcInput, deltaSecon
       portfolioAlertKind: kind,
       portfolioAlertHeadline: company ? portfolioHeadline(kind, company) : "Portfolio company needs a decision",
       portfolioAlertTimeLeft: kind === "rival_term_sheet" ? 16 : kind === "fab_delay" ? 22 : 28,
-      portfolioTimer: 38 + waitRoll.value * 16,
+      portfolioTimer: 16 + waitRoll.value * 10,
       portfolioEvents: next.portfolioEvents + 1,
     };
     if (event === "none") event = "portfolio_alert";

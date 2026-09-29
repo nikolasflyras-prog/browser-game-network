@@ -25,6 +25,7 @@ export function SemiconductorVcDesk() {
   const [feed, setFeed] = useState<string[]>(["Fund opened · $10m committed capital"]);
   const [room, setRoom] = useState<"office" | "deals" | "updates">("office");
   const [inspecting, setInspecting] = useState(false);
+  const [weeklyReport, setWeeklyReport] = useState<string[]>([]);
 
   function travel(next: "office" | "deals" | "updates") { setRoom(next); setInspecting(false); }
 
@@ -42,9 +43,13 @@ export function SemiconductorVcDesk() {
       const result = advanceSemiVc(next, { x: 0, y: 0 }, 0.05);
       next = result.state;
       const label = eventText[result.event];
-      if (label) events.push(label);
+      if (result.event === "founder_arrived") events.push(`${company(next.incoming[next.incoming.length - 1]?.companyId ?? null)?.name ?? "A founder"} entered the deal room`);
+      else if (result.event === "portfolio_alert") events.push(next.portfolioAlertHeadline ?? "Portfolio company needs a board decision");
+      else if (result.event === "news" && next.newsLabel) events.push(`Market: ${next.newsLabel}`);
+      else if (label) events.push(label);
     }
     commit(next, "none");
+    setWeeklyReport([...new Set(events)].slice(0, 6));
     setFeed((entries) => [`Week ${Math.floor(next.elapsed / 10) + 1} · ${events.length ? [...new Set(events)].join(" · ") : "Portfolio and deal flow reviewed"}`, ...entries].slice(0, 5));
   }
 
@@ -67,6 +72,7 @@ export function SemiconductorVcDesk() {
     setFeed(["New fund opened · $10m committed capital"]);
     setRoom("office");
     setInspecting(false);
+    setWeeklyReport([]);
   }
 
   const active = semiVcActiveCompany(state);
@@ -91,6 +97,7 @@ export function SemiconductorVcDesk() {
     <div className={styles.news}><span>MARKET WIRE</span><strong>{state.newsLabel ?? "Monitoring semiconductor markets and portfolio catalysts"}</strong><small>{state.newsLabel ? "Current development" : "No new headline"}</small></div>
     <nav className={styles.rooms} aria-label="Fund spaces"><button className={room === "office" ? styles.selected : ""} onClick={() => travel("office")}>01 · Office & research</button><button className={room === "deals" ? styles.selected : ""} onClick={() => travel("deals")}>02 · Deal room <span>{state.incoming.length}</span></button><button className={room === "updates" ? styles.selected : ""} onClick={() => travel("updates")}>03 · Portfolio updates {alertCompany ? <span className={styles.notification}>!</span> : null}</button></nav>
     <SemiVcRoomScene room={room} week={week} headline={room === "office" ? state.newsLabel ?? "Market watch active" : room === "deals" ? active?.name ?? "Founder meetings open" : alertCompany?.name ?? "No urgent board vote"} holdingCount={state.holdings.length} dealCount={state.incoming.length} onInspect={() => setInspecting((value) => !value)} onTravel={travel} />
+    {weeklyReport.length ? <div className={styles.weekReport}><div><span className={styles.kicker}>WEEK {week} BRIEFING</span><button onClick={() => setWeeklyReport([])}>Dismiss ×</button></div><ul>{weeklyReport.map((item) => <li key={item}>{item}</li>)}</ul><div className={styles.actions}><button onClick={() => { travel("deals"); setWeeklyReport([]); }}>Deal room →</button><button onClick={() => { travel("updates"); setWeeklyReport([]); }}>Portfolio updates →</button></div></div> : null}
     {inspecting ? <div className={styles.inspectHeading}><span>{room === "office" ? "RESEARCH DESK" : room === "deals" ? "FOUNDER FILES" : "BOARD MATERIALS"}</span><button onClick={() => setInspecting(false)}>Close materials ×</button></div> : null}
     {state.mode !== "playing" ? <div className={styles.result}><h3>{state.mode === "complete" ? "Fund cycle complete" : "Fund mandate lost"}</h3><p>{state.investments} investments · {state.exits} exits · {semiVcTvpi(state).toFixed(2)}× TVPI · {semiVcDpi(state).toFixed(2)}× DPI</p><button onClick={reset}>Launch another fund</button></div> : null}
     {room === "office" && inspecting ? <div className={styles.office}><div className={styles.officeHero}><span className={styles.kicker}>YOUR BASE OF OPERATIONS</span><h3>Run the fund, one week at a time.</h3><p>Review the pipeline, investigate one company in depth, respond to portfolio developments, and decide when to move the calendar forward. No countdown runs while you read or plan.</p><div className={styles.officeLinks}><button onClick={() => travel("deals")}>Enter deal room · {state.incoming.length} waiting →</button><button onClick={() => travel("updates")}>Review portfolio · {state.holdings.length} holdings →</button></div></div><div className={styles.officeBrief}><span className={styles.kicker}>THIS WEEK PRIORITIES</span><p>{active ? `${active.name} is on your research desk. Complete diligence and negotiate terms in the deal room.` : state.incoming.length ? `${state.incoming.length} founder meeting${state.incoming.length === 1 ? "" : "s"} waiting in the deal room.` : "No active deal file. New opportunities may arrive next week."}</p><p>{alertCompany ? `${alertCompany.name} needs a board decision in portfolio updates.` : "No urgent board decision currently open."}</p><p>{state.newsLabel ?? "The market wire is quiet."}</p><div className={styles.operations}><span className={styles.kicker}>RESEARCH TEAM</span><p>{state.staff} analyst{state.staff === 1 ? "" : "s"} · {money(state.operatingBudget)} operating budget. More staff shortens the time between diligence reports.</p><button disabled={state.staff >= 3 || state.operatingBudget < 150_000} onClick={() => act(semiVcLayout.hire.x, semiVcLayout.hire.y)}>Hire analyst · $150k</button></div></div><div className={styles.tape}><span className={styles.kicker}>ACTIVITY TAPE</span>{feed.map((entry, index) => <p key={`${entry}-${index}`}>{entry}</p>)}</div></div> : null}
