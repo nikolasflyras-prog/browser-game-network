@@ -10,7 +10,7 @@
 
 ## Rework
 
-The public route now uses three navigable spaces: an office and research hub, a deal room, and a portfolio boardroom. The top row shows NAV, dry powder, TVPI/DPI, and reputation. A market wire provides context. Financing decisions expose their check size and affected resource before the player acts.
+The public route now uses three navigable first-person room scenes: an office and research hub, a deal room, and a portfolio boardroom. Players click the desk or board inside each space to inspect detailed materials, and use the corridor or room navigation to travel. The compact top row shows NAV, dry powder, TVPI/DPI, and reputation. A market wire provides context. Financing decisions expose their check size and affected resource before the player acts.
 
 The calendar advances only when the player chooses the next week. An occupied investment file prevents opening another founder, while board calls, exits, and hiring remain available. Company histories, queued events, and fund accounting remain in use.
 

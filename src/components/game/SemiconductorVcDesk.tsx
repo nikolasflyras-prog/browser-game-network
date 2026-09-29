@@ -7,6 +7,7 @@ import {
   semiVcQuarter, semiVcTvpi, type SemiVcEvent, type SemiVcState,
 } from "@/games/semiconductor-vc/model";
 import styles from "./SemiconductorVcDesk.module.css";
+import { SemiVcRoomScene } from "./SemiVcRoomScene";
 
 const money = (value: number) => `$${(value / 1_000_000).toFixed(2)}m`;
 const company = (id: string | null) => semiVcCompanies.find((item) => item.id === id);
@@ -23,6 +24,9 @@ export function SemiconductorVcDesk() {
   const stateRef = useRef<SemiVcState>(state);
   const [feed, setFeed] = useState<string[]>(["Fund opened · $10m committed capital"]);
   const [room, setRoom] = useState<"office" | "deals" | "updates">("office");
+  const [inspecting, setInspecting] = useState(false);
+
+  function travel(next: "office" | "deals" | "updates") { setRoom(next); setInspecting(false); }
 
   function commit(next: SemiVcState, event: SemiVcEvent) {
     stateRef.current = next;
@@ -62,6 +66,7 @@ export function SemiconductorVcDesk() {
     setState(next);
     setFeed(["New fund opened · $10m committed capital"]);
     setRoom("office");
+    setInspecting(false);
   }
 
   const active = semiVcActiveCompany(state);
@@ -84,10 +89,12 @@ export function SemiconductorVcDesk() {
       <div><span>REPUTATION</span><strong>{Math.round(state.reputation)}</strong><small>{state.staff} analyst{state.staff === 1 ? "" : "s"} · {money(state.operatingBudget)} ops</small></div>
     </div>
     <div className={styles.news}><span>MARKET WIRE</span><strong>{state.newsLabel ?? "Monitoring semiconductor markets and portfolio catalysts"}</strong><small>{state.newsLabel ? "Current development" : "No new headline"}</small></div>
-    <nav className={styles.rooms} aria-label="Fund spaces"><button className={room === "office" ? styles.selected : ""} onClick={() => setRoom("office")}>01 · Office & research</button><button className={room === "deals" ? styles.selected : ""} onClick={() => setRoom("deals")}>02 · Deal room <span>{state.incoming.length}</span></button><button className={room === "updates" ? styles.selected : ""} onClick={() => setRoom("updates")}>03 · Portfolio updates {alertCompany ? <span className={styles.notification}>!</span> : null}</button></nav>
+    <nav className={styles.rooms} aria-label="Fund spaces"><button className={room === "office" ? styles.selected : ""} onClick={() => travel("office")}>01 · Office & research</button><button className={room === "deals" ? styles.selected : ""} onClick={() => travel("deals")}>02 · Deal room <span>{state.incoming.length}</span></button><button className={room === "updates" ? styles.selected : ""} onClick={() => travel("updates")}>03 · Portfolio updates {alertCompany ? <span className={styles.notification}>!</span> : null}</button></nav>
+    <SemiVcRoomScene room={room} week={week} headline={room === "office" ? state.newsLabel ?? "Market watch active" : room === "deals" ? active?.name ?? "Founder meetings open" : alertCompany?.name ?? "No urgent board vote"} holdingCount={state.holdings.length} dealCount={state.incoming.length} onInspect={() => setInspecting((value) => !value)} onTravel={travel} />
+    {inspecting ? <div className={styles.inspectHeading}><span>{room === "office" ? "RESEARCH DESK" : room === "deals" ? "FOUNDER FILES" : "BOARD MATERIALS"}</span><button onClick={() => setInspecting(false)}>Close materials ×</button></div> : null}
     {state.mode !== "playing" ? <div className={styles.result}><h3>{state.mode === "complete" ? "Fund cycle complete" : "Fund mandate lost"}</h3><p>{state.investments} investments · {state.exits} exits · {semiVcTvpi(state).toFixed(2)}× TVPI · {semiVcDpi(state).toFixed(2)}× DPI</p><button onClick={reset}>Launch another fund</button></div> : null}
-    {room === "office" ? <div className={styles.office}><div className={styles.officeHero}><span className={styles.kicker}>YOUR BASE OF OPERATIONS</span><h3>Run the fund, one week at a time.</h3><p>Review the pipeline, investigate one company in depth, respond to portfolio developments, and decide when to move the calendar forward. No countdown runs while you read or plan.</p><div className={styles.officeLinks}><button onClick={() => setRoom("deals")}>Enter deal room · {state.incoming.length} waiting →</button><button onClick={() => setRoom("updates")}>Review portfolio · {state.holdings.length} holdings →</button></div></div><div className={styles.officeBrief}><span className={styles.kicker}>THIS WEEK PRIORITIES</span><p>{active ? `${active.name} is on your research desk. Complete diligence and negotiate terms in the deal room.` : state.incoming.length ? `${state.incoming.length} founder meeting${state.incoming.length === 1 ? "" : "s"} waiting in the deal room.` : "No active deal file. New opportunities may arrive next week."}</p><p>{alertCompany ? `${alertCompany.name} needs a board decision in portfolio updates.` : "No urgent board decision currently open."}</p><p>{state.newsLabel ?? "The market wire is quiet."}</p><div className={styles.operations}><span className={styles.kicker}>RESEARCH TEAM</span><p>{state.staff} analyst{state.staff === 1 ? "" : "s"} · {money(state.operatingBudget)} operating budget. More staff shortens the time between diligence reports.</p><button disabled={state.staff >= 3 || state.operatingBudget < 150_000} onClick={() => act(semiVcLayout.hire.x, semiVcLayout.hire.y)}>Hire analyst · $150k</button></div></div><div className={styles.tape}><span className={styles.kicker}>ACTIVITY TAPE</span>{feed.map((entry, index) => <p key={`${entry}-${index}`}>{entry}</p>)}</div></div> : null}
-    <div className={`${styles.columns} ${room === "deals" ? styles.dealRoom : room === "updates" ? styles.updatesRoom : styles.officeRoom}`}>
+    {room === "office" && inspecting ? <div className={styles.office}><div className={styles.officeHero}><span className={styles.kicker}>YOUR BASE OF OPERATIONS</span><h3>Run the fund, one week at a time.</h3><p>Review the pipeline, investigate one company in depth, respond to portfolio developments, and decide when to move the calendar forward. No countdown runs while you read or plan.</p><div className={styles.officeLinks}><button onClick={() => travel("deals")}>Enter deal room · {state.incoming.length} waiting →</button><button onClick={() => travel("updates")}>Review portfolio · {state.holdings.length} holdings →</button></div></div><div className={styles.officeBrief}><span className={styles.kicker}>THIS WEEK PRIORITIES</span><p>{active ? `${active.name} is on your research desk. Complete diligence and negotiate terms in the deal room.` : state.incoming.length ? `${state.incoming.length} founder meeting${state.incoming.length === 1 ? "" : "s"} waiting in the deal room.` : "No active deal file. New opportunities may arrive next week."}</p><p>{alertCompany ? `${alertCompany.name} needs a board decision in portfolio updates.` : "No urgent board decision currently open."}</p><p>{state.newsLabel ?? "The market wire is quiet."}</p><div className={styles.operations}><span className={styles.kicker}>RESEARCH TEAM</span><p>{state.staff} analyst{state.staff === 1 ? "" : "s"} · {money(state.operatingBudget)} operating budget. More staff shortens the time between diligence reports.</p><button disabled={state.staff >= 3 || state.operatingBudget < 150_000} onClick={() => act(semiVcLayout.hire.x, semiVcLayout.hire.y)}>Hire analyst · $150k</button></div></div><div className={styles.tape}><span className={styles.kicker}>ACTIVITY TAPE</span>{feed.map((entry, index) => <p key={`${entry}-${index}`}>{entry}</p>)}</div></div> : null}
+    <div className={`${styles.columns} ${!inspecting ? styles.officeRoom : room === "deals" ? styles.dealRoom : room === "updates" ? styles.updatesRoom : styles.officeRoom}`}>
       <div className={styles.mainColumn}>
         <div className={styles.sectionHead}><div><span className={styles.kicker}>01 / PIPELINE</span><h3>Incoming opportunities</h3></div><span>{state.incoming.length} live · {state.missedDeals} lost</span></div>
         <div className={styles.pipeline}>
