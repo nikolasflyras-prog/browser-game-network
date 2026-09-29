@@ -17,3 +17,27 @@
 @media(max-width:850px){.metrics{grid-template-columns:repeat(2,1fr)}.metrics>div:nth-child(2){border-right:0}.metrics>div:nth-child(-n+2){border-bottom:1px solid var(--line)}.office{grid-template-columns:1fr}.office>.tape{grid-column:auto}}
 @media(max-width:550px){.topbar{padding:18px;align-items:flex-start}.game h2{font-size:23px}.clock{gap:8px;flex-wrap:wrap;justify-content:flex-end}.clock strong{font-size:21px}.metrics>div{padding:15px}.metrics strong{font-size:20px}.rooms{padding:8px;gap:2px}.rooms button{font-size:11px;padding:10px 7px}.mainColumn,.sideColumn{padding:20px 16px}.office{padding:14px}.officeHero{padding:20px}.officeHero h3{font-size:23px}.deal{flex-direction:column}.dealAction{flex-direction:row;align-items:center;width:100%}.fileGrid{grid-template-columns:repeat(2,1fr)}.actions button{flex:1}.result{margin:15px}}
 @media(prefers-reduced-motion:reduce){.game button{transition:none}}
+
+/* Room UI: one restrained instrument rail and one contextual material surface. */
+.game{border-color:#354551;border-radius:10px;background:#0b151d;box-shadow:0 18px 55px #0005}
+.game .topbar{padding:12px 20px;background:#101c25;border-bottom-color:#344450}
+.game .topbar h2{font-size:20px;margin-top:3px}.game .clock{gap:12px}.game .clock strong{font-size:16px;color:#e6d1a1}
+.game .clock button{background:#c6a86b;color:#19232a;border-color:#d5bc83;padding:8px 12px}
+.game .metrics{background:#14212b}.game .metrics>div{padding:8px 17px;gap:1px}.game .metrics span{font-size:9px;letter-spacing:.1em}.game .metrics strong{font-size:17px}.game .metrics small{display:none}
+.game .news{padding:6px 20px;background:#1a2a33}.game .news strong{font-size:11px;font-weight:500}.game .rooms{padding:0 16px;background:#111d26;gap:0}.game .rooms button{border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;background:transparent;font-size:11px;letter-spacing:.035em}.game .rooms button.selected{border-bottom-color:#d6b878;background:#1d2d37}
+.stage .inspectHeading{right:1.5%;top:3%;width:41%;padding:10px 16px;background:#101d27f5;border-color:#5c7480;border-bottom:1px solid #314651;border-radius:9px 9px 0 0;backdrop-filter:none;box-shadow:-15px 12px 30px #0005}
+.stage .office,.stage .columns:not(.officeRoom){right:1.5%;top:calc(3% + 42px);width:41%;height:84%;max-height:585px;background:#101d27f5;border-color:#5c7480;border-radius:0 0 9px 9px;box-shadow:-15px 15px 30px #0005;backdrop-filter:none}
+.stage .office{padding:14px 18px}.stage .officeBrief{background:transparent;border:0;padding:0}.stage .officeBrief>p{font-size:12px;padding:10px 0}.stage .office .operations{margin-top:15px}
+.stage .dealRoom .mainColumn,.stage .updatesRoom .sideColumn{padding:16px 18px 24px;background:transparent}
+.stage .sectionHead{margin:7px 0 10px}.stage .sectionHead h3{font-size:17px}.stage .sectionHead>span{font-size:10px}.stage .pipeline{gap:0;margin-bottom:23px;min-height:0}
+.stage .deal,.stage .file,.stage .alert,.stage .operations,.stage .tape{border-radius:0;background:transparent;box-shadow:none}
+.stage .deal{border:0;border-bottom:1px solid #344956;padding:14px 0;gap:10px}.stage .deal:first-child{border-top:1px solid #344956}.stage .deal h4{font-size:16px}.stage .deal p{font-size:11px}.stage .deal small{margin-top:6px}
+.stage .file{border:0;padding:0}.stage .fileGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:13px 0;border-top:1px solid #344956}.stage .fileGrid strong{font-size:12px}.stage .insight{padding:12px 0;font-size:12px}
+.stage .negotiation{margin:0 0 14px;padding:14px;border:1px solid #536675;border-left:3px solid #c5a76e;background:#1b2c36;border-radius:4px}.stage .negotiation p{font-size:11px}
+.stage .alert{padding:14px 0;border:0;border-top:2px solid #b68f65;border-bottom:1px solid #52616a;margin-bottom:10px}.stage .alert h4{font-size:17px}
+.stage .holding{border:0;border-bottom:1px solid #344956;border-radius:0;background:transparent;padding:12px 0}.stage .holding:first-child{border-top:1px solid #344956}
+.stage .operations,.stage .tape{border:0;border-top:1px solid #344956;padding:14px 0;margin-top:17px}.stage .tape p{padding:7px 0}
+.stage .game button,.game button{border-radius:5px}.stage .actions button{padding:9px 11px}.stage .empty{border-radius:5px}
+.stage .weekReport{left:2%;bottom:3%;width:39%;padding:13px 16px;background:#12232df5;border-color:#8c825f;backdrop-filter:none;box-shadow:0 12px 25px #0007}
+@media(max-width:850px){.stage .inspectHeading,.stage .office,.stage .columns:not(.officeRoom){right:1.5%;width:50%}}
+@media(max-width:650px){.game .topbar{padding:10px 12px}.game .topbar h2{font-size:16px}.game .clock strong{font-size:13px}.game .clock button{padding:7px;font-size:10px}.game .metrics>div{padding:7px 11px}.game .metrics strong{font-size:15px}.game .news{padding:6px 11px}.game .rooms{padding:0 4px}.game .rooms button{font-size:10px;padding:8px 5px}.stage .inspectHeading{left:2%;right:2%;top:auto;bottom:66%;width:auto}.stage .office,.stage .columns:not(.officeRoom){left:2%;right:2%;top:auto;bottom:2%;width:auto;height:64%;max-height:none}.stage .weekReport{left:3%;right:3%;width:auto}}
