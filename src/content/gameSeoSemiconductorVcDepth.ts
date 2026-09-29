@@ -5,7 +5,7 @@ const semiconductorVcDepthSeo: Record<string, GameSeoContent> = {
     summary: "Sand Hill VC is a real-time semiconductor venture-fund game. Review incoming deals, run diligence, build ownership, manage reserves and operating support, respond to financing and company events, and realize winners into distributions while TVPI and DPI evolve through the fund cycle.",
     howTo: [
       "Open an incoming founder's file before its deadline. The fund clock and other opportunities continue to move.",
-      "Run technical diligence to reveal a hidden fact, then pass or invest $500K or $1M at investment committee.",
+      "Run technical diligence, build founder trust, negotiate valuation, or improve your offer while a rival VC pressures the allocation. Then pass or invest $500K or $1M.",
       "Watch ownership and carrying value. Portfolio events include rounds, bridges, refinancing, fab delays, board meetings, customer slips, and rival VC offers.",
       "Support a portfolio company when the expected outcome justifies the cost, or decline and accept its consequences. Earlier decisions affect later events at the same company.",
       "Realize an eligible investment to convert its carrying value into a distribution and increase DPI.",

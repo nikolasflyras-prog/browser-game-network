@@ -75,6 +75,10 @@ export type SemiVcState = {
   staff: number;
   activeDealId: string | null;
   activeDealDiligenced: boolean;
+  rivalPressure: number;
+  founderTrust: number;
+  proposedPreMoney: number | null;
+  negotiationCooldown: number;
   incoming: FounderVisit[];
   holdings: VentureHolding[];
   nextDealIndex: number;
@@ -492,6 +496,10 @@ export function createSemiVcState(seed = 271828): SemiVcState {
     staff: 1,
     activeDealId: null,
     activeDealDiligenced: false,
+    rivalPressure: 0,
+    founderTrust: 0,
+    proposedPreMoney: null,
+    negotiationCooldown: 0,
     incoming: [{ companyId: semiVcCompanies[0].id, x: semiVcLayout.pitchSpots[0].x, y: semiVcLayout.pitchSpots[0].y, timeLeft: 30 }],
     holdings: [],
     nextDealIndex: 1,
@@ -519,6 +527,22 @@ export function createSemiVcState(seed = 271828): SemiVcState {
 
 export function semiVcActiveCompany(state: SemiVcState) {
   return companyById(state.activeDealId);
+}
+
+export function negotiateSemiVc(state: SemiVcState, approach: "relationship" | "terms" | "accelerate"): SemiVcState {
+  const active = semiVcActiveCompany(state);
+  if (!active || state.mode !== "playing" || state.negotiationCooldown > 0) return state;
+  if (approach === "relationship") return { ...state, founderTrust: Math.min(3, state.founderTrust + 1), rivalPressure: Math.min(100, state.rivalPressure + 4), negotiationCooldown: 6 };
+  if (approach === "terms") return { ...state, proposedPreMoney: Math.max(active.preMoney * 0.7, (state.proposedPreMoney ?? active.preMoney) * 0.9), rivalPressure: Math.min(100, state.rivalPressure + 13), founderTrust: Math.max(-2, state.founderTrust - 1), negotiationCooldown: 7 };
+  return { ...state, proposedPreMoney: Math.max(active.preMoney * 0.8, (state.proposedPreMoney ?? active.preMoney) * 1.08), rivalPressure: Math.max(0, state.rivalPressure - 18), founderTrust: Math.min(3, state.founderTrust + 1), negotiationCooldown: 5 };
+}
+
+export function semiVcOfferStatus(state: SemiVcState) {
+  const company = semiVcActiveCompany(state);
+  if (!company) return null;
+  const valuation = state.proposedPreMoney ?? company.preMoney;
+  const score = state.founderTrust * 12 + (valuation / company.preMoney - 1) * 80 - state.rivalPressure * 0.55 + (state.activeDealDiligenced ? 8 : 0);
+  return { valuation, score, likely: score >= -24, ownership500k: 500_000 / (valuation + company.raiseAmount) * 100 };
 }
 
 export function semiVcPrompt(state: SemiVcState) {
@@ -668,12 +692,14 @@ export function interactSemiVc(state: SemiVcState): { state: SemiVcState; event:
     if (icPad) {
       if (icPad.check === 0) {
         return {
-          state: { ...state, activeDealId: null, activeDealDiligenced: false, passes: state.passes + 1, reputation: Math.min(100, state.reputation + 0.5) },
+          state: { ...state, activeDealId: null, activeDealDiligenced: false, rivalPressure: 0, founderTrust: 0, proposedPreMoney: null, passes: state.passes + 1, reputation: Math.min(100, state.reputation + 0.5) },
           event: "deal_passed",
         };
       }
       if (icPad.check > state.dryPowder) return { state, event: "none" };
-      const postMoney = active.preMoney + active.raiseAmount;
+      const offer = semiVcOfferStatus(state);
+      if (!offer?.likely) return { state: { ...state, reputation: Math.max(0, state.reputation - 1), rivalPressure: Math.min(100, state.rivalPressure + 8) }, event: "none" };
+      const postMoney = offer.valuation + active.raiseAmount;
       const ownershipPct = (icPad.check / postMoney) * 100;
       const holding: VentureHolding = {
         companyId: active.id,
@@ -689,6 +715,9 @@ export function interactSemiVc(state: SemiVcState): { state: SemiVcState; event:
           holdings: [...state.holdings, holding],
           activeDealId: null,
           activeDealDiligenced: false,
+          rivalPressure: 0,
+          founderTrust: 0,
+          proposedPreMoney: null,
           investments: state.investments + 1,
           reputation: Math.min(100, state.reputation + 1),
         },
@@ -704,7 +733,7 @@ export function interactSemiVc(state: SemiVcState): { state: SemiVcState; event:
     const [founder] = incoming.splice(founderIndex, 1);
     if (!founder) return { state, event: "none" };
     return {
-      state: { ...state, incoming, activeDealId: founder.companyId, activeDealDiligenced: false },
+      state: { ...state, incoming, activeDealId: founder.companyId, activeDealDiligenced: false, rivalPressure: 35, founderTrust: 0, proposedPreMoney: null, negotiationCooldown: 0 },
       event: "deal_picked_up",
     };
   }
@@ -778,6 +807,8 @@ export function advanceSemiVc(state: SemiVcState, input: SemiVcInput, deltaSecon
     elapsed: state.elapsed + dt,
     timeLeft: Math.max(0, state.timeLeft - dt),
     analystCooldown: Math.max(0, state.analystCooldown - dt),
+    negotiationCooldown: Math.max(0, state.negotiationCooldown - dt),
+    rivalPressure: state.activeDealId ? Math.min(100, state.rivalPressure + dt * 2.1) : 0,
     dealSpawnTimer: state.dealSpawnTimer - dt,
     newsTimer: state.newsTimer - dt,
     newsTimeLeft: Math.max(0, state.newsTimeLeft - dt),
@@ -803,6 +834,11 @@ export function advanceSemiVc(state: SemiVcState, input: SemiVcInput, deltaSecon
 
   if (next.newsTimeLeft <= 0 && next.newsLabel) {
     next = { ...next, newsLabel: null, newsTheme: null, newsEffect: 0 };
+  }
+
+  if (next.activeDealId && next.rivalPressure >= 100) {
+    next = { ...next, activeDealId: null, activeDealDiligenced: false, rivalPressure: 0, founderTrust: 0, proposedPreMoney: null, missedDeals: next.missedDeals + 1, reputation: Math.max(0, next.reputation - 4) };
+    if (event === "none") event = "founder_missed";
   }
 
   if (next.dealSpawnTimer <= 0) {

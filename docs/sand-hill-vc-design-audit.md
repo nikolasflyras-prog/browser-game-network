@@ -16,6 +16,6 @@ The model continues advancing while the player reads and acts. An occupied inves
 
 ## Remaining design work
 
-- Add negotiated terms, staged checks, and rival bids with more than a binary response.
+- Deepen negotiated terms into staged checks, syndicate composition, and rival bids with explicit counteroffers.
 - Give holdings a visual milestone timeline and explicit runway, yield, and customer qualification measures.
 - Playtest desktop and mobile in a browser and tune density, timing, and contrast based on screenshots and real interactions.

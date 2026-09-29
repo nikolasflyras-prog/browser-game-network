@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  advanceSemiVc, createSemiVcState, interactSemiVc, semiVcActiveCompany, semiVcCompanies,
+  advanceSemiVc, createSemiVcState, interactSemiVc, negotiateSemiVc, semiVcActiveCompany, semiVcCompanies, semiVcOfferStatus,
   semiVcDpi, semiVcExitCandidate, semiVcFundNav, semiVcLayout, semiVcPortfolioDecision,
   semiVcQuarter, semiVcTvpi, type SemiVcEvent, type SemiVcState,
 } from "@/games/semiconductor-vc/model";
@@ -66,6 +66,7 @@ export function SemiconductorVcDesk() {
   }
 
   const active = semiVcActiveCompany(state);
+  const offer = semiVcOfferStatus(state);
   const alertCompany = company(state.portfolioAlertCompanyId);
   const decision = semiVcPortfolioDecision(state);
   const holding = state.holdings.find((item) => item.companyId === state.portfolioAlertCompanyId);
@@ -99,6 +100,7 @@ export function SemiconductorVcDesk() {
         {active ? <article className={styles.file}>
           <div className={styles.fileGrid}><div><span>TECHNOLOGY</span><strong>{active.processNode}</strong></div><div><span>STAGE</span><strong>{active.designStage}</strong></div><div><span>FOUNDRY</span><strong>{active.foundry}</strong></div><div><span>DESIGN WINS</span><strong>{active.designWins}</strong></div><div><span>CUSTOMER CONCENTRATION</span><strong>{active.customerConcentrationPct}%</strong></div><div><span>NRE TO DATE</span><strong>{money(active.nreToDate)}</strong></div></div>
           <p className={styles.insight}>{state.activeDealDiligenced ? active.hiddenInsight : active.greenFlag ?? active.redFlag ?? "Request technical diligence before voting."}</p>
+          <div className={styles.negotiation}><div className={styles.sectionHead}><div><span className={styles.kicker}>LIVE TERM SHEET</span><h3>{money(offer?.valuation ?? active.preMoney)} pre-money</h3></div><span className={!offer?.likely ? styles.urgent : ""}>{offer?.likely ? "Founder open to a check" : "Founder likely to reject"}</span></div><div className={styles.pressure}><span>RIVAL VC PRESSURE</span><strong>{Math.round(state.rivalPressure)}%</strong><div><i style={{ width: `${state.rivalPressure}%` }} /></div></div><p>At $500k, projected ownership is {offer?.ownership500k.toFixed(2)}%. Relationship {state.founderTrust >= 0 ? "+" : ""}{state.founderTrust}. Rival pressure rises while this file is open; at 100%, another fund wins the allocation.</p><div className={styles.actions}><button disabled={state.negotiationCooldown > 0} onClick={() => commit(negotiateSemiVc(stateRef.current, "relationship"), "none")}>Build founder trust</button><button disabled={state.negotiationCooldown > 0} onClick={() => commit(negotiateSemiVc(stateRef.current, "terms"), "none")}>Push valuation down</button><button disabled={state.negotiationCooldown > 0} onClick={() => commit(negotiateSemiVc(stateRef.current, "accelerate"), "none")}>Improve offer / move fast</button></div>{state.negotiationCooldown > 0 ? <small>Next call in {Math.ceil(state.negotiationCooldown)}s</small> : null}</div>
           <div className={styles.actions}><button onClick={() => act(semiVcLayout.diligence.x, semiVcLayout.diligence.y)} disabled={state.activeDealDiligenced || state.analystCooldown > 0}>{state.activeDealDiligenced ? "Diligence complete" : state.analystCooldown > 0 ? `Analyst busy ${Math.ceil(state.analystCooldown)}s` : "Run technical diligence"}</button>{semiVcLayout.icPads.map((pad) => <button key={pad.id} className={pad.check ? styles.invest : ""} disabled={pad.check > state.dryPowder} onClick={() => act(pad.x, pad.y)}>{pad.check ? `Invest ${money(pad.check)}` : "Pass"}</button>)}</div>
         </article> : <div className={styles.empty}>Select a founder to open an investment file. New deals arrive while the fund clock runs.</div>}
       </div>

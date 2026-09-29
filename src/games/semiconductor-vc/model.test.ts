@@ -7,6 +7,8 @@ import {
   advanceSemiVc,
   createSemiVcState,
   interactSemiVc,
+  negotiateSemiVc,
+  semiVcOfferStatus,
   semiVcCompanies,
   semiVcDpi,
   semiVcEntryMarkMultiple,
@@ -18,6 +20,18 @@ import {
 } from "./model";
 
 describe("Semiconductor VC office model", () => {
+  it("makes valuation negotiation compete with a rival investor clock", () => {
+    const base = { ...createSemiVcState(63), activeDealId: "latchwave", incoming: [], rivalPressure: 48 };
+    const lower = negotiateSemiVc(base, "terms");
+    expect(semiVcOfferStatus(lower)?.valuation).toBeLessThan(semiVcOfferStatus(base)?.valuation ?? 0);
+    expect(lower.rivalPressure).toBeGreaterThan(base.rivalPressure);
+    const improved = negotiateSemiVc({ ...lower, negotiationCooldown: 0 }, "accelerate");
+    expect(improved.rivalPressure).toBeLessThan(lower.rivalPressure);
+    let lost: SemiVcState = { ...base, rivalPressure: 99.99 };
+    lost = advanceSemiVc(lost, { x: 0, y: 0 }, 0.05).state;
+    expect(lost.activeDealId).toBeNull();
+    expect(lost.missedDeals).toBe(1);
+  });
   it("starts with a $10M fund and an actual founder waiting in the office", () => {
     const state = createSemiVcState(7);
     expect(state.dryPowder).toBe(SEMI_VC_FUND_SIZE);
