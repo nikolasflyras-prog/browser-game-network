@@ -2,14 +2,15 @@ import type { GameSeoContent } from "./gameSeo";
 
 const semiconductorVcDepthSeo: Record<string, GameSeoContent> = {
   "semiconductor-vc": {
-    summary: "Sand Hill VC is a real-time semiconductor venture-fund game. Review incoming deals, run diligence, build ownership, manage reserves and operating support, respond to financing and company events, and realize winners into distributions while TVPI and DPI evolve through the fund cycle.",
+    summary: "Sand Hill VC is a week-by-week semiconductor venture-fund game with three spaces: the managing partner's office, deal room, and portfolio boardroom. Research companies, negotiate with founders, manage reserves and operating support, respond to financing events, and realize winners into distributions.",
     howTo: [
-      "Open an incoming founder's file before its deadline. The fund clock and other opportunities continue to move.",
+      "Start in the office to review fund performance, the research team, market news, and this week's priorities. Click between the three spaces whenever you want.",
+      "In the deal room, open an incoming founder's file before its meeting window closes. The calendar only moves when you advance a week.",
       "Run technical diligence, build founder trust, negotiate valuation, or improve your offer while a rival VC pressures the allocation. Then pass or invest $500K or $1M.",
       "Watch ownership and carrying value. Portfolio events include rounds, bridges, refinancing, fab delays, board meetings, customer slips, and rival VC offers.",
-      "Support a portfolio company when the expected outcome justifies the cost, or decline and accept its consequences. Earlier decisions affect later events at the same company.",
+      "In portfolio updates, support a company when the expected outcome justifies the cost, or decline and accept its consequences. Earlier decisions affect later events at the same company.",
       "Realize an eligible investment to convert its carrying value into a distribution and increase DPI.",
-      "Hire analysts from the operating budget to speed diligence. Finish the five-minute fund cycle balancing new investments, reserves, ownership, distributions, reputation, and team capacity.",
+      "Hire analysts from the office to speed diligence. Advance one week when you are ready for new founders, market developments, and portfolio calls. Finish the fund cycle balancing investment returns and team capacity.",
     ],
     concepts: [
       "Venture fund construction",
@@ -40,7 +41,7 @@ const semiconductorVcDepthSeo: Record<string, GameSeoContent> = {
       "An up round can be good news even if you decline to invest, but your ownership may dilute. A down round can preserve more ownership if you support it while still destroying value. Separate price, ownership, and capital needs.",
       "Keep investment reserves separate from operating budget. Follow-on financing buys more ownership exposure; board support and staff consume the management-company resource instead.",
       "TVPI includes both remaining portfolio value and distributions. DPI counts only what has actually been realized. A marked-up portfolio can look strong while still returning no cash.",
-      "Use diligence selectively. The fund clock keeps moving while analysts work, so attention and staffing are scarce resources alongside capital.",
+      "Use diligence selectively. It occupies analysts until a later week, so attention and staffing are scarce resources alongside capital.",
     ],
     faqs: [
       { question: "What is TVPI?", answer: "TVPI is total value to paid-in capital. In the game it combines current fund NAV and realized distributions relative to the original fund size." },

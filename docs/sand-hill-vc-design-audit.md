@@ -10,9 +10,9 @@
 
 ## Rework
 
-The public route now uses a responsive fund desk instead of the Phaser office. The top row shows NAV, dry powder, TVPI/DPI, and reputation. A live market wire and countdown establish urgency. The left column holds expiring deal flow and a technical underwriting file; the right column holds the portfolio, board calls, operating capacity, and a short activity tape. Financing decisions expose their check size and affected resource before the player acts.
+The public route now uses three navigable spaces: an office and research hub, a deal room, and a portfolio boardroom. The top row shows NAV, dry powder, TVPI/DPI, and reputation. A market wire provides context. Financing decisions expose their check size and affected resource before the player acts.
 
-The model continues advancing while the player reads and acts. An occupied investment file prevents opening another founder, while board calls, exits, and hiring remain available. The existing simulation rules and company storyline tests remain in use.
+The calendar advances only when the player chooses the next week. An occupied investment file prevents opening another founder, while board calls, exits, and hiring remain available. Company histories, queued events, and fund accounting remain in use.
 
 ## Remaining design work
 
