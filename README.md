@@ -65,6 +65,7 @@ See `docs/analytics.md` and `docs/launch.md` before enabling production measurem
 - `docs/analytics.md`
 - `docs/deployment.md`
 - `docs/launch.md`
+- `docs/daybook.md`: Daybook, the 32-puzzle daily hub at `/daybook`
 
 ## Product sequence
 
