@@ -8,6 +8,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Daybook is a self-contained static page in public/daybook/.
+  async rewrites() {
+    return [{ source: "/daybook", destination: "/daybook/index.html" }];
+  },
   async headers() {
     return [
       {

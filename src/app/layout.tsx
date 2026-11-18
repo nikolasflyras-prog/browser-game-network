@@ -48,6 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <Link href="/learn">Learn</Link>
             <Link href="/semiconductors">Semis</Link>
             <Link href="/daily">Daily</Link>
+            <a href="/daybook">Daybook</a>
             <Link href="/progress">Progress</Link>
           </nav>
         </header>
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
             <Link href="/learn">Learn</Link>
             <Link href="/semiconductors">Semis</Link>
             <Link href="/daily">Daily</Link>
+            <a href="/daybook">Daybook</a>
             <Link href="/progress">Progress</Link>
             <Link href="/about">About</Link>
             <Link href="/privacy">Privacy</Link>

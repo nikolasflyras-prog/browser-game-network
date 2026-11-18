@@ -9,5 +9,7 @@ export default defineConfig([
     files: ["src/games/hedge-fund-floor/model.ts"],
     rules: { "prefer-const": "warn" },
   },
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  // Daybook sources are concatenated into one script by daybook/build.py, so
+  // they share globals across files; public/daybook/index.html is the build output.
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "daybook/**", "public/daybook/**"]),
 ]);

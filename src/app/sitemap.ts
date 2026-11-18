@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: absoluteUrl("/learn"), changeFrequency: "weekly", priority: 0.8 },
     { url: absoluteUrl("/semiconductors"), changeFrequency: "weekly", priority: 0.85 },
     { url: absoluteUrl("/daily"), changeFrequency: "daily", priority: 0.8 },
+    { url: absoluteUrl("/daybook"), changeFrequency: "daily", priority: 0.8 },
     { url: absoluteUrl("/about"), changeFrequency: "monthly", priority: 0.5 },
     { url: absoluteUrl("/privacy"), changeFrequency: "monthly", priority: 0.3 },
     { url: absoluteUrl("/terms"), changeFrequency: "monthly", priority: 0.3 },
